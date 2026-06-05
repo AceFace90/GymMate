@@ -1,8 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  TextInput, Alert, Modal, Vibration,
+  TextInput, Alert, Modal, Vibration, Platform,
 } from 'react-native';
+
+// Vibration is not supported on web — safe no-op wrapper
+const vibrate = (pattern) => {
+  if (Platform.OS !== 'web') {
+    try { Vibration.vibrate(pattern); } catch (_) {}
+  }
+};
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -54,7 +61,7 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
           if (r <= 1) {
             clearInterval(restRef.current);
             setIsResting(false);
-            Vibration.vibrate([0, 300, 100, 300]);
+            vibrate([0, 300, 100, 300]);
             return 0;
           }
           return r - 1;

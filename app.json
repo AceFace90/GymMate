@@ -26,7 +26,14 @@
       "package": "com.yourname.gymmate"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "static",
+      "name": "GymMate",
+      "shortName": "GymMate",
+      "description": "Build programs. Log sessions. Track PRs.",
+      "themeColor": "#1a1a1a",
+      "backgroundColor": "#1a1a1a"
     },
     "plugins": [
       "expo-sqlite"
