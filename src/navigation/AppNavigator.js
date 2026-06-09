@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '../hooks/useTheme';
@@ -18,8 +18,8 @@ import ExerciseDetailScreen from '../screens/ExerciseDetailScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
-const ProgramsStack = createNativeStackNavigator();
-const ExercisesStack = createNativeStackNavigator();
+const ProgramsStack = createStackNavigator();
+const ExercisesStack = createStackNavigator();
 
 function ProgramsStackNav() {
   const { theme } = useTheme();
