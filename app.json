@@ -4,13 +4,7 @@
     "slug": "gymmate",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#1a1a1a"
-    },
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -19,16 +13,11 @@
       "bundleIdentifier": "com.yourname.gymmate"
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#1a1a1a"
-      },
       "package": "com.yourname.gymmate"
     },
     "web": {
-      "favicon": "./assets/favicon.png",
       "bundler": "metro",
-      "output": "static",
+      "output": "single",
       "name": "GymMate",
       "shortName": "GymMate",
       "description": "Build programs. Log sessions. Track PRs.",
