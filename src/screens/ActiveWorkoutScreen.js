@@ -19,6 +19,7 @@ import * as db from '../services/database';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import MuscleTag from '../components/MuscleTag';
+import ExerciseScannerModal from '../components/ExerciseScannerModal';
 import { confirmAction } from '../utils/confirm';
 
 // Format seconds as M:SS
@@ -50,6 +51,7 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
   const [pickerExercises, setPickerExercises] = useState([]);
   const [exSearch, setExSearch] = useState('');
   const [exLoading, setExLoading] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
 
   const timerRef = useRef(null);
   const restRef = useRef(null);
@@ -381,6 +383,14 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
               <Ionicons name="close" size={24} color={theme.textSecondary} />
             </TouchableOpacity>
           </View>
+          <TouchableOpacity
+            onPress={() => setShowScanner(true)}
+            style={[styles.scanBtn, { borderColor: theme.accentBorder, backgroundColor: theme.accentBg }]}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="camera-outline" size={18} color={theme.accent} />
+            <Text style={[styles.scanBtnText, { color: theme.accent }]}>Scan a machine with your camera</Text>
+          </TouchableOpacity>
           <View style={[styles.searchBar, { backgroundColor: theme.input, borderColor: theme.border }]}>
             <Ionicons name="search" size={16} color={theme.textMuted} />
             <TextInput
@@ -389,7 +399,6 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
               placeholder="Search exercises…"
               placeholderTextColor={theme.textMuted}
               style={[styles.searchInput, { color: theme.text }]}
-              autoFocus
             />
           </View>
           {exLoading ? (
@@ -423,6 +432,13 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
           )}
         </SafeAreaView>
       </Modal>
+
+      {/* Smart machine recognition */}
+      <ExerciseScannerModal
+        visible={showScanner}
+        onClose={() => setShowScanner(false)}
+        onPick={(ex) => { handleAddExercise(ex); setShowScanner(false); }}
+      />
     </SafeAreaView>
   );
 }
@@ -458,6 +474,8 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: typography.sizes.base, textAlign: 'center', paddingHorizontal: spacing[6] },
   addExerciseBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing[2], padding: spacing[4], borderRadius: radius.lg, borderWidth: 1, borderStyle: 'dashed' },
   addExerciseText: { fontSize: typography.sizes.base, fontWeight: '600' },
+  scanBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing[2], marginHorizontal: spacing[4], marginBottom: spacing[2], borderRadius: radius.md, borderWidth: 1, paddingVertical: spacing[3] },
+  scanBtnText: { fontSize: typography.sizes.sm, fontWeight: '600' },
   searchBar: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginHorizontal: spacing[4], marginBottom: spacing[2], borderRadius: radius.md, borderWidth: 1, paddingHorizontal: spacing[3], paddingVertical: spacing[2] },
   searchInput: { flex: 1, fontSize: typography.sizes.base },
   exListItem: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing[5], paddingVertical: spacing[3], borderBottomWidth: 1 },

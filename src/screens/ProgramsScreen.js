@@ -15,6 +15,7 @@ import Button from '../components/Button';
 import { generateProgram } from '../services/gemini';
 import { getGeminiKey } from './SettingsScreen';
 import { confirmAction } from '../utils/confirm';
+import { bestMatch } from '../utils/matchExercise';
 
 export default function ProgramsScreen({ navigation }) {
   const { theme } = useTheme();
@@ -81,9 +82,12 @@ export default function ProgramsScreen({ navigation }) {
         });
         for (let j = 0; j < (day.exercises || []).length; j++) {
           const ex = day.exercises[j];
-          const match = exercises.find(
-            (e) => e.name.toLowerCase() === ex.name.toLowerCase()
-          );
+          // Exact match first, then fuzzy — Gemini often returns near-misses
+          // (e.g. "Incline DB Press" vs "Incline Dumbbell Press") that the old
+          // exact-only check silently dropped.
+          const match =
+            exercises.find((e) => e.name.toLowerCase() === ex.name.toLowerCase()) ||
+            bestMatch(ex.name, exercises);
           if (match) {
             await db.addExerciseToDay(dayId, {
               exerciseId: match.id,

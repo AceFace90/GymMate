@@ -25,6 +25,14 @@
       "backgroundColor": "#1a1a1a",
       "baseUrl": "/gymmate"
     },
-    "plugins": []
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "GymMate uses your photos to identify exercises from images.",
+          "cameraPermission": "GymMate uses your camera to identify gym machines and exercises."
+        }
+      ]
+    ]
   }
 }
