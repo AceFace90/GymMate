@@ -33,6 +33,29 @@ function saveTable(key, data) {
 function getTable(key)      { return loadTable(KEYS[key]); }
 function setTable(key, arr) { saveTable(KEYS[key], arr); }
 
+// ─── Backup / restore ────────────────────────────────────────────────────────
+// Serialize the whole local dataset for cloud backup, and restore it wholesale.
+// Used by cloudSync.js. Schema version lets us migrate restored payloads later.
+
+const BACKUP_VERSION = 1;
+
+export async function exportAllData() {
+  const data = {};
+  for (const key of Object.keys(KEYS)) {
+    data[key] = (() => { try { return JSON.parse(localStorage.getItem(KEYS[key])) ?? null; } catch { return null; } })();
+  }
+  return { version: BACKUP_VERSION, data };
+}
+
+export async function importAllData(payload) {
+  if (!payload || !payload.data) return;
+  for (const key of Object.keys(KEYS)) {
+    if (payload.data[key] != null) {
+      localStorage.setItem(KEYS[key], JSON.stringify(payload.data[key]));
+    }
+  }
+}
+
 function nextId(tableName) {
   const counters = (() => { try { return JSON.parse(localStorage.getItem(KEYS.counters)) || {}; } catch { return {}; } })();
   counters[tableName] = (counters[tableName] || 0) + 1;

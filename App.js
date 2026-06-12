@@ -53,7 +53,7 @@ function AppContent() {
     return <LoginScreen onLogin={handleLogin} />;
   }
 
-  return <AppNavigator user={user} onLogout={async () => { await auth.clearCurrentUser(); setUser(null); }} />;
+  return <AppNavigator user={user} onLogout={async () => { await auth.signOutGoogle(); setUser(null); }} />;
 }
 
 export default function App() {

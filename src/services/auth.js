@@ -1,4 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { signInWithPopup, signOut } from 'firebase/auth';
+import { auth as fbAuth, googleProvider } from './firebase';
 
 const USERS_KEY = 'gymmate_users';
 const CURRENT_USER_KEY = 'gymmate_current_user';
@@ -47,7 +49,51 @@ export function isGoogleUser(user) {
   return !!(user?.google_id && !user.google_id.startsWith('local-'));
 }
 
-// Called after OAuth callback — server sets cookie, we store user locally
+// Maps a Firebase user object to our local gymmate user shape.
+function fromFirebaseUser(fbUser) {
+  return {
+    id: 'google-' + fbUser.uid,
+    google_id: fbUser.uid,
+    name: fbUser.displayName || fbUser.email?.split('@')[0] || 'Athlete',
+    email: fbUser.email || null,
+    photo_url: fbUser.photoURL || null,
+    created_at: new Date().toISOString(),
+  };
+}
+
+// Real Google sign-in via Firebase popup. Returns our local user shape and
+// persists it as the current user. Reconciles local data with the cloud backup
+// (push up on first sign-in / restore down on a new device). Throws on failure.
+export async function signInWithGoogle() {
+  const result = await signInWithPopup(fbAuth, googleProvider);
+  const userData = fromFirebaseUser(result.user);
+  // Lazy import avoids a static import cycle (cloudSync → database, auth → firebase).
+  const cloudSync = await import('./cloudSync');
+  try {
+    await cloudSync.syncOnSignIn(result.user.uid);
+  } catch (e) {
+    console.error('Cloud sync on sign-in failed (continuing with local data):', e);
+  }
+  return handleGoogleCallback(userData);
+}
+
+// Sign out of Firebase too (does not touch local profiles list).
+// Backs up local data to the cloud first so the session's work isn't lost.
+export async function signOutGoogle() {
+  const uid = fbAuth.currentUser?.uid;
+  if (uid) {
+    try {
+      const cloudSync = await import('./cloudSync');
+      await cloudSync.backupToCloud(uid);
+    } catch (e) {
+      console.error('Cloud backup on sign-out failed:', e);
+    }
+  }
+  try { await signOut(fbAuth); } catch { /* already signed out */ }
+  await clearCurrentUser();
+}
+
+// Persists a Google user into the local users list + current user.
 export async function handleGoogleCallback(userData) {
   const users = await getAllUsers();
   const existing = users.findIndex((u) => u.google_id === userData.google_id);

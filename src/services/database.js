@@ -116,6 +116,48 @@ export async function initDatabase(builtinExercises) {
   }
 }
 
+// ─── Backup / restore ────────────────────────────────────────────────────────
+// Mirror of the web DB's export/import for native (expo-sqlite). Used by cloudSync.js.
+
+const BACKUP_VERSION = 1;
+const BACKUP_TABLES = [
+  'exercises', 'programs', 'program_days', 'program_exercises',
+  'workout_sessions', 'session_sets',
+];
+
+export async function exportAllData() {
+  const database = await getDb();
+  const data = {};
+  for (const table of BACKUP_TABLES) {
+    data[table] = await database.getAllAsync(`SELECT * FROM ${table}`);
+  }
+  return { version: BACKUP_VERSION, data };
+}
+
+export async function importAllData(payload) {
+  if (!payload || !payload.data) return;
+  const database = await getDb();
+  await database.execAsync('PRAGMA foreign_keys = OFF;');
+  try {
+    for (const table of BACKUP_TABLES) {
+      const rows = payload.data[table];
+      if (!Array.isArray(rows)) continue;
+      await database.execAsync(`DELETE FROM ${table}`);
+      for (const row of rows) {
+        const cols = Object.keys(row);
+        if (cols.length === 0) continue;
+        const placeholders = cols.map(() => '?').join(', ');
+        await database.runAsync(
+          `INSERT OR REPLACE INTO ${table} (${cols.join(', ')}) VALUES (${placeholders})`,
+          cols.map((c) => row[c])
+        );
+      }
+    }
+  } finally {
+    await database.execAsync('PRAGMA foreign_keys = ON;');
+  }
+}
+
 // ─── Exercises ───────────────────────────────────────────────────────────────
 
 export async function getExercises({ muscleGroup, category, search } = {}) {
