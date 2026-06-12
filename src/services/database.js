@@ -424,6 +424,26 @@ export async function getMuscleGroupVolume(daysBack = 30) {
   );
 }
 
+// Per-day activity for the last `daysBack` days. One row per day with a
+// completed session — { date: 'YYYY-MM-DD', sessions, total_sets, total_volume }.
+// The dashboard fills in the zero days client-side.
+export async function getDailyActivity(daysBack = 14) {
+  const database = await getDb();
+  return database.getAllAsync(
+    `SELECT
+       DATE(ws.started_at) as date,
+       COUNT(DISTINCT ws.id) as sessions,
+       COUNT(ss.id) as total_sets,
+       SUM(ss.reps * COALESCE(ss.weight_kg, 0)) as total_volume
+     FROM workout_sessions ws
+     LEFT JOIN session_sets ss ON ss.session_id = ws.id AND ss.completed = 1
+     WHERE ws.completed_at IS NOT NULL
+       AND ws.started_at >= datetime('now', '-${daysBack} days')
+     GROUP BY DATE(ws.started_at)
+     ORDER BY date ASC`
+  );
+}
+
 export async function getLastSetForExercise(exerciseId) {
   const database = await getDb();
   return database.getFirstAsync(

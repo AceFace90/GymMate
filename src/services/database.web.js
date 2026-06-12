@@ -392,6 +392,33 @@ export async function getMuscleGroupVolume(daysBack = 30) {
   return Object.values(byGroup).sort((a, b) => b.total_sets - a.total_sets);
 }
 
+// Per-day activity for the last `daysBack` days. Returns one entry per day
+// that has a completed session — { date: 'YYYY-MM-DD', sessions, total_sets, total_volume }.
+// The dashboard fills in the zero days client-side.
+export async function getDailyActivity(daysBack = 14) {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - daysBack);
+
+  const sessions = getTable('sessions').filter((s) => s.completed_at && new Date(s.started_at) >= cutoff);
+  const sessionMap = Object.fromEntries(sessions.map((s) => [s.id, s]));
+  const sets = getTable('sessionSets').filter((ss) => ss.completed && sessionMap[ss.session_id]);
+
+  const byDate = {};
+  for (const s of sessions) {
+    const date = dateStr(s.started_at);
+    if (!byDate[date]) byDate[date] = { date, sessions: 0, total_sets: 0, total_volume: 0 };
+    byDate[date].sessions += 1;
+  }
+  for (const ss of sets) {
+    const date = dateStr(sessionMap[ss.session_id].started_at);
+    if (!byDate[date]) byDate[date] = { date, sessions: 0, total_sets: 0, total_volume: 0 };
+    byDate[date].total_sets += 1;
+    byDate[date].total_volume += (ss.reps || 0) * (ss.weight_kg || 0);
+  }
+
+  return Object.values(byDate).sort((a, b) => a.date.localeCompare(b.date));
+}
+
 export async function getLastSetForExercise(exerciseId) {
   const sets = getTable('sessionSets').filter((ss) => ss.exercise_id === exerciseId && ss.completed);
   const sessions = getTable('sessions');

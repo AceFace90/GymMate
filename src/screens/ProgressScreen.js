@@ -12,6 +12,15 @@ import { spacing, typography, radius, colors } from '../theme';
 import * as db from '../services/database';
 import Card from '../components/Card';
 import MuscleTag from '../components/MuscleTag';
+import ActivityRings from '../components/ActivityRings';
+
+// Ring colours — neon green leads (brand), then blue + amber accents
+const RING_COLORS = { workouts: '#39ff14', sets: '#38bdf8', minutes: '#fbbf24' };
+
+// ISO date (YYYY-MM-DD) for a Date in local time
+function isoDay(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const CHART_W = SCREEN_W - spacing[4] * 2 - spacing[4] * 2; // card padding both sides
@@ -51,19 +60,25 @@ export default function ProgressScreen() {
   const [muscleVolume, setMuscleVolume] = useState([]);
   const [recentSessions, setRecentSessions] = useState([]);
   const [personalRecords, setPersonalRecords] = useState([]);
+  const [dailyActivity, setDailyActivity] = useState([]);
+  const [weeklyGoal, setWeeklyGoal] = useState(3);
 
   const loadData = async () => {
     setLoading(true);
-    const [wv, mv, sessions, prs] = await Promise.all([
+    const [wv, mv, sessions, prs, daily, active] = await Promise.all([
       db.getWeeklyVolume(12),
       db.getMuscleGroupVolume(30),
       db.getRecentSessions(20),
       db.getPersonalRecords(),
+      db.getDailyActivity(14),
+      db.getActiveProgram(),
     ]);
     setWeeklyVolume(wv);
     setMuscleVolume(mv);
     setRecentSessions(sessions);
     setPersonalRecords(prs);
+    setDailyActivity(daily);
+    setWeeklyGoal(active?.days_per_week || 3);
     setLoading(false);
   };
 
@@ -81,11 +96,56 @@ export default function ProgressScreen() {
     return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
   };
 
-  const totalSessions = recentSessions.length;
-  const totalSets = recentSessions.reduce((sum, s) => sum + (s.total_sets || 0), 0);
-  const avgDuration = recentSessions.length
-    ? Math.round(recentSessions.filter((s) => s.duration_seconds).reduce((sum, s) => sum + s.duration_seconds, 0) / Math.max(recentSessions.filter((s) => s.duration_seconds).length, 1) / 60)
-    : 0;
+  // ── This-week dashboard data ────────────────────────────────────────────
+  const dayMap = Object.fromEntries(dailyActivity.map((d) => [d.date, d]));
+
+  // Build the last 7 days, oldest → newest, with zero-fill
+  const last7 = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = isoDay(d);
+    const entry = dayMap[key] || { sessions: 0, total_sets: 0, total_volume: 0 };
+    last7.push({
+      key,
+      label: d.toLocaleDateString(undefined, { weekday: 'narrow' }),
+      sessions: entry.sessions || 0,
+      sets: entry.total_sets || 0,
+      volume: entry.total_volume || 0,
+    });
+  }
+
+  // Sum a window of N days ending `offset` days ago (offset 0 = current 7 days)
+  const sumWindow = (startDaysAgo, endDaysAgo) => {
+    let sessions = 0, sets = 0, volume = 0, minutes = 0;
+    for (let i = startDaysAgo; i > endDaysAgo; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const e = dayMap[isoDay(d)];
+      if (e) { sessions += e.sessions || 0; sets += e.total_sets || 0; volume += e.total_volume || 0; }
+    }
+    // training minutes from sessions in window
+    recentSessions.forEach((s) => {
+      if (!s.duration_seconds) return;
+      const diffDays = Math.floor((Date.now() - new Date(s.started_at).getTime()) / 86400000);
+      if (diffDays >= endDaysAgo && diffDays < startDaysAgo) minutes += s.duration_seconds / 60;
+    });
+    return { sessions, sets, volume, minutes: Math.round(minutes) };
+  };
+
+  const thisWeek = sumWindow(7, 0);
+  const lastWeek = sumWindow(14, 7);
+
+  // % change vs last week; null when there's no prior baseline
+  const delta = (cur, prev) => (prev > 0 ? Math.round(((cur - prev) / prev) * 100) : null);
+
+  const rings = [
+    { label: 'Workouts', value: thisWeek.sessions, goal: weeklyGoal, color: RING_COLORS.workouts, unit: '' },
+    { label: 'Sets', value: thisWeek.sets, goal: Math.max(weeklyGoal * 18, 1), color: RING_COLORS.sets, unit: '' },
+    { label: 'Minutes', value: thisWeek.minutes, goal: Math.max(weeklyGoal * 45, 1), color: RING_COLORS.minutes, unit: 'min' },
+  ];
+
+  const maxDaySets = Math.max(...last7.map((d) => d.sets), 1);
 
   const MUSCLE_COLORS = {
     chest: colors.chest, back: colors.back, legs: colors.legs,
@@ -119,19 +179,77 @@ export default function ProgressScreen() {
           {/* ── OVERVIEW TAB ───────────────────────────────────────── */}
           {tab === 'Overview' && (
             <>
-              {/* Stats row */}
+              {/* This week — activity rings */}
+              <Card>
+                <View style={styles.cardHead}>
+                  <Text style={[styles.sectionTitle, { color: theme.text, marginBottom: 0 }]}>This Week</Text>
+                  <Text style={[styles.cardSub, { color: theme.textMuted }]}>
+                    {thisWeek.sessions} of {weeklyGoal} workouts
+                  </Text>
+                </View>
+                <ActivityRings rings={rings} />
+              </Card>
+
+              {/* Delta stat cards — this week vs last */}
               <View style={styles.statsRow}>
                 {[
-                  { label: 'Sessions', value: totalSessions },
-                  { label: 'Total Sets', value: totalSets },
-                  { label: 'Avg Duration', value: avgDuration ? `${avgDuration}m` : '—' },
-                ].map((stat) => (
-                  <Card key={stat.label} style={styles.statCard}>
-                    <Text style={[styles.statValue, { color: theme.accent }]}>{stat.value}</Text>
-                    <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{stat.label}</Text>
-                  </Card>
-                ))}
+                  { label: 'Workouts', value: thisWeek.sessions, d: delta(thisWeek.sessions, lastWeek.sessions) },
+                  { label: 'Sets', value: thisWeek.sets, d: delta(thisWeek.sets, lastWeek.sets) },
+                  { label: 'Volume', value: thisWeek.volume >= 1000 ? `${(thisWeek.volume / 1000).toFixed(1)}t` : `${Math.round(thisWeek.volume)}`, d: delta(thisWeek.volume, lastWeek.volume) },
+                ].map((stat) => {
+                  const up = stat.d != null && stat.d >= 0;
+                  return (
+                    <Card key={stat.label} style={styles.statCard}>
+                      <Text style={[styles.statValue, { color: theme.accent }]}>{stat.value}</Text>
+                      <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{stat.label}</Text>
+                      {stat.d != null ? (
+                        <View style={styles.deltaRow}>
+                          <Ionicons
+                            name={up ? 'arrow-up' : 'arrow-down'}
+                            size={11}
+                            color={up ? theme.accent : colors.red}
+                          />
+                          <Text style={[styles.deltaText, { color: up ? theme.accent : colors.red }]}>
+                            {Math.abs(stat.d)}%
+                          </Text>
+                        </View>
+                      ) : (
+                        <Text style={[styles.deltaText, { color: theme.textMuted, marginTop: 2 }]}>—</Text>
+                      )}
+                    </Card>
+                  );
+                })}
               </View>
+
+              {/* 7-day intensity heatmap */}
+              <Card>
+                <View style={styles.cardHead}>
+                  <Text style={[styles.sectionTitle, { color: theme.text, marginBottom: 0 }]}>Last 7 Days</Text>
+                  <Text style={[styles.cardSub, { color: theme.textMuted }]}>Sets per day</Text>
+                </View>
+                <View style={styles.heat}>
+                  {last7.map((d) => {
+                    const intensity = d.sets / maxDaySets;
+                    const cellColor =
+                      d.sets === 0 ? theme.border :
+                      intensity >= 0.8 ? theme.accent :
+                      intensity >= 0.5 ? (theme.isDark ? 'rgba(57,255,20,0.6)' : 'rgba(22,163,74,0.6)') :
+                      (theme.isDark ? 'rgba(57,255,20,0.3)' : 'rgba(22,163,74,0.3)');
+                    return (
+                      <View key={d.key} style={styles.heatCol}>
+                        <View style={[styles.heatCell, { backgroundColor: cellColor }]}>
+                          {d.sets > 0 ? (
+                            <Text style={[styles.heatVal, { color: intensity >= 0.8 && theme.isDark ? '#1a1a1a' : theme.text }]}>
+                              {d.sets}
+                            </Text>
+                          ) : null}
+                        </View>
+                        <Text style={[styles.heatDay, { color: theme.textMuted }]}>{d.label}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              </Card>
 
               {/* Weekly volume chart */}
               <Card>
@@ -267,6 +385,15 @@ const styles = StyleSheet.create({
   statCard: { flex: 1, alignItems: 'center' },
   statValue: { fontSize: typography.sizes['2xl'], fontWeight: '700' },
   statLabel: { fontSize: typography.sizes.xs, marginTop: 2 },
+  deltaRow: { flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: spacing[1] },
+  deltaText: { fontSize: typography.sizes.xs, fontWeight: '600' },
+  cardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing[4] },
+  cardSub: { fontSize: typography.sizes.xs },
+  heat: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing[2] },
+  heatCol: { flex: 1, alignItems: 'center', gap: spacing[2] },
+  heatCell: { width: '100%', height: 52, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
+  heatVal: { fontSize: typography.sizes.sm, fontWeight: '700' },
+  heatDay: { fontSize: typography.sizes.xs },
   sectionTitle: { fontSize: typography.sizes.base, fontWeight: '700', marginBottom: spacing[3] },
   chartLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing[1] },
   chartLabel: { fontSize: typography.sizes.xs },
