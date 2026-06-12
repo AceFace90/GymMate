@@ -105,6 +105,11 @@ export default function ProgramsScreen({ navigation }) {
     }
   };
 
+  const handleQuickWorkout = async () => {
+    const sessionId = await db.startSession({ dayName: 'Quick Workout' });
+    navigation.navigate('ActiveWorkout', { sessionId, programDay: null, programId: null, dayName: 'Quick Workout' });
+  };
+
   const handleCreate = async () => {
     if (!newName.trim()) return;
     setCreating(true);
@@ -188,6 +193,20 @@ export default function ProgramsScreen({ navigation }) {
           <Text style={{ fontSize: 22, color: theme.accent, lineHeight: 26 }}>+</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Quick / ad-hoc workout — no program needed */}
+      <TouchableOpacity
+        onPress={handleQuickWorkout}
+        style={[styles.quickBtn, { borderColor: theme.accentBorder, backgroundColor: theme.accentBg }]}
+        activeOpacity={0.8}
+      >
+        <Text style={{ fontSize: 18 }}>⚡</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.quickTitle, { color: theme.accent }]}>Quick Workout</Text>
+          <Text style={[styles.quickSub, { color: theme.textSecondary }]}>Log an ad-hoc session without a program</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={theme.accent} />
+      </TouchableOpacity>
 
       {loading ? (
         <ActivityIndicator color={theme.accent} style={{ marginTop: spacing[10] }} />
@@ -299,6 +318,9 @@ const styles = StyleSheet.create({
   title: { fontSize: typography.sizes['2xl'], fontWeight: '700', flex: 1 },
   subtitle: { fontSize: typography.sizes.lg, fontWeight: '600', marginRight: spacing[3] },
   addBtn: { width: 36, height: 36, borderRadius: radius.full, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  quickBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], marginHorizontal: spacing[4], marginBottom: spacing[2], padding: spacing[4], borderRadius: radius.lg, borderWidth: 1 },
+  quickTitle: { fontSize: typography.sizes.base, fontWeight: '700' },
+  quickSub: { fontSize: typography.sizes.xs, marginTop: 1 },
   list: { padding: spacing[4], gap: spacing[3] },
   programCard: {},
   programHeader: { flexDirection: 'row', alignItems: 'flex-start' },

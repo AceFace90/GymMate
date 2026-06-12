@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  TextInput, Alert, Modal, Vibration, Platform,
+  TextInput, Alert, Modal, Vibration, Platform, FlatList, ActivityIndicator,
 } from 'react-native';
 
 // Vibration is not supported on web — safe no-op wrapper
@@ -28,7 +28,7 @@ function formatTime(secs) {
 }
 
 export default function ActiveWorkoutScreen({ route, navigation }) {
-  const { sessionId, programDay, programId } = route.params;
+  const { sessionId, programDay, programId, dayName } = route.params;
   const { theme } = useTheme();
 
   const [elapsed, setElapsed] = useState(0);
@@ -43,6 +43,12 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
   const [notes, setNotes] = useState('');
   const [showFinish, setShowFinish] = useState(false);
   const [finishing, setFinishing] = useState(false);
+
+  // Ad-hoc exercise picker (Quick Workout, or adding to any session)
+  const [showAddExercise, setShowAddExercise] = useState(false);
+  const [pickerExercises, setPickerExercises] = useState([]);
+  const [exSearch, setExSearch] = useState('');
+  const [exLoading, setExLoading] = useState(false);
 
   const timerRef = useRef(null);
   const restRef = useRef(null);
@@ -95,6 +101,46 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
       ...prev,
       [exerciseId]: [...(prev[exerciseId] || []), { weight: '', reps: '', completed: false, id: null }],
     }));
+  };
+
+  const searchExercises = async (query) => {
+    setExLoading(true);
+    const results = await db.getExercises({ search: query || undefined });
+    setPickerExercises(results);
+    setExLoading(false);
+  };
+
+  const openAddExercise = () => {
+    setExSearch('');
+    searchExercises('');
+    setShowAddExercise(true);
+  };
+
+  // Add an exercise to the live session. `ex` is a DB exercise row
+  // ({ id, name, muscle_group, category }); map it to the program-exercise
+  // shape the rest of this screen renders against.
+  const handleAddExercise = async (ex) => {
+    if (exercises.some((e) => e.exercise_id === ex.id)) {
+      setShowAddExercise(false);
+      return;
+    }
+    const entry = {
+      id: `adhoc-${ex.id}`,
+      exercise_id: ex.id,
+      exercise_name: ex.name,
+      muscle_group: ex.muscle_group,
+      sets: null,
+      reps: null,
+      rest_seconds: 90,
+    };
+    setExercises((prev) => [...prev, entry]);
+    setSets((prev) => ({
+      ...prev,
+      [ex.id]: [{ weight: '', reps: '', completed: false, id: null }],
+    }));
+    const last = await db.getLastSetForExercise(ex.id);
+    if (last) setLastSets((prev) => ({ ...prev, [ex.id]: last }));
+    setShowAddExercise(false);
   };
 
   const updateSet = (exerciseId, setIndex, field, value) => {
@@ -154,7 +200,7 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
       {/* Header bar */}
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <View>
-          <Text style={[styles.dayName, { color: theme.text }]}>{programDay?.name || 'Workout'}</Text>
+          <Text style={[styles.dayName, { color: theme.text }]}>{programDay?.name || dayName || 'Workout'}</Text>
           <Text style={[styles.timer, { color: theme.accent }]}>{formatTime(elapsed)}</Text>
         </View>
         <View style={styles.headerRight}>
@@ -196,9 +242,11 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
                     )}
                   </View>
                 </View>
-                <Text style={[styles.exTarget, { color: theme.textSecondary }]}>
-                  {exercise.sets}×{exercise.reps}
-                </Text>
+                {exercise.sets && exercise.reps ? (
+                  <Text style={[styles.exTarget, { color: theme.textSecondary }]}>
+                    {exercise.sets}×{exercise.reps}
+                  </Text>
+                ) : null}
               </View>
 
               {/* Column headers */}
@@ -262,7 +310,30 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
           );
         })}
 
-        <Button title="Finish Workout" onPress={() => setShowFinish(true)} size="lg" style={{ marginBottom: spacing[8] }} />
+        {exercises.length === 0 && (
+          <View style={styles.emptyState}>
+            <Text style={{ fontSize: 40 }}>💪</Text>
+            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+              Add your first exercise to start logging sets.
+            </Text>
+          </View>
+        )}
+
+        <TouchableOpacity
+          onPress={openAddExercise}
+          style={[styles.addExerciseBtn, { borderColor: theme.accentBorder, backgroundColor: theme.accentBg }]}
+        >
+          <Ionicons name="add-circle-outline" size={18} color={theme.accent} />
+          <Text style={[styles.addExerciseText, { color: theme.accent }]}>Add Exercise</Text>
+        </TouchableOpacity>
+
+        <Button
+          title="Finish Workout"
+          onPress={() => setShowFinish(true)}
+          size="lg"
+          disabled={exercises.length === 0}
+          style={{ marginTop: spacing[3], marginBottom: spacing[8] }}
+        />
       </ScrollView>
 
       {/* Finish Modal */}
@@ -298,6 +369,58 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
           </View>
         </SafeAreaView>
       </Modal>
+
+      {/* Add Exercise Modal */}
+      <Modal visible={showAddExercise} animationType="slide" presentationStyle="pageSheet">
+        <SafeAreaView style={[styles.modal, { backgroundColor: theme.bg }]}>
+          <View style={styles.modalHeader}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Add Exercise</Text>
+            <TouchableOpacity onPress={() => setShowAddExercise(false)}>
+              <Ionicons name="close" size={24} color={theme.textSecondary} />
+            </TouchableOpacity>
+          </View>
+          <View style={[styles.searchBar, { backgroundColor: theme.input, borderColor: theme.border }]}>
+            <Ionicons name="search" size={16} color={theme.textMuted} />
+            <TextInput
+              value={exSearch}
+              onChangeText={(v) => { setExSearch(v); searchExercises(v); }}
+              placeholder="Search exercises…"
+              placeholderTextColor={theme.textMuted}
+              style={[styles.searchInput, { color: theme.text }]}
+              autoFocus
+            />
+          </View>
+          {exLoading ? (
+            <ActivityIndicator color={theme.accent} style={{ marginTop: spacing[8] }} />
+          ) : (
+            <FlatList
+              data={pickerExercises}
+              keyExtractor={(item) => String(item.id)}
+              keyboardShouldPersistTaps="handled"
+              renderItem={({ item }) => {
+                const added = exercises.some((e) => e.exercise_id === item.id);
+                return (
+                  <TouchableOpacity
+                    onPress={() => handleAddExercise(item)}
+                    disabled={added}
+                    style={[styles.exListItem, { borderBottomColor: theme.border, opacity: added ? 0.4 : 1 }]}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.exListName, { color: theme.text }]}>{item.name}</Text>
+                      <MuscleTag group={item.muscle_group} style={{ marginTop: 2 }} />
+                    </View>
+                    {added ? (
+                      <Ionicons name="checkmark-circle" size={20} color={theme.accent} />
+                    ) : (
+                      <Text style={[styles.exListCategory, { color: theme.textMuted }]}>{item.category}</Text>
+                    )}
+                  </TouchableOpacity>
+                );
+              }}
+            />
+          )}
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -329,6 +452,15 @@ const styles = StyleSheet.create({
   prBadge: { fontSize: 8, fontWeight: '700', textAlign: 'center' },
   addSetBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing[1], paddingVertical: spacing[2], borderTopWidth: 1, marginTop: spacing[1] },
   addSetText: { fontSize: typography.sizes.sm },
+  emptyState: { alignItems: 'center', paddingVertical: spacing[8], gap: spacing[2] },
+  emptyText: { fontSize: typography.sizes.base, textAlign: 'center', paddingHorizontal: spacing[6] },
+  addExerciseBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing[2], padding: spacing[4], borderRadius: radius.lg, borderWidth: 1, borderStyle: 'dashed' },
+  addExerciseText: { fontSize: typography.sizes.base, fontWeight: '600' },
+  searchBar: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginHorizontal: spacing[4], marginBottom: spacing[2], borderRadius: radius.md, borderWidth: 1, paddingHorizontal: spacing[3], paddingVertical: spacing[2] },
+  searchInput: { flex: 1, fontSize: typography.sizes.base },
+  exListItem: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing[5], paddingVertical: spacing[3], borderBottomWidth: 1 },
+  exListName: { fontSize: typography.sizes.base, fontWeight: '500' },
+  exListCategory: { fontSize: typography.sizes.sm, textTransform: 'capitalize' },
   modal: { flex: 1 },
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing[5], paddingVertical: spacing[4] },
   modalTitle: { fontSize: typography.sizes.xl, fontWeight: '700' },
