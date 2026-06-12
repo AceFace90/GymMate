@@ -13,6 +13,8 @@ import { DEMO_USER, seedDemoData } from '../data/demoSeed';
 import { confirmAction } from '../utils/confirm';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://gymmate-api.onrender.com';
+// Legal pages are static HTML served by GitHub Pages alongside the app (public/).
+const LEGAL_URL = process.env.EXPO_PUBLIC_SITE_URL || 'https://aceface90.github.io/gymmate';
 
 // Google "G" SVG — same as MacroMate
 function GoogleLogo() {
@@ -44,7 +46,7 @@ export default function LoginScreen({ onLogin }) {
     setLoggingIn(true);
     try {
       if (auth.isGoogleUser(user)) {
-        handleGoogleSignIn();
+        await handleGoogleSignIn();
         return;
       }
       await onLogin(user);
@@ -54,8 +56,20 @@ export default function LoginScreen({ onLogin }) {
     }
   }
 
-  function handleGoogleSignIn() {
-    Linking.openURL(`${API_URL}/auth/google`);
+  async function handleGoogleSignIn() {
+    if (loggingIn) return;
+    setLoggingIn(true);
+    try {
+      const user = await auth.signInWithGoogle();
+      await onLogin(user);
+    } catch (e) {
+      // Popup closed / cancelled is not a real error worth alarming about.
+      const code = e?.code || '';
+      if (code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') {
+        alert('Google sign-in failed: ' + (e.message || code));
+      }
+      setLoggingIn(false);
+    }
   }
 
   function handleDeleteUser(user) {
@@ -265,11 +279,11 @@ export default function LoginScreen({ onLogin }) {
 
         {/* Footer */}
         <View style={s.footer}>
-          <TouchableOpacity onPress={() => Linking.openURL(`${API_URL}/privacy-policy`)}>
+          <TouchableOpacity onPress={() => Linking.openURL(`${LEGAL_URL}/privacy-policy.html`)}>
             <Text style={[s.footerLink, { color: theme.textMuted }]}>Privacy Policy</Text>
           </TouchableOpacity>
           <Text style={[s.footerDot, { color: theme.textMuted }]}>·</Text>
-          <TouchableOpacity onPress={() => Linking.openURL(`${API_URL}/terms-of-service`)}>
+          <TouchableOpacity onPress={() => Linking.openURL(`${LEGAL_URL}/terms-of-service.html`)}>
             <Text style={[s.footerLink, { color: theme.textMuted }]}>Terms of Service</Text>
           </TouchableOpacity>
         </View>
