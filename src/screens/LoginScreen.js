@@ -10,6 +10,7 @@ import { useTheme } from '../hooks/useTheme';
 import { spacing, typography, radius } from '../theme';
 import * as auth from '../services/auth';
 import { DEMO_USER, seedDemoData } from '../data/demoSeed';
+import { confirmAction } from '../utils/confirm';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://gymmate-api.onrender.com';
 
@@ -55,6 +56,16 @@ export default function LoginScreen({ onLogin }) {
 
   function handleGoogleSignIn() {
     Linking.openURL(`${API_URL}/auth/google`);
+  }
+
+  function handleDeleteUser(user) {
+    confirmAction({
+      title: 'Delete User',
+      message: `Delete "${user.name}"? This removes the profile from this device.`,
+      confirmText: 'Delete',
+      destructive: true,
+      onConfirm: async () => { await auth.deleteUser(user.id); loadUsers(); },
+    });
   }
 
   async function handleDemoLogin() {
@@ -133,18 +144,6 @@ export default function LoginScreen({ onLogin }) {
                 </TouchableOpacity>
 
                 <Text style={s.syncNote}>Sync across devices · Secure cloud backup</Text>
-
-                <TouchableOpacity
-                  style={[s.demoBtn, { borderColor: theme.border }]}
-                  onPress={handleDemoLogin}
-                  activeOpacity={0.8}
-                  disabled={loggingIn}
-                >
-                  <Text style={s.demoIcon}>⚡</Text>
-                  <Text style={[s.demoBtnText, { color: theme.textSecondary }]}>
-                    Try demo as Super Woman
-                  </Text>
-                </TouchableOpacity>
               </>
             )}
 
@@ -175,24 +174,46 @@ export default function LoginScreen({ onLogin }) {
               </>
             )}
 
+            {/* Demo login — available regardless of existing users */}
+            <TouchableOpacity
+              style={[s.demoBtn, { borderColor: theme.border }]}
+              onPress={handleDemoLogin}
+              activeOpacity={0.8}
+              disabled={loggingIn}
+            >
+              <Text style={s.demoIcon}>⚡</Text>
+              <Text style={[s.demoBtnText, { color: theme.textSecondary }]}>
+                {loggingIn ? 'Loading demo…' : 'Try demo as Super Woman'}
+              </Text>
+            </TouchableOpacity>
+
             {users.length > 1 && (
               <>
                 <Text style={[s.sectionLabel, { color: theme.text }]}>Select User:</Text>
                 <View style={[s.userList, { borderColor: theme.border }]}>
                   {users.map((u, i) => (
-                    <TouchableOpacity
+                    <View
                       key={u.id}
                       style={[s.userRow, i < users.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border }]}
-                      onPress={() => handleUserLogin(u)}
-                      disabled={loggingIn}
-                      activeOpacity={0.7}
                     >
-                      <View>
+                      <TouchableOpacity
+                        style={s.userMain}
+                        onPress={() => handleUserLogin(u)}
+                        disabled={loggingIn}
+                        activeOpacity={0.7}
+                      >
                         <Text style={[s.userName, { color: theme.text }]}>{u.name}</Text>
                         {u.email ? <Text style={[s.userEmail, { color: theme.textSecondary }]}>{u.email}</Text> : null}
-                      </View>
-                      <Text style={{ color: theme.accent, fontSize: 18 }}>→</Text>
-                    </TouchableOpacity>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => handleDeleteUser(u)}
+                        disabled={loggingIn}
+                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                        style={s.userDelete}
+                      >
+                        <Ionicons name="trash-outline" size={18} color="#ef4444" />
+                      </TouchableOpacity>
+                    </View>
                   ))}
                   <TouchableOpacity
                     style={[s.userRow, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.border }]}
@@ -340,6 +361,8 @@ function makeStyles(theme) {
       paddingVertical: spacing[4],
       backgroundColor: theme.card,
     },
+    userMain: { flex: 1 },
+    userDelete: { paddingLeft: spacing[3], paddingVertical: spacing[1] },
     userName: { fontSize: typography.sizes.base, fontWeight: '600' },
     userEmail: { fontSize: typography.sizes.sm, marginTop: 2 },
 

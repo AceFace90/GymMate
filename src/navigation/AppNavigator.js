@@ -9,6 +9,7 @@ import { useTheme } from '../hooks/useTheme';
 import { spacing, typography } from '../theme';
 
 // Screens
+import HomeScreen from '../screens/HomeScreen';
 import ProgramsScreen from '../screens/ProgramsScreen';
 import ProgramDetailScreen from '../screens/ProgramDetailScreen';
 import ActiveWorkoutScreen from '../screens/ActiveWorkoutScreen';
@@ -97,7 +98,7 @@ function ExercisesStackNav() {
   );
 }
 
-export default function AppNavigator({ onLogout }) {
+export default function AppNavigator({ user, onLogout }) {
   const { theme } = useTheme();
 
   return (
@@ -120,6 +121,7 @@ export default function AppNavigator({ onLogout }) {
           },
           tabBarIcon: ({ focused }) => {
             const emoji = {
+              Home: '🏠',
               Programs: '🏋️',
               Progress: '📈',
               Exercises: '📚',
@@ -133,6 +135,9 @@ export default function AppNavigator({ onLogout }) {
           },
         })}
       >
+        <Tab.Screen name="Home">
+          {(props) => <HomeScreen {...props} user={user} />}
+        </Tab.Screen>
         <Tab.Screen name="Programs" component={ProgramsStackNav} />
         <Tab.Screen name="Progress" component={ProgressScreen} />
         <Tab.Screen name="Exercises" component={ExercisesStackNav} />
