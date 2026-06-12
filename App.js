@@ -2,8 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StyleSheet, View, Text } from 'react-native';
-import { useFonts } from 'expo-font';
-import { Ionicons } from '@expo/vector-icons';
 
 import { ThemeProvider } from './src/hooks/useTheme';
 import AppNavigator from './src/navigation/AppNavigator';
@@ -59,13 +57,6 @@ function AppContent() {
 }
 
 export default function App() {
-  const [fontsLoaded] = useFonts({
-    ...Ionicons.font,
-  });
-
-  // Don't render until fonts are ready — prevents icon squares on web
-  if (!fontsLoaded) return null;
-
   return (
     <ErrorBoundary>
       <GestureHandlerRootView style={styles.root}>
