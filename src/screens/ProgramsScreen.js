@@ -12,16 +12,26 @@ import { spacing, typography, radius } from '../theme';
 import * as db from '../services/database';
 import Card from '../components/Card';
 import Button from '../components/Button';
+import { generateProgram } from '../services/gemini';
+import { getGeminiKey } from './SettingsScreen';
 
 export default function ProgramsScreen({ navigation }) {
   const { theme } = useTheme();
   const [programs, setPrograms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiError, setAiError] = useState('');
+  const [hasKey, setHasKey] = useState(false);
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [newDays, setNewDays] = useState('3');
   const [creating, setCreating] = useState(false);
+
+  useFocusEffect(useCallback(() => {
+    getGeminiKey().then((k) => setHasKey(!!k));
+  }, []));
 
   const loadPrograms = async () => {
     setLoading(true);
@@ -31,6 +41,69 @@ export default function ProgramsScreen({ navigation }) {
   };
 
   useFocusEffect(useCallback(() => { loadPrograms(); }, []));
+
+  const handleAiGenerate = async () => {
+    const prompt = aiPrompt.trim();
+    if (!prompt) return;
+    setAiGenerating(true);
+    setAiError('');
+    try {
+      const exercises = await db.getExercises();
+      const exerciseNames = exercises.map((e) => e.name);
+
+      // Parse days/week from prompt or default 3
+      const daysMatch = prompt.match(/(\d)\s*(?:day|x)/i);
+      const daysPerWeek = daysMatch ? parseInt(daysMatch[1]) : 3;
+
+      const result = await generateProgram({
+        goal: prompt,
+        daysPerWeek,
+        equipment: 'full gym',
+        notes: '',
+        exerciseNames,
+      });
+
+      // Save program
+      const progId = await db.createProgram({
+        name: result.name,
+        description: result.description,
+        daysPerWeek: result.days?.length || daysPerWeek,
+      });
+
+      // Save days + exercises
+      for (let i = 0; i < (result.days || []).length; i++) {
+        const day = result.days[i];
+        const dayId = await db.addProgramDay(progId, {
+          name: day.name,
+          dayNumber: i + 1,
+          sortOrder: i,
+        });
+        for (let j = 0; j < (day.exercises || []).length; j++) {
+          const ex = day.exercises[j];
+          const match = exercises.find(
+            (e) => e.name.toLowerCase() === ex.name.toLowerCase()
+          );
+          if (match) {
+            await db.addExerciseToDay(dayId, {
+              exerciseId: match.id,
+              sets: ex.sets || 3,
+              reps: ex.reps || '8-12',
+              restSeconds: ex.restSeconds || 90,
+              sortOrder: j,
+            });
+          }
+        }
+      }
+
+      setAiGenerating(false);
+      setShowCreate(false);
+      setAiPrompt('');
+      navigation.navigate('ProgramDetail', { programId: progId });
+    } catch (e) {
+      setAiGenerating(false);
+      setAiError(e.message === 'NO_KEY' ? 'Add your Gemini API key in Settings first.' : e.message);
+    }
+  };
 
   const handleCreate = async () => {
     if (!newName.trim()) return;
@@ -112,7 +185,7 @@ export default function ProgramsScreen({ navigation }) {
           onPress={() => setShowCreate(true)}
           style={[styles.addBtn, { backgroundColor: theme.accentBg, borderColor: theme.accentBorder }]}
         >
-          <Ionicons name="add" size={24} color={theme.accent} />
+          <Text style={{ fontSize: 22, color: theme.accent, lineHeight: 26 }}>+</Text>
         </TouchableOpacity>
       </View>
 
@@ -145,6 +218,40 @@ export default function ProgramsScreen({ navigation }) {
             </TouchableOpacity>
           </View>
           <ScrollView contentContainerStyle={styles.modalContent}>
+            {/* AI Generation */}
+            {hasKey ? (
+              <View style={[styles.aiBox, { backgroundColor: theme.accentBg, borderColor: theme.accentBorder }]}>
+                <Text style={[styles.aiLabel, { color: theme.accent }]}>🤖 Generate with AI</Text>
+                <TextInput
+                  value={aiPrompt}
+                  onChangeText={(v) => { setAiPrompt(v); setAiError(''); }}
+                  placeholder="e.g. Hypertrophy 4 days, shoulder injury, no overhead"
+                  placeholderTextColor={theme.textMuted}
+                  multiline
+                  style={[styles.textInput, styles.textarea, { backgroundColor: theme.input, borderColor: theme.accentBorder, color: theme.text, marginTop: spacing[2] }]}
+                />
+                {aiError ? <Text style={styles.aiError}>{aiError}</Text> : null}
+                <Button
+                  title={aiGenerating ? 'Generating…' : 'Generate Program'}
+                  onPress={handleAiGenerate}
+                  loading={aiGenerating}
+                  disabled={!aiPrompt.trim()}
+                  style={{ marginTop: spacing[2] }}
+                />
+              </View>
+            ) : (
+              <View style={[styles.aiBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                <Text style={[styles.aiLabel, { color: theme.textMuted }]}>🤖 AI Generation</Text>
+                <Text style={[styles.aiHint, { color: theme.textMuted }]}>Add your Gemini API key in Settings → AI Features to generate programs automatically.</Text>
+              </View>
+            )}
+
+            <View style={styles.dividerRow}>
+              <View style={[styles.divider, { backgroundColor: theme.border }]} />
+              <Text style={[styles.dividerText, { color: theme.textMuted }]}>or create manually</Text>
+              <View style={[styles.divider, { backgroundColor: theme.border }]} />
+            </View>
+
             <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Program Name *</Text>
             <TextInput
               value={newName}
@@ -206,6 +313,13 @@ const styles = StyleSheet.create({
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing[8] },
   emptyTitle: { fontSize: typography.sizes.xl, fontWeight: '700', marginTop: spacing[3] },
   emptyText: { fontSize: typography.sizes.base, textAlign: 'center', marginTop: spacing[2] },
+  aiBox: { borderRadius: radius.lg, borderWidth: 1, padding: spacing[4], marginBottom: spacing[2] },
+  aiLabel: { fontSize: typography.sizes.base, fontWeight: '700' },
+  aiHint: { fontSize: typography.sizes.sm, marginTop: spacing[1] },
+  aiError: { color: '#ef4444', fontSize: typography.sizes.sm, marginTop: spacing[1] },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], marginVertical: spacing[4] },
+  divider: { flex: 1, height: 1 },
+  dividerText: { fontSize: typography.sizes.xs, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
   modal: { flex: 1 },
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing[5], paddingVertical: spacing[4], borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
   modalTitle: { fontSize: typography.sizes.xl, fontWeight: '700' },

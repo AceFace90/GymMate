@@ -46,7 +46,7 @@ function ProgramsStackNav() {
   );
 }
 
-function ProfileStackNav() {
+function ProfileStackNav({ onLogout }) {
   const { theme } = useTheme();
   return (
     <ProfileStack.Navigator
@@ -59,7 +59,6 @@ function ProfileStackNav() {
     >
       <ProfileStack.Screen
         name="ProfileMain"
-        component={ProfileScreen}
         options={({ navigation }) => ({
           title: 'Profile',
           headerRight: () => (
@@ -72,7 +71,9 @@ function ProfileStackNav() {
             </TouchableOpacity>
           ),
         })}
-      />
+      >
+        {(props) => <ProfileScreen {...props} onLogout={onLogout} />}
+      </ProfileStack.Screen>
       <ProfileStack.Screen name="Biometrics" component={BiometricsScreen} options={{ title: 'Biometrics & Goals' }} />
       <ProfileStack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
     </ProfileStack.Navigator>
@@ -96,7 +97,7 @@ function ExercisesStackNav() {
   );
 }
 
-export default function AppNavigator() {
+export default function AppNavigator({ onLogout }) {
   const { theme } = useTheme();
 
   return (
@@ -135,7 +136,10 @@ export default function AppNavigator() {
         <Tab.Screen name="Programs" component={ProgramsStackNav} />
         <Tab.Screen name="Progress" component={ProgressScreen} />
         <Tab.Screen name="Exercises" component={ExercisesStackNav} />
-        <Tab.Screen name="Profile" component={ProfileStackNav} />
+        <Tab.Screen
+          name="Profile"
+          children={() => <ProfileStackNav onLogout={onLogout} />}
+        />
       </Tab.Navigator>
     </NavigationContainer>
   );

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -24,8 +24,15 @@ function Row({ label, value, onPress, theme }) {
   );
 }
 
-export default function ProfileScreen({ navigation }) {
+export default function ProfileScreen({ navigation, onLogout }) {
   const { theme } = useTheme();
+
+  function confirmLogout() {
+    Alert.alert('Log Out', 'Are you sure you want to log out?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Log Out', style: 'destructive', onPress: onLogout },
+    ]);
+  }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]} edges={['top']}>
@@ -58,6 +65,14 @@ export default function ProfileScreen({ navigation }) {
           ))}
         </Card>
 
+        <TouchableOpacity
+          onPress={confirmLogout}
+          style={[styles.logoutBtn, { borderColor: '#ef4444' }]}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.logoutText}>Log Out</Text>
+        </TouchableOpacity>
+
         <Text style={[styles.footer, { color: theme.textMuted }]}>
           Made with 💚 to complement MacroMate
         </Text>
@@ -83,5 +98,11 @@ const styles = StyleSheet.create({
   rowValue: { fontSize: typography.sizes.sm },
   tipRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing[3], paddingVertical: spacing[2] },
   tipText: { flex: 1, fontSize: typography.sizes.sm, lineHeight: 20 },
+  logoutBtn: {
+    borderWidth: 1, borderRadius: radius.lg,
+    paddingVertical: spacing[4], alignItems: 'center',
+    marginTop: spacing[4],
+  },
+  logoutText: { color: '#ef4444', fontSize: typography.sizes.base, fontWeight: '600' },
   footer: { textAlign: 'center', fontSize: typography.sizes.sm, marginTop: spacing[4], marginBottom: spacing[2] },
 });

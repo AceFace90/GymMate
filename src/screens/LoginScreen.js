@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../hooks/useTheme';
 import { spacing, typography, radius } from '../theme';
 import * as auth from '../services/auth';
+import { DEMO_USER, seedDemoData } from '../data/demoSeed';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://gymmate-api.onrender.com';
 
@@ -54,6 +55,17 @@ export default function LoginScreen({ onLogin }) {
 
   function handleGoogleSignIn() {
     Linking.openURL(`${API_URL}/auth/google`);
+  }
+
+  async function handleDemoLogin() {
+    setLoggingIn(true);
+    try {
+      await seedDemoData();
+      await onLogin(DEMO_USER);
+    } catch (e) {
+      alert('Demo failed: ' + e.message);
+      setLoggingIn(false);
+    }
   }
 
   async function handleNameSubmit() {
@@ -121,6 +133,18 @@ export default function LoginScreen({ onLogin }) {
                 </TouchableOpacity>
 
                 <Text style={s.syncNote}>Sync across devices · Secure cloud backup</Text>
+
+                <TouchableOpacity
+                  style={[s.demoBtn, { borderColor: theme.border }]}
+                  onPress={handleDemoLogin}
+                  activeOpacity={0.8}
+                  disabled={loggingIn}
+                >
+                  <Text style={s.demoIcon}>⚡</Text>
+                  <Text style={[s.demoBtnText, { color: theme.textSecondary }]}>
+                    Try demo as Super Woman
+                  </Text>
+                </TouchableOpacity>
               </>
             )}
 
@@ -296,6 +320,13 @@ function makeStyles(theme) {
       marginBottom: spacing[3],
     },
 
+    demoBtn: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+      gap: spacing[2], borderWidth: 1, borderRadius: radius.xl,
+      paddingVertical: spacing[3], marginTop: spacing[2],
+    },
+    demoIcon: { fontSize: 16 },
+    demoBtnText: { fontSize: typography.sizes.base, fontWeight: '500' },
     manageBtn: { alignItems: 'center', marginTop: spacing[2] },
     manageBtnText: { fontSize: typography.sizes.sm, color: theme.textMuted },
 
