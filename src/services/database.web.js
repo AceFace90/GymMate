@@ -204,6 +204,17 @@ export async function removeExerciseFromDay(id) {
   setTable('programExercises', getTable('programExercises').filter((pe) => pe.id !== id));
 }
 
+// Persist a new exercise order within a day. `orderedIds` is the full list of
+// program_exercise ids for that day, in the desired order.
+export async function reorderDayExercises(programDayId, orderedIds) {
+  const rows = getTable('programExercises');
+  orderedIds.forEach((peId, i) => {
+    const pe = rows.find((r) => r.id === peId && r.program_day_id === programDayId);
+    if (pe) pe.sort_order = i;
+  });
+  setTable('programExercises', rows);
+}
+
 // ─── Workout Sessions ─────────────────────────────────────────────────────────
 
 export async function startSession({ programId, programDayId, dayName }) {

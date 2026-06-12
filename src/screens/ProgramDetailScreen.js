@@ -78,6 +78,20 @@ export default function ProgramDetailScreen({ route, navigation }) {
     loadProgram();
   };
 
+  // Move an exercise up/down within its day. Optimistic local reorder, then persist.
+  const moveExercise = async (day, index, direction) => {
+    const list = [...(day.exercises || [])];
+    const target = index + direction;
+    if (target < 0 || target >= list.length) return;
+    [list[index], list[target]] = [list[target], list[index]];
+
+    setProgram((prev) => ({
+      ...prev,
+      days: prev.days.map((d) => (d.id === day.id ? { ...d, exercises: list } : d)),
+    }));
+    await db.reorderDayExercises(day.id, list.map((e) => e.id));
+  };
+
   const handleRemoveExercise = (peId, exerciseName) => {
     confirmAction({
       title: 'Remove Exercise',
@@ -150,8 +164,26 @@ export default function ProgramDetailScreen({ route, navigation }) {
               </TouchableOpacity>
             </View>
 
-            {(day.exercises || []).map((ex) => (
+            {(day.exercises || []).map((ex, i) => (
               <View key={ex.id} style={[styles.exerciseRow, { borderTopColor: theme.border }]}>
+                <View style={styles.reorderCol}>
+                  <TouchableOpacity
+                    onPress={() => moveExercise(day, i, -1)}
+                    disabled={i === 0}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    style={i === 0 && { opacity: 0.25 }}
+                  >
+                    <Ionicons name="chevron-up" size={18} color={theme.textSecondary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => moveExercise(day, i, 1)}
+                    disabled={i === day.exercises.length - 1}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    style={i === day.exercises.length - 1 && { opacity: 0.25 }}
+                  >
+                    <Ionicons name="chevron-down" size={18} color={theme.textSecondary} />
+                  </TouchableOpacity>
+                </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.exName, { color: theme.text }]}>{ex.exercise_name}</Text>
                   <View style={styles.exMeta}>
@@ -295,7 +327,8 @@ const styles = StyleSheet.create({
   dayCard: {},
   dayHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing[3] },
   dayName: { fontSize: typography.sizes.lg, fontWeight: '700' },
-  exerciseRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing[2], borderTopWidth: 1 },
+  exerciseRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], paddingVertical: spacing[2], borderTopWidth: 1 },
+  reorderCol: { alignItems: 'center', justifyContent: 'center', marginRight: spacing[1] },
   exName: { fontSize: typography.sizes.base, fontWeight: '500' },
   exMeta: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
   exSets: { fontSize: typography.sizes.sm, marginLeft: spacing[1] },

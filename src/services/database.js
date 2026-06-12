@@ -255,6 +255,18 @@ export async function removeExerciseFromDay(id) {
   await database.runAsync('DELETE FROM program_exercises WHERE id = ?', [id]);
 }
 
+// Persist a new exercise order within a day. `orderedIds` is the full list of
+// program_exercise ids for that day, in the desired order.
+export async function reorderDayExercises(programDayId, orderedIds) {
+  const database = await getDb();
+  for (let i = 0; i < orderedIds.length; i++) {
+    await database.runAsync(
+      'UPDATE program_exercises SET sort_order = ? WHERE id = ? AND program_day_id = ?',
+      [i, orderedIds[i], programDayId]
+    );
+  }
+}
+
 // ─── Workout Sessions ────────────────────────────────────────────────────────
 
 export async function startSession({ programId, programDayId, dayName }) {
