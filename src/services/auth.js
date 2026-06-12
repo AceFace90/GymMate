@@ -95,6 +95,20 @@ export async function signOutGoogle() {
   await clearCurrentUser();
 }
 
+// Back up the signed-in Google user's data to the cloud right now, if any.
+// No-op for the demo user / local-only profiles (no Firebase session). Safe to
+// call opportunistically (e.g. after completing a workout) so a session isn't
+// lost if the tab is closed before sign-out. Never throws.
+export async function backupCurrentUser() {
+  const uid = fbAuth.currentUser?.uid;
+  if (!uid) return;
+  try {
+    await cloudSync.backupToCloud(uid);
+  } catch (e) {
+    console.error('Cloud backup failed:', e);
+  }
+}
+
 // Persists a Google user into the local users list + current user.
 export async function handleGoogleCallback(userData) {
   const users = await getAllUsers();

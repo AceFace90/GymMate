@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../hooks/useTheme';
 import { spacing, typography, radius } from '../theme';
 import * as db from '../services/database';
+import * as auth from '../services/auth';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import MuscleTag from '../components/MuscleTag';
@@ -181,6 +182,9 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
   const handleFinish = async () => {
     setFinishing(true);
     await db.completeSession(sessionId, { durationSeconds: elapsed, notes });
+    // Back up immediately so the session survives closing the tab without an
+    // explicit sign-out (no-op for demo / local-only users).
+    await auth.backupCurrentUser();
     setFinishing(false);
     setShowFinish(false);
     navigation.goBack();

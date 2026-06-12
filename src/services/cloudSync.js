@@ -8,12 +8,29 @@
 //
 // Security: Firestore rules (firestore.rules) restrict each doc to its owner.
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db as firestore } from './firebase';
 import * as db from './database';
+import { nsKey } from './activeUser';
 
 function userDoc(uid) {
   return doc(firestore, 'users', uid);
+}
+
+// We remember the cloud's `updatedAt` we last reconciled with (per user, via
+// nsKey). On the next sign-in this lets us tell "the cloud changed on another
+// device since we last synced" (cloud is newer → pull) apart from "we hold the
+// latest baseline plus maybe newer local edits" (→ push), instead of always
+// letting the cloud win and clobbering local work.
+const SYNC_MARKER = 'gymmate_last_sync';
+
+async function getLastSync() {
+  try { return await AsyncStorage.getItem(nsKey(SYNC_MARKER)); } catch { return null; }
+}
+
+async function setLastSync(updatedAt) {
+  try { if (updatedAt) await AsyncStorage.setItem(nsKey(SYNC_MARKER), updatedAt); } catch { /* best effort */ }
 }
 
 // Returns true if a serialized payload contains any actual user rows.
@@ -26,10 +43,10 @@ function hasContent(payload) {
 export async function backupToCloud(uid) {
   if (!uid) return;
   const payload = await db.exportAllData();
-  await setDoc(userDoc(uid), {
-    payload,
-    updatedAt: new Date().toISOString(),
-  });
+  const updatedAt = new Date().toISOString();
+  await setDoc(userDoc(uid), { payload, updatedAt });
+  // We are now in sync with the copy we just wrote.
+  await setLastSync(updatedAt);
 }
 
 // Pull the cloud dataset down into local storage (overwrites the local copy).
@@ -41,13 +58,19 @@ export async function restoreFromCloud(uid) {
   const remote = snap.data();
   if (!hasContent(remote?.payload)) return false;
   await db.importAllData(remote.payload);
+  await setLastSync(remote.updatedAt);
   return true;
 }
 
 // Reconcile local and cloud on sign-in. Strategy:
-//   - cloud empty            → push local up (first sign-in / new account)
+//   - cloud empty                 → push local up (first sign-in / new account)
 //   - cloud has data, local empty → pull cloud down (new device)
-//   - both have data         → newer wins by updatedAt; default to cloud on tie
+//   - both have data              → use the last-sync marker:
+//       · cloud unchanged since we last synced → our local is the same baseline
+//         (possibly with newer edits) → push local up
+//       · cloud changed since (another device backed up) → pull cloud down
+//       · no marker (first reconcile on this device) → pull (cloud is the
+//         durable source of truth; avoids clobbering other devices)
 // Returns { action } describing what happened, so the UI can message the user.
 export async function syncOnSignIn(uid) {
   if (!uid) return { action: 'none' };
@@ -69,12 +92,21 @@ export async function syncOnSignIn(uid) {
 
   if (!localHasData) {
     await db.importAllData(remote.payload);
+    await setLastSync(remote.updatedAt);
     return { action: 'pulled' };
   }
 
-  // Both sides have data — newest wins. Local has no stored timestamp, so we
-  // only override the cloud if we can't establish it's newer. Default: trust
-  // the cloud (it's the durable backup) to avoid clobbering other devices.
+  // Both sides have data — decide with the per-device sync marker.
+  const lastSync = await getLastSync();
+  if (lastSync && remote.updatedAt && lastSync === remote.updatedAt) {
+    // Cloud hasn't moved since we last synced → our local holds that baseline
+    // (and maybe newer local edits). Push so we don't lose recent local work.
+    await backupToCloud(uid);
+    return { action: 'pushed' };
+  }
+
+  // Cloud changed elsewhere (or we have no baseline) → trust the durable cloud.
   await db.importAllData(remote.payload);
+  await setLastSync(remote.updatedAt);
   return { action: 'pulled' };
 }
