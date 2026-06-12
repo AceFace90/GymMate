@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { signInWithPopup, signOut } from 'firebase/auth';
 import { auth as fbAuth, googleProvider } from './firebase';
+import * as cloudSync from './cloudSync';
 
 const USERS_KEY = 'gymmate_users';
 const CURRENT_USER_KEY = 'gymmate_current_user';
@@ -67,8 +68,6 @@ function fromFirebaseUser(fbUser) {
 export async function signInWithGoogle() {
   const result = await signInWithPopup(fbAuth, googleProvider);
   const userData = fromFirebaseUser(result.user);
-  // Lazy import avoids a static import cycle (cloudSync → database, auth → firebase).
-  const cloudSync = await import('./cloudSync');
   try {
     await cloudSync.syncOnSignIn(result.user.uid);
   } catch (e) {
@@ -83,7 +82,6 @@ export async function signOutGoogle() {
   const uid = fbAuth.currentUser?.uid;
   if (uid) {
     try {
-      const cloudSync = await import('./cloudSync');
       await cloudSync.backupToCloud(uid);
     } catch (e) {
       console.error('Cloud backup on sign-out failed:', e);
