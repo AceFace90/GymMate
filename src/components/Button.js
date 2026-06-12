@@ -4,7 +4,7 @@ import { useTheme } from '../hooks/useTheme';
 import { radius, spacing, typography } from '../theme';
 
 // variant: 'primary' | 'secondary' | 'ghost' | 'danger'
-export default function Button({ onPress, title, variant = 'primary', size = 'md', loading, disabled, style }) {
+export default function Button({ onPress, title, children, variant = 'primary', size = 'md', loading, disabled, style }) {
   const { theme } = useTheme();
 
   const bgColor = {
@@ -50,7 +50,7 @@ export default function Button({ onPress, title, variant = 'primary', size = 'md
         <ActivityIndicator color={textColor} size="small" />
       ) : (
         <Text style={[styles.text, { color: textColor, fontSize, fontWeight: typography.weights.semibold }]}>
-          {title}
+          {title ?? children}
         </Text>
       )}
     </TouchableOpacity>

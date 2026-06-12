@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -17,6 +17,7 @@ import ExercisesScreen from '../screens/ExercisesScreen';
 import ExerciseDetailScreen from '../screens/ExerciseDetailScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import BiometricsScreen from '../screens/BiometricsScreen';
+import SettingsScreen from '../screens/SettingsScreen';
 
 const Tab = createBottomTabNavigator();
 const ProgramsStack = createStackNavigator();
@@ -56,8 +57,24 @@ function ProfileStackNav() {
         contentStyle: { backgroundColor: theme.bg },
       }}
     >
-      <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} options={{ title: 'Profile' }} />
-      <ProfileStack.Screen name="Biometrics" component={BiometricsScreen} options={{ title: 'My Profile' }} />
+      <ProfileStack.Screen
+        name="ProfileMain"
+        component={ProfileScreen}
+        options={({ navigation }) => ({
+          title: 'Profile',
+          headerRight: () => (
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Settings')}
+              style={{ marginRight: spacing[4] }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="settings-outline" size={22} color={theme.textSecondary} />
+            </TouchableOpacity>
+          ),
+        })}
+      />
+      <ProfileStack.Screen name="Biometrics" component={BiometricsScreen} options={{ title: 'Biometrics & Goals' }} />
+      <ProfileStack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
     </ProfileStack.Navigator>
   );
 }
@@ -100,14 +117,18 @@ export default function AppNavigator() {
             fontSize: typography.sizes.xs,
             fontWeight: '600',
           },
-          tabBarIcon: ({ focused, color, size }) => {
-            const icons = {
-              Programs: focused ? 'barbell' : 'barbell-outline',
-              Progress: focused ? 'trending-up' : 'trending-up-outline',
-              Exercises: focused ? 'library' : 'library-outline',
-              Profile: focused ? 'person' : 'person-outline',
+          tabBarIcon: ({ focused }) => {
+            const emoji = {
+              Programs: '🏋️',
+              Progress: '📈',
+              Exercises: '📚',
+              Profile: '👤',
             };
-            return <Ionicons name={icons[route.name] || 'ellipse'} size={22} color={color} />;
+            return (
+              <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.5 }}>
+                {emoji[route.name] || '●'}
+              </Text>
+            );
           },
         })}
       >
