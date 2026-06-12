@@ -2,8 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StyleSheet, View, Text } from 'react-native';
-import { useFonts } from 'expo-font';
-import { Ionicons } from '@expo/vector-icons';
 
 import { ThemeProvider } from './src/hooks/useTheme';
 import AppNavigator from './src/navigation/AppNavigator';
@@ -59,9 +57,6 @@ function AppContent() {
 }
 
 export default function App() {
-  // Load icon fonts — no render gate, app shows immediately, icons pop in when ready
-  useFonts({ ...Ionicons.font });
-
   return (
     <ErrorBoundary>
       <GestureHandlerRootView style={styles.root}>

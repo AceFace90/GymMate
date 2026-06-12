@@ -46,6 +46,12 @@ jobs:
           # If Expo generated absolute paths like /_expo/, prefix with /gymmate/
           sed -i 's|"/_expo/|"/gymmate/_expo/|g' dist/index.html
           sed -i 's|src="/_expo/|src="/gymmate/_expo/|g' dist/index.html
+
+          # Inject @font-face for Ionicons so tab bar icons render on web
+          IONICONS_FILE=$(find dist/assets -name "Ionicons.*.ttf" | head -1 | sed 's|dist/||')
+          FONT_CSS="<style>@font-face{font-family:'Ionicons';src:url('/gymmate/${IONICONS_FILE}') format('truetype');font-weight:normal;font-style:normal;}</style>"
+          sed -i "s|</head>|${FONT_CSS}</head>|" dist/index.html
+
           # Copy to 404.html for SPA routing (back button, direct links)
           cp dist/index.html dist/404.html
 
