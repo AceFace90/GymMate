@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>GymMate</title>
+    <style id="expo-reset">
+      html, body { height: 100%; }
+      body { overflow: hidden; }
+      #root { display: flex; height: 100%; flex: 1; }
+    </style>
+    <!-- Catch pre-React errors and display them visibly -->
+    <script>
+      window.__gymmate_errors = [];
+      window.onerror = function(msg, src, line, col, err) {
+        window.__gymmate_errors.push({ msg, src, line, col, err: err ? err.stack : null });
+        document.getElementById('error-overlay').style.display = 'flex';
+        document.getElementById('error-text').textContent =
+          (err ? err.stack : msg) || msg;
+        return false;
+      };
+      window.addEventListener('unhandledrejection', function(e) {
+        window.__gymmate_errors.push({ msg: String(e.reason) });
+        document.getElementById('error-overlay').style.display = 'flex';
+        document.getElementById('error-text').textContent =
+          (e.reason && e.reason.stack) ? e.reason.stack : String(e.reason);
+      });
+    </script>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <!-- Error overlay — hidden until a pre-React error fires -->
+    <div id="error-overlay" style="display:none;position:fixed;inset:0;background:#1a1a1a;z-index:9999;flex-direction:column;align-items:center;justify-content:center;padding:32px;">
+      <span style="color:#39ff14;font-family:monospace;font-size:20px;font-weight:700;margin-bottom:12px;">GymMate — Load Error</span>
+      <pre id="error-text" style="color:#fff;font-family:monospace;font-size:12px;white-space:pre-wrap;max-width:600px;overflow:auto;max-height:80vh;"></pre>
+      <span style="color:#9ca3af;font-size:11px;margin-top:12px;">Open browser DevTools console for full details</span>
+    </div>
+    <div id="root"></div>
+    <%- include_tag 'script' %>
+  </body>
+</html>
