@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
-  TextInput, Alert,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../hooks/useTheme';
 import { spacing, typography, radius } from '../theme';
 import Card from '../components/Card';
+import { confirmAction } from '../utils/confirm';
 
 const THEME_OPTIONS = [
   { key: 'system', label: 'System', icon: 'phone-portrait-outline' },
@@ -45,7 +46,7 @@ export default function SettingsScreen() {
   async function saveKey() {
     const trimmed = geminiKey.trim();
     if (!trimmed) {
-      Alert.alert('No key entered', 'Paste your Gemini API key to enable AI features.');
+      confirmAction({ title: 'No key entered', message: 'Paste your Gemini API key to enable AI features.', confirmText: 'OK' });
       return;
     }
     await AsyncStorage.setItem(GEMINI_KEY_STORAGE, trimmed);
@@ -54,15 +55,16 @@ export default function SettingsScreen() {
   }
 
   async function removeKey() {
-    Alert.alert('Remove API key?', 'AI features will be disabled until you add a key again.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove', style: 'destructive', onPress: async () => {
-          await AsyncStorage.removeItem(GEMINI_KEY_STORAGE);
-          setGeminiKey('');
-        },
+    confirmAction({
+      title: 'Remove API key?',
+      message: 'AI features will be disabled until you add a key again.',
+      confirmText: 'Remove',
+      destructive: true,
+      onConfirm: async () => {
+        await AsyncStorage.removeItem(GEMINI_KEY_STORAGE);
+        setGeminiKey('');
       },
-    ]);
+    });
   }
 
   const hasKey = geminiKey.trim().length > 0;

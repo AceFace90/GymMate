@@ -14,6 +14,7 @@ import Card from '../components/Card';
 import Button from '../components/Button';
 import { generateProgram } from '../services/gemini';
 import { getGeminiKey } from './SettingsScreen';
+import { confirmAction } from '../utils/confirm';
 
 export default function ProgramsScreen({ navigation }) {
   const { theme } = useTheme();
@@ -126,10 +127,13 @@ export default function ProgramsScreen({ navigation }) {
   };
 
   const handleDelete = (program) => {
-    Alert.alert('Delete Program', `Delete "${program.name}"? This cannot be undone.`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: async () => { await db.deleteProgram(program.id); loadPrograms(); } },
-    ]);
+    confirmAction({
+      title: 'Delete Program',
+      message: `Delete "${program.name}"? This cannot be undone.`,
+      confirmText: 'Delete',
+      destructive: true,
+      onConfirm: async () => { await db.deleteProgram(program.id); loadPrograms(); },
+    });
   };
 
   const renderProgram = ({ item }) => (

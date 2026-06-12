@@ -13,6 +13,7 @@ import * as db from '../services/database';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import MuscleTag from '../components/MuscleTag';
+import { confirmAction } from '../utils/confirm';
 
 export default function ProgramDetailScreen({ route, navigation }) {
   const { programId, startWorkout } = route.params;
@@ -78,17 +79,23 @@ export default function ProgramDetailScreen({ route, navigation }) {
   };
 
   const handleRemoveExercise = (peId, exerciseName) => {
-    Alert.alert('Remove Exercise', `Remove "${exerciseName}" from this day?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Remove', style: 'destructive', onPress: async () => { await db.removeExerciseFromDay(peId); loadProgram(); } },
-    ]);
+    confirmAction({
+      title: 'Remove Exercise',
+      message: `Remove "${exerciseName}" from this day?`,
+      confirmText: 'Remove',
+      destructive: true,
+      onConfirm: async () => { await db.removeExerciseFromDay(peId); loadProgram(); },
+    });
   };
 
   const handleDeleteDay = (day) => {
-    Alert.alert('Delete Day', `Delete "${day.name}" and all its exercises?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: async () => { await db.deleteProgramDay(day.id); loadProgram(); } },
-    ]);
+    confirmAction({
+      title: 'Delete Day',
+      message: `Delete "${day.name}" and all its exercises?`,
+      confirmText: 'Delete',
+      destructive: true,
+      onConfirm: async () => { await db.deleteProgramDay(day.id); loadProgram(); },
+    });
   };
 
   const startWorkoutForDay = async (day) => {

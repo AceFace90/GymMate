@@ -19,6 +19,7 @@ import * as db from '../services/database';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import MuscleTag from '../components/MuscleTag';
+import { confirmAction } from '../utils/confirm';
 
 // Format seconds as M:SS
 function formatTime(secs) {
@@ -184,13 +185,14 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
   };
 
   const handleDiscard = () => {
-    Alert.alert('Discard Workout', 'Are you sure you want to discard this workout? All progress will be lost.', [
-      { text: 'Keep Going', style: 'cancel' },
-      { text: 'Discard', style: 'destructive', onPress: async () => {
-        await db.deleteSession(sessionId);
-        navigation.goBack();
-      }},
-    ]);
+    confirmAction({
+      title: 'Discard Workout',
+      message: 'Are you sure you want to discard this workout? All progress will be lost.',
+      confirmText: 'Discard',
+      cancelText: 'Keep Going',
+      destructive: true,
+      onConfirm: async () => { await db.deleteSession(sessionId); navigation.goBack(); },
+    });
   };
 
   const completedSets = Object.values(sets).flat().filter((s) => s.completed).length;
