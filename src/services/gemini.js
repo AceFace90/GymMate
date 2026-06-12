@@ -1,6 +1,8 @@
 import { getGeminiKey } from '../screens/SettingsScreen';
 
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+// gemini-1.5-flash was retired by Google; 2.5-flash is the current GA multimodal model.
+const GEMINI_MODEL = 'gemini-2.5-flash';
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 async function callGemini(parts) {
   const key = await getGeminiKey();
