@@ -9,6 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../hooks/useTheme';
 import { spacing, typography, radius } from '../theme';
 import * as db from '../services/database';
+import { nsKey } from '../services/activeUser';
 import { GOAL_LABELS } from '../utils/biometrics';
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -37,7 +38,7 @@ export default function HomeScreen({ navigation, user }) {
   const load = async () => {
     setLoading(true);
     const [raw, active, daily, recent] = await Promise.all([
-      AsyncStorage.getItem(PROFILE_KEY),
+      AsyncStorage.getItem(nsKey(PROFILE_KEY)),
       db.getActiveProgram(),
       db.getDailyActivity(7),
       db.getRecentSessions(1),

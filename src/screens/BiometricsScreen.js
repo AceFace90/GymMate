@@ -14,6 +14,7 @@ import UniversalFields from '../components/biometrics/UniversalFields';
 import CycleTracker from '../components/biometrics/CycleTracker';
 import PregnancyProfile from '../components/biometrics/PregnancyProfile';
 import { calcBMI, bmiCategory, calcTDEE } from '../utils/biometrics';
+import { nsKey } from '../services/activeUser';
 
 const PROFILE_KEY = 'gymmate_biometrics';
 
@@ -30,7 +31,7 @@ export default function BiometricsScreen({ navigation }) {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.getItem(PROFILE_KEY).then((raw) => {
+    AsyncStorage.getItem(nsKey(PROFILE_KEY)).then((raw) => {
       if (raw) setForm({ ...EMPTY_PROFILE, ...JSON.parse(raw) });
     });
   }, []);
@@ -41,7 +42,7 @@ export default function BiometricsScreen({ navigation }) {
   }
 
   async function handleSave() {
-    await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(form));
+    await AsyncStorage.setItem(nsKey(PROFILE_KEY), JSON.stringify(form));
     setSaved(true);
     setTimeout(() => { if (navigation?.canGoBack()) navigation.goBack(); }, 800);
   }

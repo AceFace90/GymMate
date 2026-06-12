@@ -9,6 +9,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../hooks/useTheme';
 import { spacing, typography, radius } from '../theme';
 import * as auth from '../services/auth';
+import * as db from '../services/database';
+import { setActiveUserId } from '../services/activeUser';
+import { BUILT_IN_EXERCISES } from '../data/exercises';
 import { DEMO_USER, seedDemoData } from '../data/demoSeed';
 import { confirmAction } from '../utils/confirm';
 
@@ -32,6 +35,7 @@ export default function LoginScreen({ onLogin }) {
   const [name, setName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [loggingIn, setLoggingIn] = useState(false);
+  const [managing, setManaging] = useState(false);
 
   useEffect(() => { loadUsers(); }, []);
 
@@ -78,13 +82,22 @@ export default function LoginScreen({ onLogin }) {
       message: `Delete "${user.name}"? This removes the profile from this device.`,
       confirmText: 'Delete',
       destructive: true,
-      onConfirm: async () => { await auth.deleteUser(user.id); loadUsers(); },
+      onConfirm: async () => {
+        await auth.deleteUser(user.id);
+        const remaining = await auth.getAllUsers();
+        setUsers(remaining);
+        if (remaining.length === 0) setManaging(false);
+      },
     });
   }
 
   async function handleDemoLogin() {
     setLoggingIn(true);
     try {
+      // Seed into the demo's own namespace: scope first, ensure the exercise
+      // library exists there, then lay down the demo program/sessions.
+      setActiveUserId(DEMO_USER.id);
+      await db.initDatabase(BUILT_IN_EXERCISES);
       await seedDemoData();
       await onLogin(DEMO_USER);
     } catch (e) {
@@ -161,7 +174,7 @@ export default function LoginScreen({ onLogin }) {
               </>
             )}
 
-            {users.length === 1 && (
+            {users.length === 1 && !managing && (
               <>
                 <TouchableOpacity
                   style={[s.primaryBtn, loggingIn && s.disabled]}
@@ -182,7 +195,7 @@ export default function LoginScreen({ onLogin }) {
 
                 <Text style={s.syncNote}>Sync across devices · Secure cloud backup</Text>
 
-                <TouchableOpacity onPress={() => setShowNameInput(true)} style={s.manageBtn}>
+                <TouchableOpacity onPress={() => setManaging(true)} style={s.manageBtn}>
                   <Text style={s.manageBtnText}>⚙️ Manage Users</Text>
                 </TouchableOpacity>
               </>
@@ -201,9 +214,18 @@ export default function LoginScreen({ onLogin }) {
               </Text>
             </TouchableOpacity>
 
-            {users.length > 1 && (
+            {(users.length > 1 || (users.length === 1 && managing)) && (
               <>
-                <Text style={[s.sectionLabel, { color: theme.text }]}>Select User:</Text>
+                <View style={s.sectionHeaderRow}>
+                  <Text style={[s.sectionLabel, { color: theme.text }]}>
+                    {managing ? 'Manage Users:' : 'Select User:'}
+                  </Text>
+                  {managing && (
+                    <TouchableOpacity onPress={() => setManaging(false)}>
+                      <Text style={[s.doneBtnText, { color: theme.accent }]}>Done</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
                 <View style={[s.userList, { borderColor: theme.border }]}>
                   {users.map((u, i) => (
                     <View
@@ -365,7 +387,14 @@ function makeStyles(theme) {
     manageBtn: { alignItems: 'center', marginTop: spacing[2] },
     manageBtnText: { fontSize: typography.sizes.sm, color: theme.textMuted },
 
-    sectionLabel: { fontSize: typography.sizes.lg, fontWeight: '600', marginBottom: spacing[3] },
+    sectionHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: spacing[3],
+    },
+    sectionLabel: { fontSize: typography.sizes.lg, fontWeight: '600' },
+    doneBtnText: { fontSize: typography.sizes.base, fontWeight: '600' },
     userList: { borderRadius: radius.xl, borderWidth: 1, overflow: 'hidden', marginBottom: spacing[4] },
     userRow: {
       flexDirection: 'row',

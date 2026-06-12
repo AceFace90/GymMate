@@ -8,6 +8,7 @@ import AppNavigator from './src/navigation/AppNavigator';
 import LoginScreen from './src/screens/LoginScreen';
 import * as db from './src/services/database';
 import * as auth from './src/services/auth';
+import { setActiveUserId } from './src/services/activeUser';
 import { BUILT_IN_EXERCISES } from './src/data/exercises';
 
 class ErrorBoundary extends React.Component {
@@ -34,8 +35,11 @@ function AppContent() {
 
   useEffect(() => {
     async function init() {
-      await db.initDatabase(BUILT_IN_EXERCISES).catch((e) => console.error('DB init:', e));
+      // Scope data to the persisted user BEFORE seeding/reading, so each user's
+      // exercises/programs/sessions live in their own namespace.
       const current = await auth.getCurrentUser();
+      setActiveUserId(current?.id);
+      await db.initDatabase(BUILT_IN_EXERCISES).catch((e) => console.error('DB init:', e));
       setUser(current);
       setLoading(false);
     }
@@ -43,6 +47,10 @@ function AppContent() {
   }, []);
 
   async function handleLogin(userData) {
+    // Switch the data namespace to this user, then ensure their exercise
+    // library is seeded before any screen reads from the (possibly empty) namespace.
+    setActiveUserId(userData.id);
+    await db.initDatabase(BUILT_IN_EXERCISES).catch((e) => console.error('DB init:', e));
     await auth.saveCurrentUser(userData);
     setUser(userData);
   }

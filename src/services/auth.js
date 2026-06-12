@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { signInWithPopup, signOut } from 'firebase/auth';
 import { auth as fbAuth, googleProvider } from './firebase';
 import * as cloudSync from './cloudSync';
+import { setActiveUserId } from './activeUser';
 
 const USERS_KEY = 'gymmate_users';
 const CURRENT_USER_KEY = 'gymmate_current_user';
@@ -68,6 +69,9 @@ function fromFirebaseUser(fbUser) {
 export async function signInWithGoogle() {
   const result = await signInWithPopup(fbAuth, googleProvider);
   const userData = fromFirebaseUser(result.user);
+  // Scope all data reads/writes to this user BEFORE syncing, so we read/back up
+  // this user's namespace — never another account's or the demo's data.
+  setActiveUserId(userData.id);
   try {
     await cloudSync.syncOnSignIn(result.user.uid);
   } catch (e) {

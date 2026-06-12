@@ -2,6 +2,7 @@
 // Seeds localStorage directly — no auth user created in gymmate_users
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { nsKey } from '../services/activeUser';
 
 const BIOMETRICS_KEY = 'gymmate_biometrics';
 
@@ -15,19 +16,21 @@ const KEYS = {
   counters:         'gymmate_counters',
 };
 
+// All writes go through nsKey so the demo dataset lands in the demo user's
+// namespace — never the shared/global keys (which would leak into real accounts).
 function getTable(key) {
-  try { return JSON.parse(localStorage.getItem(KEYS[key])) || []; } catch { return []; }
+  try { return JSON.parse(localStorage.getItem(nsKey(KEYS[key]))) || []; } catch { return []; }
 }
 function setTable(key, arr) {
-  localStorage.setItem(KEYS[key], JSON.stringify(arr));
+  localStorage.setItem(nsKey(KEYS[key]), JSON.stringify(arr));
 }
 function getCounters() {
-  try { return JSON.parse(localStorage.getItem(KEYS.counters)) || {}; } catch { return {}; }
+  try { return JSON.parse(localStorage.getItem(nsKey(KEYS.counters))) || {}; } catch { return {}; }
 }
 function nextId(name) {
   const c = getCounters();
   c[name] = (c[name] || 0) + 1;
-  localStorage.setItem(KEYS.counters, JSON.stringify(c));
+  localStorage.setItem(nsKey(KEYS.counters), JSON.stringify(c));
   return c[name];
 }
 function daysAgo(n) {
@@ -47,7 +50,7 @@ export const DEMO_USER = {
 
 export async function seedDemoData() {
   // Biometrics
-  await AsyncStorage.setItem(BIOMETRICS_KEY, JSON.stringify({
+  await AsyncStorage.setItem(nsKey(BIOMETRICS_KEY), JSON.stringify({
     name: 'Super Woman',
     age: '28',
     sex: 'female',
@@ -222,11 +225,10 @@ export async function seedDemoData() {
 }
 
 export async function clearDemoData() {
-  // Remove biometrics
-  await AsyncStorage.removeItem(BIOMETRICS_KEY);
-  // We leave exercises intact (they're shared). Remove programs/sessions seeded for demo.
-  // Simple approach: nuke all workout data (user can start fresh)
-  Object.keys(KEYS).filter(k => k !== 'exercises').forEach(k => {
-    localStorage.removeItem(KEYS[k]);
+  // Remove the demo user's namespaced data (biometrics + all workout tables,
+  // including exercises — the namespace is the demo's alone, nothing is shared).
+  await AsyncStorage.removeItem(nsKey(BIOMETRICS_KEY));
+  Object.keys(KEYS).forEach(k => {
+    localStorage.removeItem(nsKey(KEYS[k]));
   });
 }

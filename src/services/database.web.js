@@ -1,7 +1,11 @@
 // Web database — localStorage implementation
 // Metro resolves this file automatically on web (database.web.js > database.js)
 
+import { nsKey } from './activeUser';
+
 // ─── Storage helpers ─────────────────────────────────────────────────────────
+// Every base key below is namespaced per active user via nsKey() so users (and
+// the demo) never share a dataset. See src/services/activeUser.js.
 
 const KEYS = {
   exercises:        'gymmate_exercises',
@@ -15,7 +19,7 @@ const KEYS = {
 
 function loadTable(key) {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = localStorage.getItem(nsKey(key));
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
@@ -24,7 +28,7 @@ function loadTable(key) {
 
 function saveTable(key, data) {
   try {
-    localStorage.setItem(key, JSON.stringify(data));
+    localStorage.setItem(nsKey(key), JSON.stringify(data));
   } catch (e) {
     console.error('GymMate storage error:', e);
   }
@@ -42,8 +46,11 @@ const BACKUP_VERSION = 1;
 export async function exportAllData() {
   const data = {};
   for (const key of Object.keys(KEYS)) {
-    data[key] = (() => { try { return JSON.parse(localStorage.getItem(KEYS[key])) ?? null; } catch { return null; } })();
+    data[key] = (() => { try { return JSON.parse(localStorage.getItem(nsKey(KEYS[key]))) ?? null; } catch { return null; } })();
   }
+  // Biometrics live outside KEYS (read directly by Home/Biometrics screens) but
+  // belong in the per-user backup too.
+  data.biometrics = (() => { try { return JSON.parse(localStorage.getItem(nsKey('gymmate_biometrics'))) ?? null; } catch { return null; } })();
   return { version: BACKUP_VERSION, data };
 }
 
@@ -51,15 +58,18 @@ export async function importAllData(payload) {
   if (!payload || !payload.data) return;
   for (const key of Object.keys(KEYS)) {
     if (payload.data[key] != null) {
-      localStorage.setItem(KEYS[key], JSON.stringify(payload.data[key]));
+      localStorage.setItem(nsKey(KEYS[key]), JSON.stringify(payload.data[key]));
     }
+  }
+  if (payload.data.biometrics != null) {
+    localStorage.setItem(nsKey('gymmate_biometrics'), JSON.stringify(payload.data.biometrics));
   }
 }
 
 function nextId(tableName) {
-  const counters = (() => { try { return JSON.parse(localStorage.getItem(KEYS.counters)) || {}; } catch { return {}; } })();
+  const counters = (() => { try { return JSON.parse(localStorage.getItem(nsKey(KEYS.counters))) || {}; } catch { return {}; } })();
   counters[tableName] = (counters[tableName] || 0) + 1;
-  localStorage.setItem(KEYS.counters, JSON.stringify(counters));
+  localStorage.setItem(nsKey(KEYS.counters), JSON.stringify(counters));
   return counters[tableName];
 }
 
