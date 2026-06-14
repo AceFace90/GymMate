@@ -183,8 +183,13 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
     setFinishing(true);
     await db.completeSession(sessionId, { durationSeconds: elapsed, notes });
     // Back up immediately so the session survives closing the tab without an
-    // explicit sign-out (no-op for demo / local-only users).
-    await auth.backupCurrentUser();
+    // explicit sign-out (no-op for demo / local-only users). Best-effort; never
+    // block the finish flow even if backup fails.
+    try {
+      await auth.backupCurrentUser();
+    } catch (e) {
+      console.error('Workout backup failed (workout still saved locally):', e);
+    }
     setFinishing(false);
     setShowFinish(false);
     navigation.goBack();
