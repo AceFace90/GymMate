@@ -51,6 +51,17 @@ export function isGoogleUser(user) {
   return !!(user?.google_id && !user.google_id.startsWith('local-'));
 }
 
+// Check if there's a live Firebase session for the given user (prevents forcing
+// a fresh Google sign-in popup when one already exists). Returns true if the
+// stored user's google_id matches the active Firebase uid.
+export function hasValidFirebaseSession(user) {
+  if (!isGoogleUser(user)) return false;
+  const currentUid = fbAuth.currentUser?.uid;
+  if (!currentUid) return false;
+  // User's google_id is 'google-<uid>', so strip the prefix and compare.
+  return user.google_id === currentUid || user.id === `google-${currentUid}`;
+}
+
 // Maps a Firebase user object to our local gymmate user shape.
 function fromFirebaseUser(fbUser) {
   return {

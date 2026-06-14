@@ -49,8 +49,14 @@ export default function LoginScreen({ onLogin }) {
     if (loggingIn) return;
     setLoggingIn(true);
     try {
+      // For Google users: if we already have a valid Firebase session for this
+      // user, just switch to them (no popup). Otherwise trigger a fresh sign-in.
       if (auth.isGoogleUser(user)) {
-        await handleGoogleSignIn();
+        if (auth.hasValidFirebaseSession(user)) {
+          await onLogin(user);
+        } else {
+          await handleGoogleSignIn();
+        }
         return;
       }
       await onLogin(user);
