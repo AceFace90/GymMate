@@ -13,6 +13,7 @@ import * as db from '../services/database';
 import Card from '../components/Card';
 import MuscleTag from '../components/MuscleTag';
 import ActivityRings from '../components/ActivityRings';
+import { confirmAction } from '../utils/confirm';
 
 // Ring colours — neon green leads (brand), then blue + amber accents
 const RING_COLORS = { workouts: '#39ff14', sets: '#38bdf8', minutes: '#fbbf24' };
@@ -94,6 +95,26 @@ export default function ProgressScreen() {
     if (!secs) return '—';
     const m = Math.round(secs / 60);
     return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
+  };
+
+  const handleDeleteSession = (session) => {
+    confirmAction({
+      title: 'Delete Workout',
+      message: `Delete "${session.day_name || 'Workout'}" from ${formatDate(session.started_at)}? This cannot be undone.`,
+      confirmText: 'Delete',
+      destructive: true,
+      onConfirm: async () => { await db.deleteSession(session.id); loadData(); },
+    });
+  };
+
+  const handleResetPR = (pr) => {
+    confirmAction({
+      title: 'Reset PR',
+      message: `Reset all PR markers for "${pr.name}"? Your workout history will remain, but this exercise will no longer show as a record.`,
+      confirmText: 'Reset',
+      destructive: true,
+      onConfirm: async () => { await db.resetPRsForExercise(pr.id); loadData(); },
+    });
   };
 
   // ── This-week dashboard data ────────────────────────────────────────────
@@ -325,6 +346,13 @@ export default function ProgressScreen() {
                         </View>
                         <Text style={[styles.sessionDuration, { color: theme.textMuted }]}>{formatDuration(session.duration_seconds)}</Text>
                       </View>
+                      <TouchableOpacity
+                        onPress={() => handleDeleteSession(session)}
+                        style={styles.deleteBtn}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons name="trash-outline" size={18} color="#ef4444" />
+                      </TouchableOpacity>
                     </View>
                     {session.notes ? (
                       <Text style={[styles.sessionNotes, { color: theme.textSecondary }]} numberOfLines={2}>{session.notes}</Text>
@@ -361,6 +389,13 @@ export default function ProgressScreen() {
                         ) : null}
                         <Text style={[styles.prDate, { color: theme.textMuted }]}>{formatDate(pr.achieved_at)}</Text>
                       </View>
+                      <TouchableOpacity
+                        onPress={() => handleResetPR(pr)}
+                        style={styles.deleteBtn}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons name="trash-outline" size={18} color="#ef4444" />
+                      </TouchableOpacity>
                     </View>
                   </Card>
                 ))
@@ -404,7 +439,8 @@ const styles = StyleSheet.create({
   muscleBarFill: { height: '100%', borderRadius: radius.full },
   muscleCount: { width: 28, fontSize: typography.sizes.xs, textAlign: 'right' },
   sessionCard: {},
-  sessionHeader: { flexDirection: 'row', alignItems: 'center' },
+  sessionHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
+  deleteBtn: { padding: spacing[1] },
   sessionDay: { fontSize: typography.sizes.base, fontWeight: '700' },
   sessionDate: { fontSize: typography.sizes.sm, marginTop: 2 },
   sessionStats: { alignItems: 'flex-end', gap: spacing[1] },

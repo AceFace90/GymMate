@@ -478,3 +478,11 @@ export async function getLastSetForExercise(exerciseId) {
 
   return sorted[0] ? { weight_kg: sorted[0].weight_kg, reps: sorted[0].reps } : null;
 }
+
+// Clear the is_pr flag on all sets for a given exercise (resets PR history without
+// deleting workout data). Used when a user wants to reset their PRs for an exercise.
+export async function resetPRsForExercise(exerciseId) {
+  const sets = getTable('sessionSets');
+  sets.forEach((s) => { if (s.exercise_id === exerciseId) s.is_pr = 0; });
+  setTable('sessionSets', sets);
+}

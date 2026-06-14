@@ -7,6 +7,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../hooks/useTheme';
 import { spacing, typography, radius } from '../theme';
 import Card from '../components/Card';
+import { nsKey } from '../services/activeUser';
+import { auth as fbAuth } from '../services/firebase';
+import { deleteDoc, doc } from 'firebase/firestore';
+import { db as firestore } from '../services/firebase';
 
 function Row({ label, value, onPress, theme }) {
   return (
@@ -35,6 +39,42 @@ export default function ProfileScreen({ navigation, onLogout }) {
       confirmText: 'Log Out',
       destructive: true,
       onConfirm: onLogout,
+    });
+  }
+
+  async function handleWipeData() {
+    confirmAction({
+      title: 'Wipe All Data',
+      message: 'Delete ALL your workout data, programs, exercises, and biometrics from this device and the cloud? This is permanent and cannot be undone.',
+      confirmText: 'Wipe Everything',
+      destructive: true,
+      onConfirm: async () => {
+        try {
+          // Clear all local namespaced data
+          const dataKeys = [
+            'gymmate_exercises', 'gymmate_programs', 'gymmate_programDays',
+            'gymmate_programExercises', 'gymmate_sessions', 'gymmate_sessionSets',
+            'gymmate_counters', 'gymmate_biometrics', 'gymmate_last_sync',
+          ];
+          for (const key of dataKeys) {
+            try { localStorage.removeItem(nsKey(key)); } catch {}
+          }
+
+          // For Google users, delete cloud backup doc
+          const uid = fbAuth.currentUser?.uid;
+          if (uid) {
+            try {
+              await deleteDoc(doc(firestore, 'users', uid));
+            } catch (e) {
+              console.error('Cloud delete failed (local data still wiped):', e);
+            }
+          }
+
+          alert('All data wiped. Restart the app or log out to continue.');
+        } catch (e) {
+          alert('Data wipe failed: ' + e.message);
+        }
+      },
     });
   }
 
@@ -77,6 +117,15 @@ export default function ProfileScreen({ navigation, onLogout }) {
           <Text style={styles.logoutText}>Log Out</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity
+          onPress={handleWipeData}
+          style={[styles.wipeBtn, { borderColor: '#991b1b', backgroundColor: '#450a0a' }]}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="warning" size={16} color="#ef4444" style={{ marginRight: spacing[2] }} />
+          <Text style={styles.wipeText}>Wipe All My Data</Text>
+        </TouchableOpacity>
+
         <Text style={[styles.footer, { color: theme.textMuted }]}>
           Made with 💚 to complement MacroMate
         </Text>
@@ -108,5 +157,12 @@ const styles = StyleSheet.create({
     marginTop: spacing[4],
   },
   logoutText: { color: '#ef4444', fontSize: typography.sizes.base, fontWeight: '600' },
+  wipeBtn: {
+    borderWidth: 1, borderRadius: radius.lg,
+    paddingVertical: spacing[4], alignItems: 'center',
+    flexDirection: 'row', justifyContent: 'center',
+    marginTop: spacing[3],
+  },
+  wipeText: { color: '#ef4444', fontSize: typography.sizes.sm, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
   footer: { textAlign: 'center', fontSize: typography.sizes.sm, marginTop: spacing[4], marginBottom: spacing[2] },
 });
