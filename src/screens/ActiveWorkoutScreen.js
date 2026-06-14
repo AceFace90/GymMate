@@ -181,6 +181,30 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
 
   const handleFinish = async () => {
     setFinishing(true);
+
+    // Auto-complete any uncommitted sets that have data (weight or reps entered).
+    // This is critical for Quick Workouts where users manually log after the fact —
+    // they enter numbers and tap Finish, not expecting to tap checkmarks for each set.
+    for (const exercise of exercises) {
+      const exSets = sets[exercise.exercise_id] || [];
+      for (let i = 0; i < exSets.length; i++) {
+        const set = exSets[i];
+        if (!set.completed && (set.weight || set.reps)) {
+          // Has data but wasn't explicitly completed — persist it now
+          const w = parseFloat(set.weight) || null;
+          const r = parseInt(set.reps) || null;
+          await db.logSet({
+            sessionId,
+            exerciseId: exercise.exercise_id,
+            exerciseName: exercise.exercise_name,
+            setNumber: i + 1,
+            weightKg: w,
+            reps: r,
+          });
+        }
+      }
+    }
+
     await db.completeSession(sessionId, { durationSeconds: elapsed, notes });
     // Back up immediately so the session survives closing the tab without an
     // explicit sign-out (no-op for demo / local-only users). Best-effort; never
