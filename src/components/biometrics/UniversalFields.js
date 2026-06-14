@@ -139,8 +139,8 @@ export default function UniversalFields({ form, onChange, theme: themeProp }) {
 const styles = StyleSheet.create({
   container: { gap: spacing[3] },
   sectionTitle: { fontSize: typography.sizes.base, fontWeight: '700' },
-  row: { flexDirection: 'row', gap: spacing[3] },
-  field: { flex: 1, gap: spacing[1] },
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[3] },
+  field: { flex: 1, minWidth: 120, gap: spacing[1] },
   label: { fontSize: typography.sizes.sm, fontWeight: '500' },
   input: {
     borderWidth: 1, borderRadius: radius.md,
