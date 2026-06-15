@@ -176,10 +176,6 @@ export default function ProgressScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]} edges={['top']}>
-      <View style={styles.headerRow}>
-        <Text style={[styles.title, { color: theme.text }]}>Progress</Text>
-      </View>
-
       {/* Tabs */}
       <View style={[styles.tabs, { borderBottomColor: theme.border }]}>
         {TABS.map((t) => (
@@ -410,9 +406,7 @@ export default function ProgressScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  headerRow: { paddingHorizontal: spacing[5], paddingTop: spacing[3], paddingBottom: spacing[2] },
-  title: { fontSize: typography.sizes['2xl'], fontWeight: '700' },
-  tabs: { flexDirection: 'row', borderBottomWidth: 1, marginBottom: spacing[1] },
+  tabs: { flexDirection: 'row', borderBottomWidth: 1, marginBottom: spacing[1], paddingTop: spacing[3] },
   tab: { flex: 1, paddingVertical: spacing[3], alignItems: 'center' },
   tabText: { fontSize: typography.sizes.base, fontWeight: '600' },
   content: { padding: spacing[4], gap: spacing[3] },
