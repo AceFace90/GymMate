@@ -225,9 +225,21 @@ export default function ClientDetailScreen({ route, navigation }) {
   );
 }
 
-function formatDate(dateString) {
-  if (!dateString) return 'recently';
-  const date = new Date(dateString);
+function formatDate(dateValue) {
+  if (!dateValue) return 'recently';
+
+  // Handle Firestore Timestamp objects
+  let date;
+  if (dateValue?.toDate) {
+    date = dateValue.toDate(); // Firestore Timestamp
+  } else if (dateValue?.seconds) {
+    date = new Date(dateValue.seconds * 1000); // Timestamp object with seconds
+  } else {
+    date = new Date(dateValue); // Regular date string
+  }
+
+  if (isNaN(date.getTime())) return 'Invalid Date';
+
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
