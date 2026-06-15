@@ -14,6 +14,12 @@ import { db as firestore } from './firebase';
 import * as db from './database';
 import { nsKey } from './activeUser';
 
+// AsyncStorage keys that should be backed up (all are namespaced per user via nsKey)
+const ASYNC_STORAGE_KEYS = [
+  'gymmate_biometrics',  // Profile data (name, age, sex, height, weight, etc.)
+  'gymmate_units',        // Metric/Imperial preference
+];
+
 function userDoc(uid) {
   return doc(firestore, 'users', uid);
 }
@@ -33,16 +39,35 @@ async function setLastSync(updatedAt) {
   try { if (updatedAt) await AsyncStorage.setItem(nsKey(SYNC_MARKER), updatedAt); } catch { /* best effort */ }
 }
 
-// Returns true if a serialized payload contains any actual user rows.
+// Returns true if a serialized payload contains any actual user rows or AsyncStorage data.
 function hasContent(payload) {
-  if (!payload || !payload.data) return false;
-  return Object.values(payload.data).some((v) => Array.isArray(v) && v.length > 0);
+  if (!payload) return false;
+  if (payload.data && Object.values(payload.data).some((v) => Array.isArray(v) && v.length > 0)) {
+    return true;
+  }
+  if (payload.asyncStorage && Object.keys(payload.asyncStorage).length > 0) {
+    return true;
+  }
+  return false;
 }
 
 // Push the current local dataset up to the cloud (overwrites the cloud copy).
 export async function backupToCloud(uid) {
   if (!uid) return;
   const payload = await db.exportAllData();
+
+  // Also back up AsyncStorage data (profile, units preference, etc.)
+  const asyncStorage = {};
+  for (const key of ASYNC_STORAGE_KEYS) {
+    try {
+      const value = await AsyncStorage.getItem(nsKey(key));
+      if (value) asyncStorage[key] = value;
+    } catch (e) {
+      console.error(`Failed to backup AsyncStorage key ${key}:`, e);
+    }
+  }
+  payload.asyncStorage = asyncStorage;
+
   const updatedAt = new Date().toISOString();
   await setDoc(userDoc(uid), { payload, updatedAt });
   // We are now in sync with the copy we just wrote.
@@ -57,7 +82,20 @@ export async function restoreFromCloud(uid) {
   if (!snap.exists()) return false;
   const remote = snap.data();
   if (!hasContent(remote?.payload)) return false;
+
   await db.importAllData(remote.payload);
+
+  // Restore AsyncStorage data (profile, units preference, etc.)
+  if (remote.payload.asyncStorage) {
+    for (const [key, value] of Object.entries(remote.payload.asyncStorage)) {
+      try {
+        await AsyncStorage.setItem(nsKey(key), value);
+      } catch (e) {
+        console.error(`Failed to restore AsyncStorage key ${key}:`, e);
+      }
+    }
+  }
+
   await setLastSync(remote.updatedAt);
   return true;
 }
@@ -92,6 +130,16 @@ export async function syncOnSignIn(uid) {
 
   if (!localHasData) {
     await db.importAllData(remote.payload);
+    // Restore AsyncStorage data too
+    if (remote.payload.asyncStorage) {
+      for (const [key, value] of Object.entries(remote.payload.asyncStorage)) {
+        try {
+          await AsyncStorage.setItem(nsKey(key), value);
+        } catch (e) {
+          console.error(`Failed to restore AsyncStorage key ${key}:`, e);
+        }
+      }
+    }
     await setLastSync(remote.updatedAt);
     return { action: 'pulled' };
   }
@@ -107,6 +155,16 @@ export async function syncOnSignIn(uid) {
 
   // Cloud changed elsewhere (or we have no baseline) → trust the durable cloud.
   await db.importAllData(remote.payload);
+  // Restore AsyncStorage data too
+  if (remote.payload.asyncStorage) {
+    for (const [key, value] of Object.entries(remote.payload.asyncStorage)) {
+      try {
+        await AsyncStorage.setItem(nsKey(key), value);
+      } catch (e) {
+        console.error(`Failed to restore AsyncStorage key ${key}:`, e);
+      }
+    }
+  }
   await setLastSync(remote.updatedAt);
   return { action: 'pulled' };
 }
