@@ -70,9 +70,12 @@ export default function TemplatesScreen({ navigation }) {
       // Create the Firestore template
       await programTemplates.createTemplate(
         currentUser.id,
-        programId,
-        newName.trim(),
-        newDesc.trim() || null
+        {
+          name: newName.trim(),
+          description: newDesc.trim() || '',
+          daysPerWeek: 3,
+          programId: programId,
+        }
       );
 
       setShowCreate(false);
