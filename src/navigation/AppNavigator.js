@@ -145,6 +145,7 @@ function TemplatesStackNav() {
       }}
     >
       <TemplatesStack.Screen name="TemplatesList" component={TemplatesScreen} options={{ headerShown: false }} />
+      <TemplatesStack.Screen name="ProgramDetail" component={ProgramDetailScreen} options={{ title: 'Program' }} />
     </TemplatesStack.Navigator>
   );
 }

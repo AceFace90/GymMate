@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, TextInput, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -7,15 +7,20 @@ import { useTheme } from '../../hooks/useTheme';
 import TemplateCard from '../../components/trainer/TemplateCard';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
-import { spacing, typography } from '../../theme';
+import { spacing, typography, radius } from '../../theme';
 import * as programTemplates from '../../services/programTemplates';
 import * as auth from '../../services/auth';
+import * as db from '../../services/database';
 
 export default function TemplatesScreen({ navigation }) {
   const { theme } = useTheme();
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newDesc, setNewDesc] = useState('');
+  const [creating, setCreating] = useState(false);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -43,8 +48,50 @@ export default function TemplatesScreen({ navigation }) {
   }
 
   function handleCreateTemplate() {
-    // Navigate to program creation with template mode
-    navigation.navigate('CreateProgram', { isTemplate: true });
+    setShowCreate(true);
+  }
+
+  async function handleCreateSubmit() {
+    if (!newName.trim()) {
+      if (Platform.OS === 'web') {
+        alert('Please enter a template name');
+      } else {
+        Alert.alert('Error', 'Please enter a template name');
+      }
+      return;
+    }
+
+    setCreating(true);
+
+    try {
+      // Create as a local program with is_template=1
+      const programId = await db.createProgram(newName.trim(), newDesc.trim() || null, true, currentUser.id);
+
+      // Create the Firestore template
+      await programTemplates.createTemplate(
+        currentUser.id,
+        programId,
+        newName.trim(),
+        newDesc.trim() || null
+      );
+
+      setShowCreate(false);
+      setNewName('');
+      setNewDesc('');
+      await loadTemplates();
+
+      // Navigate to edit the template
+      navigation.navigate('ProgramDetail', { programId, isTemplate: true });
+    } catch (error) {
+      console.error('Failed to create template:', error);
+      if (Platform.OS === 'web') {
+        alert(`Failed to create template: ${error.message}`);
+      } else {
+        Alert.alert('Error', 'Failed to create template');
+      }
+    } finally {
+      setCreating(false);
+    }
   }
 
   function handleTemplatePress(template) {
@@ -137,6 +184,59 @@ export default function TemplatesScreen({ navigation }) {
           </View>
         )}
       </ScrollView>
+
+      {/* Create Template Modal */}
+      <Modal
+        visible={showCreate}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowCreate(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Create Template</Text>
+
+            <Text style={[styles.label, { color: theme.text }]}>Template Name</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: theme.input, color: theme.text, borderColor: theme.border }]}
+              value={newName}
+              onChangeText={setNewName}
+              placeholder="e.g. Beginner Strength Program"
+              placeholderTextColor={theme.textMuted}
+            />
+
+            <Text style={[styles.label, { color: theme.text }]}>Description (Optional)</Text>
+            <TextInput
+              style={[styles.input, styles.textArea, { backgroundColor: theme.input, color: theme.text, borderColor: theme.border }]}
+              value={newDesc}
+              onChangeText={setNewDesc}
+              placeholder="Add details about this template"
+              placeholderTextColor={theme.textMuted}
+              multiline
+              numberOfLines={3}
+            />
+
+            <View style={styles.modalButtons}>
+              <Button
+                title="Cancel"
+                onPress={() => {
+                  setShowCreate(false);
+                  setNewName('');
+                  setNewDesc('');
+                }}
+                variant="secondary"
+                style={{ flex: 1 }}
+              />
+              <Button
+                title="Create"
+                onPress={handleCreateSubmit}
+                loading={creating}
+                style={{ flex: 1 }}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -174,5 +274,44 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: typography.sizes.sm,
     textAlign: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing[4],
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 480,
+    borderRadius: radius.lg,
+    padding: spacing[6],
+  },
+  modalTitle: {
+    fontSize: typography.sizes.xl,
+    fontWeight: typography.weights.bold,
+    marginBottom: spacing[6],
+  },
+  label: {
+    fontSize: typography.sizes.base,
+    fontWeight: typography.weights.semibold,
+    marginBottom: spacing[2],
+    marginTop: spacing[3],
+  },
+  input: {
+    borderRadius: radius.md,
+    padding: spacing[3],
+    fontSize: typography.sizes.base,
+    borderWidth: 1,
+  },
+  textArea: {
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: spacing[3],
+    marginTop: spacing[6],
   },
 });
