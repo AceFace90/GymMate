@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
@@ -52,28 +52,54 @@ export default function ConnectTrainerScreen({ navigation }) {
   }
 
   async function handleAccept() {
+    console.log('[ConnectTrainerScreen] handleAccept called');
+    console.log('[ConnectTrainerScreen] trainerInfo:', trainerInfo);
+    console.log('[ConnectTrainerScreen] currentUser:', currentUser);
+
     if (!trainerInfo || !currentUser) {
-      Alert.alert('Error', 'Missing required information');
+      if (Platform.OS === 'web') {
+        alert('Error: Missing required information');
+      } else {
+        Alert.alert('Error', 'Missing required information');
+      }
       return;
     }
 
     setLoading(true);
 
     try {
+      console.log('[ConnectTrainerScreen] Accepting invite with:', {
+        relationshipId: trainerInfo.relationshipId,
+        clientId: currentUser.id,
+        clientName: currentUser.name,
+      });
+
       await trainerClient.acceptInvite(
         trainerInfo.relationshipId,
         currentUser.id,
         currentUser.name
       );
 
-      Alert.alert(
-        'Connected!',
-        `You're now connected with ${trainerInfo.trainerName}. They can now assign programs and view your progress.`,
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
+      console.log('[ConnectTrainerScreen] Invite accepted successfully');
+
+      // Use web alert on web platform, React Native Alert on mobile
+      if (Platform.OS === 'web') {
+        alert(`Connected!\n\nYou're now connected with ${trainerInfo.trainerName}. They can now assign programs and view your progress.`);
+        navigation.goBack();
+      } else {
+        Alert.alert(
+          'Connected!',
+          `You're now connected with ${trainerInfo.trainerName}. They can now assign programs and view your progress.`,
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
+      }
     } catch (error) {
-      console.error('Failed to accept invite:', error);
-      Alert.alert('Error', 'Failed to connect with trainer');
+      console.error('[ConnectTrainerScreen] Failed to accept invite:', error);
+      if (Platform.OS === 'web') {
+        alert(`Error: Failed to connect with trainer: ${error.message}`);
+      } else {
+        Alert.alert('Error', `Failed to connect with trainer: ${error.message}`);
+      }
     } finally {
       setLoading(false);
     }

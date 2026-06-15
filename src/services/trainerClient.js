@@ -72,15 +72,24 @@ export async function findInvite(inviteCode) {
 
 // Client accepts the invite
 export async function acceptInvite(relationshipId, clientId, clientName) {
+  console.log('[trainerClient] acceptInvite called with:', { relationshipId, clientId, clientName });
+
   const relationshipRef = doc(firestore, 'trainer_clients', relationshipId);
 
-  await updateDoc(relationshipRef, {
-    clientId,
-    clientName,
-    clientStatus: 'accepted',
-    trainerStatus: 'accepted', // Auto-accept from trainer side (they created invite)
-    acceptedAt: serverTimestamp(),
-  });
+  try {
+    await updateDoc(relationshipRef, {
+      clientId,
+      clientName,
+      clientStatus: 'accepted',
+      trainerStatus: 'accepted', // Auto-accept from trainer side (they created invite)
+      acceptedAt: serverTimestamp(),
+    });
+
+    console.log('[trainerClient] Invite accepted successfully');
+  } catch (error) {
+    console.error('[trainerClient] Failed to accept invite:', error);
+    throw error;
+  }
 }
 
 // Get all clients for a trainer (accepted only)
