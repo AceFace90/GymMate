@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TextInput, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { useTheme } from '../../hooks/useTheme';
 import { spacing, typography, radius } from '../../theme';
 import { ACTIVITY_LABELS, GOAL_LABELS } from '../../utils/biometrics';
@@ -38,7 +38,7 @@ function ChipPicker({ options, value, onChange, theme }) {
       {Object.entries(options).map(([val, label]) => {
         const active = value === val;
         return (
-          <Text
+          <TouchableOpacity
             key={val}
             onPress={() => onChange(val)}
             style={[
@@ -46,21 +46,28 @@ function ChipPicker({ options, value, onChange, theme }) {
               {
                 borderColor: active ? theme.accent : theme.border,
                 backgroundColor: active ? theme.accentBg : theme.card,
-                color: active ? theme.accent : theme.textSecondary,
               },
             ]}
+            activeOpacity={0.7}
           >
-            {label}
-          </Text>
+            <Text
+              style={[
+                styles.chipText,
+                { color: active ? theme.accent : theme.textSecondary },
+              ]}
+            >
+              {label}
+            </Text>
+          </TouchableOpacity>
         );
       })}
     </View>
   );
 }
 
-function Field({ label, optional, children, theme }) {
+function Field({ label, optional, children, theme, style }) {
   return (
-    <View style={styles.field}>
+    <View style={[styles.field, style]}>
       <Text style={[styles.label, { color: theme.textSecondary }]}>
         {label}{optional ? <Text style={{ color: theme.textMuted }}> (optional)</Text> : null}
       </Text>
@@ -79,7 +86,7 @@ export default function UniversalFields({ form, onChange, theme: themeProp }) {
       <Text style={[styles.sectionTitle, { color: theme.text }]}>About You</Text>
 
       <View style={styles.row}>
-        <Field label="Name" theme={theme} style={{ flex: 1 }}>
+        <Field label="Name" theme={theme}>
           <TextInput
             style={input}
             value={form.name || ''}
@@ -88,7 +95,7 @@ export default function UniversalFields({ form, onChange, theme: themeProp }) {
             placeholderTextColor={theme.textMuted}
           />
         </Field>
-        <Field label="Age" theme={theme} style={{ flex: 1 }}>
+        <Field label="Age" theme={theme}>
           <TextInput
             style={input}
             value={String(form.age || '')}
@@ -109,7 +116,7 @@ export default function UniversalFields({ form, onChange, theme: themeProp }) {
         />
       </Field>
 
-      <Text style={[styles.sectionTitle, { color: theme.text, marginTop: spacing[4] }]}>Body Metrics</Text>
+      <Text style={[styles.sectionTitle, { color: theme.text, marginTop: spacing[5] }]}>Body Metrics</Text>
 
       <View style={styles.row}>
         <Field label="Height (cm)" theme={theme}>
@@ -123,25 +130,28 @@ export default function UniversalFields({ form, onChange, theme: themeProp }) {
         </Field>
       </View>
 
-      <Text style={[styles.sectionTitle, { color: theme.text, marginTop: spacing[4] }]}>Training Profile</Text>
+      <Text style={[styles.sectionTitle, { color: theme.text, marginTop: spacing[5] }]}>Training Profile</Text>
 
-      <Field label="Activity Level" theme={theme}>
-        <ChipPicker options={ACTIVITY_LABELS} value={form.activityLevel} onChange={(v) => onChange('activityLevel', v)} theme={theme} />
-      </Field>
+      <View style={styles.fieldGroup}>
+        <Field label="Activity Level" theme={theme}>
+          <ChipPicker options={ACTIVITY_LABELS} value={form.activityLevel} onChange={(v) => onChange('activityLevel', v)} theme={theme} />
+        </Field>
 
-      <Field label="Primary Goal" theme={theme}>
-        <ChipPicker options={GOAL_LABELS} value={form.primaryGoal} onChange={(v) => onChange('primaryGoal', v)} theme={theme} />
-      </Field>
+        <Field label="Primary Goal" theme={theme} style={{ marginTop: spacing[5] }}>
+          <ChipPicker options={GOAL_LABELS} value={form.primaryGoal} onChange={(v) => onChange('primaryGoal', v)} theme={theme} />
+        </Field>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { gap: spacing[3] },
-  sectionTitle: { fontSize: typography.sizes.base, fontWeight: '700' },
+  container: { gap: spacing[4] },
+  sectionTitle: { fontSize: typography.sizes.base, fontWeight: '700', marginBottom: spacing[1] },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[3] },
-  field: { flex: 1, minWidth: 120, gap: spacing[1] },
-  label: { fontSize: typography.sizes.sm, fontWeight: '500' },
+  fieldGroup: {},
+  field: { flex: 1, minWidth: 120, marginBottom: spacing[3] },
+  label: { fontSize: typography.sizes.sm, fontWeight: '500', marginBottom: spacing[2] },
   input: {
     borderWidth: 1, borderRadius: radius.md,
     paddingHorizontal: spacing[3], paddingVertical: spacing[2],
@@ -149,11 +159,16 @@ const styles = StyleSheet.create({
   },
   segmented: { flexDirection: 'row', borderWidth: 1, borderRadius: radius.md, overflow: 'hidden' },
   segment: { flex: 1, textAlign: 'center', paddingVertical: spacing[2], fontSize: typography.sizes.sm, fontWeight: '600' },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2], marginTop: spacing[1] },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2], rowGap: spacing[2] },
   chip: {
-    borderWidth: 1, borderRadius: radius.full,
-    paddingHorizontal: spacing[3], paddingVertical: spacing[2],
-    fontSize: typography.sizes.xs, fontWeight: '500',
+    borderWidth: 1,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[2],
+  },
+  chipText: {
+    fontSize: typography.sizes.sm,
+    fontWeight: '500',
     textAlign: 'center',
   },
 });

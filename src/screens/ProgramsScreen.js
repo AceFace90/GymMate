@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useLayoutEffect } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   TextInput, Modal, ScrollView, Alert, ActivityIndicator,
@@ -30,6 +30,20 @@ export default function ProgramsScreen({ navigation }) {
   const [newDesc, setNewDesc] = useState('');
   const [newDays, setNewDays] = useState('3');
   const [creating, setCreating] = useState(false);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={() => setShowCreate(true)}
+          style={{ marginRight: spacing[4] }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Ionicons name="add" size={28} color={theme.accent} />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, theme]);
 
   useFocusEffect(useCallback(() => {
     getGeminiKey().then((k) => setHasKey(!!k));
@@ -190,18 +204,6 @@ export default function ProgramsScreen({ navigation }) {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: theme.text }]}>GymMate</Text>
-        <Text style={[styles.subtitle, { color: theme.accent }]}>Programs</Text>
-        <TouchableOpacity
-          onPress={() => setShowCreate(true)}
-          style={[styles.addBtn, { backgroundColor: theme.accentBg, borderColor: theme.accentBorder }]}
-        >
-          <Text style={{ fontSize: 22, color: theme.accent, lineHeight: 26 }}>+</Text>
-        </TouchableOpacity>
-      </View>
-
       {/* Quick / ad-hoc workout — no program needed */}
       <TouchableOpacity
         onPress={handleQuickWorkout}
@@ -322,11 +324,7 @@ export default function ProgramsScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { paddingHorizontal: spacing[5], paddingTop: spacing[3], paddingBottom: spacing[4], flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
-  title: { fontSize: typography.sizes['2xl'], fontWeight: '700', flex: 1 },
-  subtitle: { fontSize: typography.sizes.lg, fontWeight: '600', marginRight: spacing[3] },
-  addBtn: { width: 36, height: 36, borderRadius: radius.full, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  quickBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], marginHorizontal: spacing[4], marginBottom: spacing[2], padding: spacing[4], borderRadius: radius.lg, borderWidth: 1 },
+  quickBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], marginHorizontal: spacing[4], marginTop: spacing[3], marginBottom: spacing[2], padding: spacing[4], borderRadius: radius.lg, borderWidth: 1 },
   quickTitle: { fontSize: typography.sizes.base, fontWeight: '700' },
   quickSub: { fontSize: typography.sizes.xs, marginTop: 1 },
   list: { padding: spacing[4], gap: spacing[3] },

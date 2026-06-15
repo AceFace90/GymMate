@@ -17,11 +17,11 @@ import ProgressScreen from '../screens/ProgressScreen';
 import ExercisesScreen from '../screens/ExercisesScreen';
 import ExerciseDetailScreen from '../screens/ExerciseDetailScreen';
 import ProfileScreen from '../screens/ProfileScreen';
-import BiometricsScreen from '../screens/BiometricsScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 
 const Tab = createBottomTabNavigator();
 const ProgramsStack = createStackNavigator();
+const ProgressStack = createStackNavigator();
 const ExercisesStack = createStackNavigator();
 const ProfileStack = createStackNavigator();
 
@@ -44,6 +44,22 @@ function ProgramsStackNav() {
         options={{ title: 'Workout', headerBackVisible: false }}
       />
     </ProgramsStack.Navigator>
+  );
+}
+
+function ProgressStackNav() {
+  const { theme } = useTheme();
+  return (
+    <ProgressStack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: theme.bg },
+        headerTintColor: theme.text,
+        headerShadowVisible: false,
+        contentStyle: { backgroundColor: theme.bg },
+      }}
+    >
+      <ProgressStack.Screen name="ProgressMain" component={ProgressScreen} options={{ title: 'Progress' }} />
+    </ProgressStack.Navigator>
   );
 }
 
@@ -75,7 +91,6 @@ function ProfileStackNav({ onLogout }) {
       >
         {(props) => <ProfileScreen {...props} onLogout={onLogout} />}
       </ProfileStack.Screen>
-      <ProfileStack.Screen name="Biometrics" component={BiometricsScreen} options={{ title: 'Biometrics & Goals' }} />
       <ProfileStack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
     </ProfileStack.Navigator>
   );
@@ -139,7 +154,7 @@ export default function AppNavigator({ user, onLogout }) {
           {(props) => <HomeScreen {...props} user={user} />}
         </Tab.Screen>
         <Tab.Screen name="Programs" component={ProgramsStackNav} />
-        <Tab.Screen name="Progress" component={ProgressScreen} />
+        <Tab.Screen name="Progress" component={ProgressStackNav} />
         <Tab.Screen name="Exercises" component={ExercisesStackNav} />
         <Tab.Screen
           name="Profile"
