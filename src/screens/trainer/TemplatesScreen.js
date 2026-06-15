@@ -188,7 +188,8 @@ export default function TemplatesScreen({ navigation }) {
   }
 
   function handleTemplatePress(template) {
-    navigation.navigate('TemplateDetail', { template });
+    // Navigate to edit instead (no separate detail view)
+    handleEditTemplate(template);
   }
 
   function handleEditTemplate(template) {
