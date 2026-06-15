@@ -12,6 +12,14 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    // Helper function to match user ID with or without 'google-' prefix
+    function isUserMatch(userId) {
+      return isSignedIn() && (
+        request.auth.uid == userId ||
+        'google-' + request.auth.uid == userId
+      );
+    }
+
     // User data (existing rule)
     match /users/{userId} {
       allow read, write: if isOwner(userId);
@@ -21,28 +29,28 @@ service cloud.firestore {
     match /trainer_clients/{relationshipId} {
       // Trainer can read/write their own relationships
       allow read: if isSignedIn() && (
-        request.auth.uid == resource.data.trainerId ||
-        request.auth.uid == resource.data.clientId
+        isUserMatch(resource.data.trainerId) ||
+        isUserMatch(resource.data.clientId)
       );
 
       // Trainer can create invite (relationship)
-      allow create: if isSignedIn() && request.resource.data.trainerId == request.auth.uid;
+      allow create: if isSignedIn() && isUserMatch(request.resource.data.trainerId);
 
       // Either party can update (for accepting or revoking)
       allow update: if isSignedIn() && (
-        request.auth.uid == resource.data.trainerId ||
-        request.auth.uid == resource.data.clientId
+        isUserMatch(resource.data.trainerId) ||
+        isUserMatch(resource.data.clientId)
       );
 
       // Only trainer can delete
-      allow delete: if isSignedIn() && request.auth.uid == resource.data.trainerId;
+      allow delete: if isSignedIn() && isUserMatch(resource.data.trainerId);
     }
 
     // Program Templates
     match /program_templates/{templateId} {
       // Trainer can read/write their own templates
-      allow read, write: if isSignedIn() && resource.data.trainerId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.trainerId == request.auth.uid;
+      allow read, write: if isSignedIn() && isUserMatch(resource.data.trainerId);
+      allow create: if isSignedIn() && isUserMatch(request.resource.data.trainerId);
     }
 
     // Program Assignments
@@ -50,13 +58,13 @@ service cloud.firestore {
       // Trainer can read/write assignments they created
       // Client can read assignments assigned to them
       allow read: if isSignedIn() && (
-        request.auth.uid == resource.data.trainerId ||
-        request.auth.uid == resource.data.clientId
+        isUserMatch(resource.data.trainerId) ||
+        isUserMatch(resource.data.clientId)
       );
 
       // Only trainer can create/update/delete assignments
-      allow create: if isSignedIn() && request.resource.data.trainerId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.trainerId == request.auth.uid;
+      allow create: if isSignedIn() && isUserMatch(request.resource.data.trainerId);
+      allow update, delete: if isSignedIn() && isUserMatch(resource.data.trainerId);
     }
 
     // Workout Feedback
@@ -64,15 +72,15 @@ service cloud.firestore {
       // Trainer can read/write feedback they created
       // Client can read feedback for their workouts
       allow read: if isSignedIn() && (
-        request.auth.uid == resource.data.trainerId ||
-        request.auth.uid == resource.data.clientId
+        isUserMatch(resource.data.trainerId) ||
+        isUserMatch(resource.data.clientId)
       );
 
       // Only trainer can create feedback
-      allow create: if isSignedIn() && request.resource.data.trainerId == request.auth.uid;
+      allow create: if isSignedIn() && isUserMatch(request.resource.data.trainerId);
 
       // Only trainer who created it can update/delete
-      allow update, delete: if isSignedIn() && resource.data.trainerId == request.auth.uid;
+      allow update, delete: if isSignedIn() && isUserMatch(resource.data.trainerId);
     }
   }
 }
