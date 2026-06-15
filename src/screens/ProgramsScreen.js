@@ -32,6 +32,7 @@ export default function ProgramsScreen({ navigation }) {
   const [newDesc, setNewDesc] = useState('');
   const [newDays, setNewDays] = useState('3');
   const [creating, setCreating] = useState(false);
+  const [newAssignmentsCount, setNewAssignmentsCount] = useState(0);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -69,6 +70,7 @@ export default function ProgramsScreen({ navigation }) {
 
       // Get assignments from Firestore
       const assignments = await programTemplates.getClientAssignments(currentUser.id);
+      let newCount = 0;
 
       // Get existing programs once
       const existingPrograms = await db.getPrograms();
@@ -183,7 +185,10 @@ export default function ProgramsScreen({ navigation }) {
         }
 
         console.log('[ProgramsScreen] Synced program with days/exercises:', programName);
+        newCount++; // Count new assignments
       }
+
+      setNewAssignmentsCount(newCount);
     } catch (error) {
       console.error('[ProgramsScreen] Failed to sync assigned programs:', error);
     }
@@ -339,6 +344,19 @@ export default function ProgramsScreen({ navigation }) {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]} edges={['top']}>
+      {/* New assignments notification */}
+      {newAssignmentsCount > 0 && (
+        <View style={[styles.notificationBanner, { backgroundColor: colors.green + '20', borderColor: colors.green + '40' }]}>
+          <Ionicons name="checkmark-circle" size={18} color={colors.green} />
+          <Text style={[styles.notificationText, { color: colors.green }]}>
+            {newAssignmentsCount} new program{newAssignmentsCount !== 1 ? 's' : ''} assigned by your trainer!
+          </Text>
+          <TouchableOpacity onPress={() => setNewAssignmentsCount(0)}>
+            <Ionicons name="close" size={18} color={colors.green} />
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Quick / ad-hoc workout — no program needed */}
       <TouchableOpacity
         onPress={handleQuickWorkout}
@@ -459,6 +477,8 @@ export default function ProgramsScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  notificationBanner: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginHorizontal: spacing[4], marginTop: spacing[3], padding: spacing[3], borderRadius: radius.md, borderWidth: 1 },
+  notificationText: { flex: 1, fontSize: typography.sizes.sm, fontWeight: '600' },
   quickBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], marginHorizontal: spacing[4], marginTop: spacing[3], marginBottom: spacing[2], padding: spacing[4], borderRadius: radius.lg, borderWidth: 1 },
   quickTitle: { fontSize: typography.sizes.base, fontWeight: '700' },
   quickSub: { fontSize: typography.sizes.xs, marginTop: 1 },
