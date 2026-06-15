@@ -49,6 +49,18 @@ export default function TemplatesScreen({ navigation }) {
 
       const fetchedTemplates = await programTemplates.getMyTemplates(user.id);
       console.log('[TemplatesScreen] Loaded templates:', fetchedTemplates);
+
+      // Migration: fix templates that were created with is_template=0
+      for (const template of fetchedTemplates) {
+        if (template.programId) {
+          const program = await db.getProgramById(template.programId);
+          if (program && !program.is_template) {
+            console.log('[TemplatesScreen] Fixing template flag for:', program.name);
+            await db.updateProgram(template.programId, { isTemplate: true });
+          }
+        }
+      }
+
       setTemplates(fetchedTemplates);
     } catch (error) {
       console.error('Failed to load templates:', error);
@@ -93,7 +105,14 @@ export default function TemplatesScreen({ navigation }) {
       });
 
       // Create program as template
-      const progId = await db.createProgram(result.name, result.description, true, currentUser.id);
+      const progId = await db.createProgram({
+        name: result.name,
+        description: result.description,
+        daysPerWeek: result.days?.length || daysPerWeek,
+        isActive: false,
+        createdByUserId: currentUser.id,
+        isTemplate: true,
+      });
 
       // Save days + exercises
       for (let i = 0; i < (result.days || []).length; i++) {
@@ -155,7 +174,14 @@ export default function TemplatesScreen({ navigation }) {
 
     try {
       // Create as a local program with is_template=1
-      const programId = await db.createProgram(newName.trim(), newDesc.trim() || null, true, currentUser.id);
+      const programId = await db.createProgram({
+        name: newName.trim(),
+        description: newDesc.trim() || null,
+        daysPerWeek: 3,
+        isActive: false,
+        createdByUserId: currentUser.id,
+        isTemplate: true,
+      });
 
       // Create the Firestore template
       await programTemplates.createTemplate(
