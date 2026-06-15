@@ -86,21 +86,24 @@ export default function ProgramsScreen({ navigation }) {
 
         console.log('[ProgramsScreen] Creating local program for assignment:', assignment.assignmentId);
 
-        // Get template data
-        const template = await programTemplates.getTemplate(assignment.templateId);
+        // Use data from assignment (no need to fetch template - client can't access it)
+        // Assignment already contains programData with name, description, etc.
+        const programName = assignment.programData?.name || 'Trainer Program';
+        const programDesc = assignment.programData?.description || 'Assigned by your trainer';
+        const daysPerWeek = assignment.programData?.daysPerWeek || 3;
 
         // Create local program (as read-only, linked to assignment)
         const programId = await db.createProgram({
-          name: `🔒 ${template.name}`,
-          description: template.description || 'Assigned by your trainer',
-          daysPerWeek: template.daysPerWeek || 3,
+          name: `🔒 ${programName}`,
+          description: programDesc,
+          daysPerWeek: daysPerWeek,
           isActive: false,
           createdByUserId: assignment.trainerId,
           isTemplate: false,
           linkedTemplateId: assignment.assignmentId, // Store assignment ID here
         });
 
-        console.log('[ProgramsScreen] Created local program:', programId);
+        console.log('[ProgramsScreen] Created local program:', programId, 'for', programName);
       }
     } catch (error) {
       console.error('[ProgramsScreen] Failed to sync assigned programs:', error);
