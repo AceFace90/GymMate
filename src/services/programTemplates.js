@@ -7,13 +7,25 @@ export async function createTemplate(trainerId, programData) {
   const templateId = `tpl_${trainerId}_${Date.now()}`;
   const templateRef = doc(firestore, 'program_templates', templateId);
 
+  // If programId is provided, fetch full program structure
+  let fullProgramData = programData;
+  if (programData.programId && !programData.days) {
+    const program = await db.getProgramById(programData.programId);
+    if (program) {
+      fullProgramData = {
+        ...programData,
+        days: program.days,
+      };
+    }
+  }
+
   await setDoc(templateRef, {
     trainerId,
     programId: programData.programId, // Store the local DB program ID
-    name: programData.name,
-    description: programData.description || '',
-    daysPerWeek: programData.days_per_week || programData.daysPerWeek || 3,
-    programData, // Full program structure (days, exercises)
+    name: fullProgramData.name,
+    description: fullProgramData.description || '',
+    daysPerWeek: fullProgramData.days_per_week || fullProgramData.daysPerWeek || 3,
+    programData: fullProgramData, // Full program structure (days, exercises)
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });

@@ -157,10 +157,20 @@ export async function getProgramById(id) {
   return program;
 }
 
-export async function createProgram({ name, description, daysPerWeek }) {
+export async function createProgram({ name, description, daysPerWeek, isActive, createdByUserId, isTemplate, linkedTemplateId }) {
   const rows = getTable('programs');
   const id = nextId('programs');
-  rows.push({ id, name, description: description || null, days_per_week: daysPerWeek || 3, is_active: 0, created_at: now() });
+  rows.push({
+    id,
+    name,
+    description: description || null,
+    days_per_week: daysPerWeek || 3,
+    is_active: isActive ? 1 : 0,
+    created_at: now(),
+    created_by_user_id: createdByUserId || null,
+    is_template: isTemplate ? 1 : 0,
+    linked_template_id: linkedTemplateId || null,
+  });
   setTable('programs', rows);
   return id;
 }

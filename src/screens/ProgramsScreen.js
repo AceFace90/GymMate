@@ -67,35 +67,40 @@ export default function ProgramsScreen({ navigation }) {
       const currentUser = await auth.getCurrentUser();
       if (!currentUser) return;
 
-      console.log('[ProgramsScreen] Syncing assigned programs for user:', currentUser.id);
-
       // Get assignments from Firestore
       const assignments = await programTemplates.getClientAssignments(currentUser.id);
-      console.log('[ProgramsScreen] Found assignments:', assignments);
 
       // Get existing programs once
       const existingPrograms = await db.getPrograms();
-      console.log('[ProgramsScreen] Existing programs:', existingPrograms.map(p => ({ id: p.id, name: p.name, linked_template_id: p.linked_template_id })));
 
-      // Sync each assignment to local DB
+      // Find assigned programs that exist locally
+      const assignedPrograms = existingPrograms.filter(p => p.linked_template_id);
+
+      // Delete local programs whose assignments no longer exist
+      const assignmentIds = assignments.map(a => a.assignmentId);
+      for (const program of assignedPrograms) {
+        if (!assignmentIds.includes(program.linked_template_id)) {
+          console.log('[ProgramsScreen] Removing unassigned program:', program.name);
+          await db.deleteProgram(program.id);
+        }
+      }
+
+      // Create new assigned programs
       for (const assignment of assignments) {
-        // Check if we already have this program locally (use assignment ID as linked_template_id for now)
+        // Check if we already have this program locally
         const existing = existingPrograms.find(p => p.linked_template_id === assignment.assignmentId);
 
-        console.log('[ProgramsScreen] Checking assignment:', assignment.assignmentId, 'existing?', !!existing);
-
         if (existing) {
-          console.log('[ProgramsScreen] Program already synced:', existing.id, existing.name);
+          console.log('[ProgramsScreen] Program already synced:', existing.name);
           continue; // Already synced
         }
 
-        console.log('[ProgramsScreen] Creating local program for assignment:', assignment.assignmentId);
-
         // Use data from assignment (no need to fetch template - client can't access it)
-        // Assignment already contains programData with name, description, etc.
-        const programName = assignment.programData?.name || 'Trainer Program';
-        const programDesc = assignment.programData?.description || 'Assigned by your trainer';
-        const daysPerWeek = assignment.programData?.daysPerWeek || 3;
+        // Assignment already contains programData with name, description, days, exercises
+        const programData = assignment.programData || {};
+        const programName = programData.name || 'Trainer Program';
+        const programDesc = programData.description || 'Assigned by your trainer';
+        const daysPerWeek = programData.daysPerWeek || programData.days_per_week || 3;
 
         // Create local program (as read-only, linked to assignment)
         const programId = await db.createProgram({
@@ -108,7 +113,32 @@ export default function ProgramsScreen({ navigation }) {
           linkedTemplateId: assignment.assignmentId, // Store assignment ID here
         });
 
-        console.log('[ProgramsScreen] Created local program:', programId, 'for', programName);
+        // Sync days and exercises from programData
+        if (programData.days && Array.isArray(programData.days)) {
+          for (const day of programData.days) {
+            const dayId = await db.addProgramDay(programId, {
+              name: day.name || `Day ${day.day_number || day.dayNumber || 1}`,
+              dayNumber: day.day_number || day.dayNumber || 1,
+              sortOrder: day.sort_order || day.sortOrder || 0,
+            });
+
+            // Sync exercises for this day
+            if (day.exercises && Array.isArray(day.exercises)) {
+              for (const exercise of day.exercises) {
+                await db.addExerciseToDay(dayId, {
+                  exerciseId: exercise.exercise_id || exercise.exerciseId,
+                  sets: exercise.sets || 3,
+                  reps: exercise.reps || '8-12',
+                  restSeconds: exercise.rest_seconds || exercise.restSeconds || 90,
+                  notes: exercise.notes || null,
+                  sortOrder: exercise.sort_order || exercise.sortOrder || 0,
+                });
+              }
+            }
+          }
+        }
+
+        console.log('[ProgramsScreen] Synced program with days/exercises:', programName);
       }
     } catch (error) {
       console.error('[ProgramsScreen] Failed to sync assigned programs:', error);
