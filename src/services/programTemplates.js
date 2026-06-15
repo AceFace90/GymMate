@@ -93,6 +93,18 @@ export async function getClientAssignments(clientId) {
   return snapshot.docs.map(doc => ({ assignmentId: doc.id, ...doc.data() }));
 }
 
+// Get assignments for a specific client (trainer's view)
+export async function getClientAssignmentsByTrainer(trainerId, clientId) {
+  const q = query(
+    collection(firestore, 'program_assignments'),
+    where('trainerId', '==', trainerId),
+    where('clientId', '==', clientId)
+  );
+
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ assignmentId: doc.id, ...doc.data() }));
+}
+
 // Get assignments for a specific template
 export async function getTemplateAssignments(templateId) {
   const q = query(

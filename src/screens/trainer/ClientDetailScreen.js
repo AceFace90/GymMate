@@ -26,8 +26,8 @@ export default function ClientDetailScreen({ route, navigation }) {
 
   async function loadAssignments() {
     try {
-      // Get all assignments, then filter for this client
-      const allAssignments = await programTemplates.getClientAssignments(client.clientId);
+      // Get assignments for this trainer-client pair
+      const allAssignments = await programTemplates.getClientAssignmentsByTrainer(client.trainerId, client.clientId);
       console.log('[ClientDetailScreen] Assignments for client:', allAssignments);
       setAssignments(allAssignments);
     } catch (error) {
