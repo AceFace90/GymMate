@@ -66,9 +66,17 @@ service cloud.firestore {
         isUserMatch(resource.data.clientId)
       );
 
-      // Only trainer can create/update/delete assignments
+      // Only trainer can create/delete assignments
       allow create: if isSignedIn() && isUserMatch(request.resource.data.trainerId);
-      allow update, delete: if isSignedIn() && isUserMatch(resource.data.trainerId);
+      allow delete: if isSignedIn() && isUserMatch(resource.data.trainerId);
+
+      // Trainer can update their assignments (for sync)
+      // Client can update lastSyncedAt field only
+      allow update: if isSignedIn() && (
+        isUserMatch(resource.data.trainerId) ||
+        (isUserMatch(resource.data.clientId) &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastSyncedAt']))
+      );
     }
 
     // Workout Feedback
