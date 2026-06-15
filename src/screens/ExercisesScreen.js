@@ -238,7 +238,11 @@ const styles = StyleSheet.create({
   searchBar: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginHorizontal: spacing[4], marginBottom: spacing[2], borderRadius: radius.lg, borderWidth: 1, paddingHorizontal: spacing[3], paddingVertical: spacing[2] },
   searchInput: { flex: 1, fontSize: typography.sizes.base },
   filterRow: { paddingHorizontal: spacing[4], paddingBottom: spacing[3], gap: spacing[2] },
-  filterChip: { borderRadius: radius.full, borderWidth: 1, borderColor: '#e5e7eb', paddingHorizontal: spacing[3], paddingVertical: spacing[1] },
+  filterChip: {
+    borderRadius: radius.full, borderWidth: 1, borderColor: '#e5e7eb',
+    paddingHorizontal: spacing[3], paddingVertical: spacing[2],
+    height: 36, justifyContent: 'center', alignItems: 'center',
+  },
   filterChipText: { fontSize: typography.sizes.sm, fontWeight: '600' },
   exRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing[3], paddingHorizontal: spacing[4], borderBottomWidth: StyleSheet.hairlineWidth },
   accentBar: { width: 3, height: 32, borderRadius: 2, marginRight: spacing[3] },
