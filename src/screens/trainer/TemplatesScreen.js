@@ -212,6 +212,25 @@ export default function TemplatesScreen({ navigation }) {
     navigation.navigate('AssignProgram', { template });
   }
 
+  async function handleSyncTemplate(template) {
+    try {
+      const count = await programTemplates.updateTemplateAndSync(template.templateId, currentUser.id);
+
+      if (Platform.OS === 'web') {
+        alert(count > 0 ? `Synced changes to ${count} assigned client${count !== 1 ? 's' : ''}` : 'No clients assigned to this template');
+      } else {
+        Alert.alert('Sync Complete', count > 0 ? `Updated ${count} assigned client${count !== 1 ? 's' : ''}` : 'No clients assigned to this template');
+      }
+    } catch (error) {
+      console.error('Failed to sync template:', error);
+      if (Platform.OS === 'web') {
+        alert(`Failed to sync: ${error.message}`);
+      } else {
+        Alert.alert('Error', 'Failed to sync changes');
+      }
+    }
+  }
+
   async function handleDeleteTemplate(template) {
     const confirmed = Platform.OS === 'web'
       ? window.confirm(`Delete "${template.name}"?\n\nThis won't affect programs already assigned to clients.`)
@@ -298,6 +317,7 @@ export default function TemplatesScreen({ navigation }) {
                 onPress={() => handleTemplatePress(template)}
                 onEdit={() => handleEditTemplate(template)}
                 onAssign={() => handleAssignTemplate(template)}
+                onSync={() => handleSyncTemplate(template)}
                 onDelete={() => handleDeleteTemplate(template)}
               />
             ))}

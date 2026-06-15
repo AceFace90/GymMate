@@ -66,6 +66,49 @@ export async function updateTemplate(templateId, updates) {
   });
 }
 
+// Update template and sync to all assigned clients
+export async function updateTemplateAndSync(templateId, trainerId) {
+  // Fetch the updated template with full program data
+  const template = await getTemplate(templateId);
+
+  // Fetch the full program structure if not already present
+  let fullProgramData = template.programData;
+  if (template.programId && !fullProgramData?.days) {
+    const program = await db.getProgramById(template.programId);
+    if (program) {
+      fullProgramData = {
+        ...template.programData,
+        name: program.name,
+        description: program.description,
+        days_per_week: program.days_per_week,
+        days: program.days,
+      };
+    }
+  }
+
+  // Update the template with fresh program data
+  await updateTemplate(templateId, {
+    programData: fullProgramData,
+    name: fullProgramData.name,
+    description: fullProgramData.description || '',
+    daysPerWeek: fullProgramData.days_per_week || fullProgramData.daysPerWeek || 3,
+  });
+
+  // Find all assignments for this template
+  const assignments = await getTemplateAssignments(templateId);
+
+  // Update each assignment with new program data
+  for (const assignment of assignments) {
+    const assignmentRef = doc(firestore, 'program_assignments', assignment.assignmentId);
+    await updateDoc(assignmentRef, {
+      programData: fullProgramData,
+      updatedAt: serverTimestamp(),
+    });
+  }
+
+  return assignments.length; // Return count of updated assignments
+}
+
 // Delete a template
 export async function deleteTemplate(templateId) {
   const templateRef = doc(firestore, 'program_templates', templateId);

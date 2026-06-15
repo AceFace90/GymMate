@@ -6,7 +6,7 @@ import Card from '../Card';
 import Button from '../Button';
 import { spacing, typography } from '../../theme';
 
-export default function TemplateCard({ template, onPress, onEdit, onAssign, onDelete }) {
+export default function TemplateCard({ template, onPress, onEdit, onAssign, onSync, onDelete }) {
   const { theme } = useTheme();
 
   const exerciseCount = template.programData?.days?.reduce((sum, day) => {
@@ -64,6 +64,13 @@ export default function TemplateCard({ template, onPress, onEdit, onAssign, onDe
           <TouchableOpacity onPress={onAssign} style={styles.actionBtn}>
             <Ionicons name="person-add-outline" size={18} color={theme.accent} />
             <Text style={[styles.actionText, { color: theme.accent }]}>Assign</Text>
+          </TouchableOpacity>
+        )}
+
+        {onSync && (
+          <TouchableOpacity onPress={onSync} style={styles.actionBtn}>
+            <Ionicons name="sync-outline" size={18} color={theme.accent} />
+            <Text style={[styles.actionText, { color: theme.accent }]}>Sync</Text>
           </TouchableOpacity>
         )}
 
