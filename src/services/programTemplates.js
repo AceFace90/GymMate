@@ -68,8 +68,11 @@ export async function updateTemplate(templateId, updates) {
 
 // Update template and sync to all assigned clients
 export async function updateTemplateAndSync(templateId, trainerId) {
+  console.log('[updateTemplateAndSync] trainerId param:', trainerId);
   // Fetch the updated template with full program data
+  console.log('[updateTemplateAndSync] Fetching template:', templateId);
   const template = await getTemplate(templateId);
+  console.log('[updateTemplateAndSync] Template fetched:', template.name);
 
   // Fetch the full program structure if not already present
   let fullProgramData = template.programData;
@@ -87,23 +90,45 @@ export async function updateTemplateAndSync(templateId, trainerId) {
   }
 
   // Update the template with fresh program data
-  await updateTemplate(templateId, {
-    programData: fullProgramData,
-    name: fullProgramData.name,
-    description: fullProgramData.description || '',
-    daysPerWeek: fullProgramData.days_per_week || fullProgramData.daysPerWeek || 3,
-  });
+  console.log('[updateTemplateAndSync] Updating template with', fullProgramData.days?.length || 0, 'days');
+  try {
+    await updateTemplate(templateId, {
+      programData: fullProgramData,
+      name: fullProgramData.name,
+      description: fullProgramData.description || '',
+      daysPerWeek: fullProgramData.days_per_week || fullProgramData.daysPerWeek || 3,
+    });
+    console.log('[updateTemplateAndSync] Template updated successfully');
+  } catch (error) {
+    console.error('[updateTemplateAndSync] Failed to update template:', error);
+    throw error;
+  }
 
-  // Find all assignments for this template
-  const assignments = await getTemplateAssignments(templateId);
+  // Find all assignments for this template (owned by this trainer)
+  console.log('[updateTemplateAndSync] Finding assignments for template:', templateId, 'trainerId:', trainerId);
+  const q = query(
+    collection(firestore, 'program_assignments'),
+    where('templateId', '==', templateId),
+    where('trainerId', '==', trainerId)
+  );
+  const snapshot = await getDocs(q);
+  const assignments = snapshot.docs.map(doc => ({ assignmentId: doc.id, ...doc.data() }));
+  console.log('[updateTemplateAndSync] Found', assignments.length, 'assignments');
 
   // Update each assignment with new program data
   for (const assignment of assignments) {
-    const assignmentRef = doc(firestore, 'program_assignments', assignment.assignmentId);
-    await updateDoc(assignmentRef, {
-      programData: fullProgramData,
-      updatedAt: serverTimestamp(),
-    });
+    console.log('[updateTemplateAndSync] Updating assignment:', assignment.assignmentId);
+    try {
+      const assignmentRef = doc(firestore, 'program_assignments', assignment.assignmentId);
+      await updateDoc(assignmentRef, {
+        programData: fullProgramData,
+        updatedAt: serverTimestamp(),
+      });
+      console.log('[updateTemplateAndSync] Assignment updated successfully');
+    } catch (error) {
+      console.error('[updateTemplateAndSync] Failed to update assignment:', assignment.assignmentId, error);
+      throw error;
+    }
   }
 
   return assignments.length; // Return count of updated assignments

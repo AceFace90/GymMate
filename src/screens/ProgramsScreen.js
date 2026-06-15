@@ -59,6 +59,11 @@ export default function ProgramsScreen({ navigation }) {
     await syncAssignedPrograms();
 
     const data = await db.getPrograms();
+    console.log('[ProgramsScreen] Loaded programs:', data.map(p => ({
+      id: p.id,
+      name: p.name,
+      linked_template_id: p.linked_template_id
+    })));
     setPrograms(data);
     setLoading(false);
   };

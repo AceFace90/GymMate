@@ -213,6 +213,9 @@ export default function TemplatesScreen({ navigation }) {
   }
 
   async function handleSyncTemplate(template) {
+    console.log('[TemplatesScreen] Syncing template:', template.templateId);
+    console.log('[TemplatesScreen] Current user:', currentUser.id);
+    console.log('[TemplatesScreen] Template trainerId:', template.trainerId);
     try {
       const count = await programTemplates.updateTemplateAndSync(template.templateId, currentUser.id);
 
