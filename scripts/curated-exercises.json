@@ -1,0 +1,266 @@
+[
+  {
+    "name": "Larsen Press (Barbell)",
+    "muscleGroup": "chest",
+    "category": "barbell",
+    "instructions": "Bench press variation with feet elevated. Lower bar to chest, press up."
+  },
+  {
+    "name": "Svend Press",
+    "muscleGroup": "chest",
+    "category": "dumbbell",
+    "instructions": "Hold plates together at chest. Press straight out, squeeze chest, return."
+  },
+  {
+    "name": "Floor Press (Barbell)",
+    "muscleGroup": "chest",
+    "category": "barbell",
+    "instructions": "Lie on floor, press bar to lockout. Limits range for tricep focus."
+  },
+  {
+    "name": "Floor Press (Dumbbell)",
+    "muscleGroup": "chest",
+    "category": "dumbbell",
+    "instructions": "Lie on floor with dumbbells. Press up, elbows touch floor each rep."
+  },
+  {
+    "name": "Low to High Cable Flye",
+    "muscleGroup": "chest",
+    "category": "cable",
+    "instructions": "Cables at low position. Bring handles up and together targeting upper chest."
+  },
+  {
+    "name": "High to Low Cable Flye",
+    "muscleGroup": "chest",
+    "category": "cable",
+    "instructions": "Cables at high position. Bring handles down and together targeting lower chest."
+  },
+  {
+    "name": "Landmine Press",
+    "muscleGroup": "chest",
+    "category": "barbell",
+    "instructions": "Barbell anchored at one end. Press bar overhead from shoulder."
+  },
+  {
+    "name": "Landmine Row (Single Arm)",
+    "muscleGroup": "back",
+    "category": "barbell",
+    "instructions": "Barbell anchored at one end. Row bar to hip, elbow close to body."
+  },
+  {
+    "name": "Landmine Squat",
+    "muscleGroup": "legs",
+    "category": "barbell",
+    "instructions": "Barbell anchored at one end, hold at chest. Squat down, drive up."
+  },
+  {
+    "name": "Landmine Romanian Deadlift",
+    "muscleGroup": "legs",
+    "category": "barbell",
+    "instructions": "Barbell anchored at one end. Hinge at hips, feel hamstring stretch."
+  },
+  {
+    "name": "Landmine Twist",
+    "muscleGroup": "core",
+    "category": "barbell",
+    "instructions": "Barbell anchored at one end. Rotate bar side to side from chest."
+  },
+  {
+    "name": "Pallof Press",
+    "muscleGroup": "core",
+    "category": "cable",
+    "instructions": "Cable at chest height. Press out resisting rotation, hold, return."
+  },
+  {
+    "name": "Cable Woodchop (High to Low)",
+    "muscleGroup": "core",
+    "category": "cable",
+    "instructions": "Cable high, pull down and across body in chopping motion."
+  },
+  {
+    "name": "Cable Woodchop (Low to High)",
+    "muscleGroup": "core",
+    "category": "cable",
+    "instructions": "Cable low, pull up and across body in lifting motion."
+  },
+  {
+    "name": "Dead Bug",
+    "muscleGroup": "core",
+    "category": "bodyweight",
+    "instructions": "Lie on back. Lower opposite arm/leg toward floor, keep core braced."
+  },
+  {
+    "name": "Bird Dog",
+    "muscleGroup": "core",
+    "category": "bodyweight",
+    "instructions": "On hands and knees. Extend opposite arm and leg, hold, return."
+  },
+  {
+    "name": "Stir the Pot",
+    "muscleGroup": "core",
+    "category": "bodyweight",
+    "instructions": "Plank on stability ball. Move arms in circular motion."
+  },
+  {
+    "name": "Body Saw",
+    "muscleGroup": "core",
+    "category": "bodyweight",
+    "instructions": "Forearm plank. Rock body forward and back maintaining plank."
+  },
+  {
+    "name": "Bulgarian Split Squat (Single Arm)",
+    "muscleGroup": "legs",
+    "category": "dumbbell",
+    "instructions": "Rear foot elevated, hold one dumbbell. Single-side loading for core challenge."
+  },
+  {
+    "name": "Spanish Squat",
+    "muscleGroup": "legs",
+    "category": "bodyweight",
+    "instructions": "Band behind knees, heels elevated. Squat emphasizing quads."
+  },
+  {
+    "name": "Wall Sit",
+    "muscleGroup": "legs",
+    "category": "bodyweight",
+    "instructions": "Back against wall, thighs parallel to floor. Hold position."
+  },
+  {
+    "name": "Nordic Curl",
+    "muscleGroup": "legs",
+    "category": "bodyweight",
+    "instructions": "Kneel, anchor feet. Lower torso forward with control, hamstrings engaged."
+  },
+  {
+    "name": "Reverse Nordic",
+    "muscleGroup": "legs",
+    "category": "bodyweight",
+    "instructions": "Kneel upright. Lean back with control, quads engaged, return."
+  },
+  {
+    "name": "Step-Up (Dumbbell)",
+    "muscleGroup": "legs",
+    "category": "dumbbell",
+    "instructions": "Step onto box or bench, drive through heel, step down with control."
+  },
+  {
+    "name": "Calf Press (Leg Press Machine)",
+    "muscleGroup": "legs",
+    "category": "machine",
+    "instructions": "In leg press, press with balls of feet. Full range calf raises."
+  },
+  {
+    "name": "Seal Row",
+    "muscleGroup": "back",
+    "category": "barbell",
+    "instructions": "Lie prone on elevated bench. Row bar to lower chest, no body english."
+  },
+  {
+    "name": "Meadows Row",
+    "muscleGroup": "back",
+    "category": "barbell",
+    "instructions": "Landmine setup. Stand perpendicular, row bar to hip with one arm."
+  },
+  {
+    "name": "Gorilla Row",
+    "muscleGroup": "back",
+    "category": "dumbbell",
+    "instructions": "Hinged position, two dumbbells on floor. Alternate rowing each side."
+  },
+  {
+    "name": "Chest-Supported Row (Dumbbell)",
+    "muscleGroup": "back",
+    "category": "dumbbell",
+    "instructions": "Chest on incline bench. Row dumbbells to hips, eliminate momentum."
+  },
+  {
+    "name": "Egyptian Lateral Raise",
+    "muscleGroup": "shoulders",
+    "category": "dumbbell",
+    "instructions": "Lean to side. Raise dumbbell from hanging position to overhead."
+  },
+  {
+    "name": "Lu Raise",
+    "muscleGroup": "shoulders",
+    "category": "dumbbell",
+    "instructions": "Front raise to overhead, then lower behind head. Full shoulder rotation."
+  },
+  {
+    "name": "Around the World (Shoulders)",
+    "muscleGroup": "shoulders",
+    "category": "dumbbell",
+    "instructions": "Light weight. Circle arms from front to sides to back continuously."
+  },
+  {
+    "name": "Cuban Press",
+    "muscleGroup": "shoulders",
+    "category": "dumbbell",
+    "instructions": "Upright row, rotate to front rack, press overhead. Multi-plane movement."
+  },
+  {
+    "name": "Trap 3 Raise",
+    "muscleGroup": "shoulders",
+    "category": "dumbbell",
+    "instructions": "Lie prone on bench. Raise arms in Y position targeting lower traps."
+  },
+  {
+    "name": "Spider Curl",
+    "muscleGroup": "arms",
+    "category": "dumbbell",
+    "instructions": "Chest on vertical side of preacher bench. Curl with arms hanging straight."
+  },
+  {
+    "name": "Zottman Curl",
+    "muscleGroup": "arms",
+    "category": "dumbbell",
+    "instructions": "Curl with supinated grip. Rotate to pronated at top, lower slowly."
+  },
+  {
+    "name": "Overhead Cable Curl",
+    "muscleGroup": "arms",
+    "category": "cable",
+    "instructions": "Cables at shoulder height. Curl handles toward head, bicep peak contraction."
+  },
+  {
+    "name": "Cable Overhead Tricep Extension",
+    "muscleGroup": "arms",
+    "category": "cable",
+    "instructions": "Cable high behind head. Extend arms overhead, control return."
+  },
+  {
+    "name": "JM Press",
+    "muscleGroup": "arms",
+    "category": "barbell",
+    "instructions": "Hybrid between close-grip press and skull crusher. Powerful tricep builder."
+  },
+  {
+    "name": "Battle Ropes",
+    "muscleGroup": "cardio",
+    "category": "cardio",
+    "instructions": "Hold one end each hand. Create waves, alternating or simultaneous."
+  },
+  {
+    "name": "Sled Push",
+    "muscleGroup": "cardio",
+    "category": "cardio",
+    "instructions": "Push weighted sled, lean forward, drive through legs."
+  },
+  {
+    "name": "Sled Pull",
+    "muscleGroup": "cardio",
+    "category": "cardio",
+    "instructions": "Attach rope to sled. Walk backward pulling sled toward you."
+  },
+  {
+    "name": "Box Jump",
+    "muscleGroup": "cardio",
+    "category": "bodyweight",
+    "instructions": "Jump onto box, land softly. Step down with control."
+  },
+  {
+    "name": "Farmer Carry",
+    "muscleGroup": "full_body",
+    "category": "dumbbell",
+    "instructions": "Hold heavy weights at sides. Walk with upright posture and braced core."
+  }
+]

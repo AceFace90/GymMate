@@ -59,7 +59,7 @@ export default function ExercisesScreen({ navigation }) {
     setLoading(false);
   };
 
-  useFocusEffect(useCallback(() => { loadExercises(); }, []));
+  useFocusEffect(useCallback(() => { loadExercises(); }, [search, filterGroup]));
   useEffect(() => { loadExercises(); }, [search, filterGroup]);
 
   const handleCreate = async () => {

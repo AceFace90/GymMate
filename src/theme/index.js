@@ -43,6 +43,7 @@ export const colors = {
   arms: '#eab308',
   core: '#06b6d4',
   cardio: '#ec4899',
+  mobility: '#a855f7',
   fullBody: '#10b981',
 };
 

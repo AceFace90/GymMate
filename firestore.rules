@@ -1,26 +1,65 @@
-rules_version = '2';
 
-// GymMate Firestore security rules.
-//
-// The entire data model is one document per user at users/{uid} (see
-// src/services/cloudSync.js). A signed-in user may read and write ONLY their
-// own document — uid in the path must equal their authenticated uid. Everything
-// else is denied by default.
-//
-// HOW TO APPLY: paste this into Firebase console → Build → Firestore Database →
-// Rules → Publish. (Or deploy via the Firebase CLI: `firebase deploy --only firestore:rules`.)
+Mobility
+Cat Cow (mobility)
+Bird Dog (core/stability)
+Torso Mobility (from the floor)
+Banded Crab Walk knee height
+Best World Stretching
+Shoulder external rotation (front)
+Upper back mobility with broomstick
+Ankle dorsi flexion (with band)
+7 views
 
-service cloud.firestore {
-  match /databases/{database}/documents {
 
-    match /users/{userId} {
-      allow read, write: if request.auth != null
-                         && request.auth.uid == userId;
-    }
+Ankle dorsi flexion
+41 views
 
-    // Deny everything not explicitly matched above.
-    match /{document=**} {
-      allow read, write: if false;
-    }
-  }
-}
+
+Shin box (hard version)
+2 views
+
+
+Hip mobility complex
+12 views
+
+
+Shin box (easy version)
+34 views
+
+
+Fire Hydrant (hip mobility)
+20 views
+
+
+Shoulders external rotation (with band)2
+4 views
+
+
+Toe touch
+24 views
+
+
+Shoulder dislocation (with band)
+138 views
+
+
+Farmer Carry
+63 views
+
+
+Band gluteus bridge
+9 views
+
+
+Air Squat
+38 views
+
+
+
+
+
+
+Core 
+Curl Up (core/stability)
+5 views
+

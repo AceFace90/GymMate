@@ -1,15 +1,40 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, Dimensions } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, Dimensions, Linking, TouchableOpacity, Platform, ImageBackground } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '../hooks/useTheme';
 import { spacing, typography, radius, colors } from '../theme';
 import * as db from '../services/database';
 import Card from '../components/Card';
 import MuscleTag from '../components/MuscleTag';
+import { getExerciseVideo } from '../data/exercise-videos';
 
 const { width: SCREEN_W } = Dimensions.get('window');
+
+function YouTubeEmbed({ videoId }) {
+  const embedUrl = `https://www.youtube.com/embed/${videoId}?mute=1`;
+
+  if (Platform.OS === 'web') {
+    return (
+      <iframe
+        src={embedUrl}
+        style={{
+          width: '100%',
+          aspectRatio: '9/16',
+          border: 'none',
+          borderRadius: 10,
+        }}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+      />
+    );
+  }
+
+  // For native, would use react-native-webview here
+  return null;
+}
 
 function MiniLineChart({ data, color, height = 60 }) {
   if (!data || data.length < 2) return null;
@@ -58,6 +83,7 @@ export default function ExerciseDetailScreen({ route }) {
   const [exercise, setExercise] = useState(null);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showVideo, setShowVideo] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -81,6 +107,7 @@ export default function ExerciseDetailScreen({ route }) {
   const bestWeight = history.length ? Math.max(...history.map((h) => h.max_weight || 0)) : null;
   const totalVolume = history.reduce((sum, h) => sum + (h.total_volume || 0), 0);
   const totalSessions = history.length;
+  const video = getExerciseVideo(exercise.name);
 
   const formatDate = (iso) => {
     if (!iso) return '';
@@ -103,6 +130,50 @@ export default function ExerciseDetailScreen({ route }) {
             <Text style={[styles.instructions, { color: theme.textSecondary }]}>{exercise.instructions}</Text>
           ) : null}
         </Card>
+
+        {/* Video Tutorial */}
+        {video && (
+          <Card>
+            <View style={styles.videoHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.sectionTitle, { color: theme.text, marginBottom: 0 }]}>Tutorial Video</Text>
+                <Text style={[styles.videoSubtitle, { color: theme.textMuted }]}>@atppersonaltraining4506</Text>
+              </View>
+              {!showVideo && (
+                <TouchableOpacity
+                  onPress={() => Linking.openURL(video.url)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="open-outline" size={20} color={theme.textSecondary} />
+                </TouchableOpacity>
+              )}
+            </View>
+            {showVideo ? (
+              <View style={styles.videoContainer}>
+                <YouTubeEmbed videoId={video.videoId} />
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={styles.videoThumbnailWrapper}
+                onPress={() => setShowVideo(true)}
+                activeOpacity={0.8}
+              >
+                <ImageBackground
+                  source={{ uri: `https://img.youtube.com/vi/${video.videoId}/hqdefault.jpg` }}
+                  style={[styles.videoThumbnail, { backgroundColor: theme.input }]}
+                  imageStyle={styles.thumbnailImage}
+                >
+                  <View style={styles.thumbnailOverlay}>
+                    <View style={[styles.playButton, { backgroundColor: theme.accent }]}>
+                      <Ionicons name="play" size={32} color="#000" />
+                    </View>
+                    <Text style={[styles.tapToPlay, { color: '#fff' }]}>Tap to play</Text>
+                  </View>
+                </ImageBackground>
+              </TouchableOpacity>
+            )}
+          </Card>
+        )}
 
         {/* Stats */}
         <View style={styles.statsRow}>
@@ -192,4 +263,13 @@ const styles = StyleSheet.create({
   emptyState: { alignItems: 'center', paddingVertical: spacing[8] },
   emptyTitle: { fontSize: typography.sizes.lg, fontWeight: '700', marginTop: spacing[2] },
   emptyText: { fontSize: typography.sizes.sm, textAlign: 'center', marginTop: spacing[1] },
+  videoHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing[3] },
+  videoSubtitle: { fontSize: typography.sizes.xs, marginTop: 2 },
+  videoContainer: { width: '100%', aspectRatio: 9 / 16, borderRadius: radius.md, overflow: 'hidden' },
+  videoThumbnailWrapper: { borderRadius: radius.md, overflow: 'hidden' },
+  videoThumbnail: { width: '100%', aspectRatio: 9 / 16 },
+  thumbnailImage: { borderRadius: radius.md },
+  thumbnailOverlay: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing[2], backgroundColor: 'rgba(0, 0, 0, 0.3)' },
+  playButton: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 8 },
+  tapToPlay: { fontSize: typography.sizes.sm, fontWeight: '500', textShadowColor: 'rgba(0, 0, 0, 0.75)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
 });

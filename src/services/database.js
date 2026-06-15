@@ -487,14 +487,15 @@ export async function getDailyActivity(daysBack = 14) {
     `SELECT
        DATE(ws.started_at) as date,
        COUNT(DISTINCT ws.id) as sessions,
-       COUNT(ss.id) as total_sets,
+       SUM(CASE WHEN ss.completed = 1 THEN 1 ELSE 0 END) as total_sets,
        SUM(ss.reps * COALESCE(ss.weight_kg, 0)) as total_volume
      FROM workout_sessions ws
-     LEFT JOIN session_sets ss ON ss.session_id = ws.id AND ss.completed = 1
+     LEFT JOIN session_sets ss ON ss.session_id = ws.id
      WHERE ws.completed_at IS NOT NULL
-       AND ws.started_at >= datetime('now', '-${daysBack} days')
+       AND ws.started_at >= datetime('now', '-' || ? || ' days')
      GROUP BY DATE(ws.started_at)
-     ORDER BY date ASC`
+     ORDER BY date ASC`,
+    [daysBack]
   );
 }
 

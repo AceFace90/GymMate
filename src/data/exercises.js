@@ -12,6 +12,7 @@ export const BUILT_IN_EXERCISES = [
   { name: 'Dumbbell Flye', muscleGroup: 'chest', category: 'dumbbell', instructions: 'Lie on bench, arms extended. Lower with slight elbow bend, stretch chest, bring back up in an arc.' },
   { name: 'Cable Chest Flye', muscleGroup: 'chest', category: 'cable', instructions: 'Set pulleys at shoulder height. Bring handles together in front of chest with slight arm bend.' },
   { name: 'Push-Up', muscleGroup: 'chest', category: 'bodyweight', instructions: 'Hands shoulder-width, body straight. Lower chest to floor, push back up.' },
+  { name: 'Scapular Push-Up', muscleGroup: 'chest', category: 'bodyweight', instructions: 'High plank position. Protract and retract shoulder blades without bending elbows. Serratus activation.' },
   { name: 'Chest Dip', muscleGroup: 'chest', category: 'bodyweight', instructions: 'Lean forward on dip bars to emphasise chest. Lower until shoulders are below elbows.' },
   { name: 'Machine Chest Press', muscleGroup: 'chest', category: 'machine', instructions: 'Seat height so handles are at chest level. Press forward, squeeze chest at peak.' },
   { name: 'Pec Deck', muscleGroup: 'chest', category: 'machine', instructions: 'Forearms on pads, bring arms together in front of chest, squeeze and return slowly.' },
@@ -33,6 +34,8 @@ export const BUILT_IN_EXERCISES = [
   // ── LEGS ───────────────────────────────────────────────────────────────────
   { name: 'Barbell Back Squat', muscleGroup: 'legs', category: 'barbell', instructions: 'Bar on upper traps. Feet shoulder-width, toes out slightly. Squat to parallel or below, drive up.' },
   { name: 'Barbell Front Squat', muscleGroup: 'legs', category: 'barbell', instructions: 'Bar on front deltoids. Elbows high, upright torso. Squat to parallel.' },
+  { name: 'Single-Leg Romanian Deadlift', muscleGroup: 'legs', category: 'dumbbell', instructions: 'Stand on one leg, hinge forward with slight knee bend. Lower weight toward floor, return. Balance + hamstring.' },
+  { name: 'Single-Leg Hip Thrust', muscleGroup: 'legs', category: 'bodyweight', instructions: 'Upper back on bench, one leg extended. Drive through heel, extend hip fully, squeeze glute.' },
   { name: 'Leg Press', muscleGroup: 'legs', category: 'machine', instructions: 'Feet shoulder-width on platform. Lower sled until knees near 90°, press up without locking.' },
   { name: 'Hack Squat', muscleGroup: 'legs', category: 'machine', instructions: 'Shoulders on pads, feet on platform. Lower until thighs parallel, press up.' },
   { name: 'Bulgarian Split Squat', muscleGroup: 'legs', category: 'dumbbell', instructions: 'Rear foot elevated, front foot forward. Drop rear knee toward floor, keep torso upright.' },
@@ -46,6 +49,7 @@ export const BUILT_IN_EXERCISES = [
   { name: 'Standing Calf Raise', muscleGroup: 'legs', category: 'machine', instructions: 'Shoulders on pads, balls of feet on edge. Rise onto toes, pause, lower fully.' },
   { name: 'Seated Calf Raise', muscleGroup: 'legs', category: 'machine', instructions: 'Pads on thighs, balls of feet on edge. Rise onto toes, pause, lower to full stretch.' },
   { name: 'Hip Thrust', muscleGroup: 'legs', category: 'barbell', instructions: 'Upper back on bench, bar on hips. Drive hips up to full extension, squeeze glutes.' },
+  { name: 'Cable Glute Kickback', muscleGroup: 'legs', category: 'cable', instructions: 'Ankle strap on cable. Kick leg back, squeeze glute at top, control return. Glute isolation.' },
   { name: 'Goblet Squat', muscleGroup: 'legs', category: 'dumbbell', instructions: 'Hold dumbbell at chest, feet shoulder-width. Squat deep keeping chest up.' },
 
   // ── SHOULDERS ──────────────────────────────────────────────────────────────
@@ -109,6 +113,80 @@ export const BUILT_IN_EXERCISES = [
   { name: 'Kettlebell Swing', muscleGroup: 'full_body', category: 'dumbbell', instructions: 'Hip hinge, swing kettlebell back between legs. Drive hips forward to swing to chest height.' },
   { name: 'Turkish Get-Up', muscleGroup: 'full_body', category: 'dumbbell', instructions: 'From lying with weight overhead, move through a series of positions to standing, then reverse.' },
   { name: 'Clean and Press', muscleGroup: 'full_body', category: 'barbell', instructions: 'Clean bar to shoulders then press overhead. Return bar to floor between reps.' },
+  { name: 'Farmer Carry', muscleGroup: 'full_body', category: 'dumbbell', instructions: 'Hold heavy weights at sides. Walk with upright posture and braced core.' },
+
+  // ── CHEST (specialized) ────────────────────────────────────────
+  { name: 'Larsen Press (Barbell)', muscleGroup: 'chest', category: 'barbell', instructions: 'Bench press variation with feet elevated. Lower bar to chest, press up.' },
+  { name: 'Svend Press', muscleGroup: 'chest', category: 'dumbbell', instructions: 'Hold plates together at chest. Press straight out, squeeze chest, return.' },
+  { name: 'Floor Press (Barbell)', muscleGroup: 'chest', category: 'barbell', instructions: 'Lie on floor, press bar to lockout. Limits range for tricep focus.' },
+  { name: 'Floor Press (Dumbbell)', muscleGroup: 'chest', category: 'dumbbell', instructions: 'Lie on floor with dumbbells. Press up, elbows touch floor each rep.' },
+  { name: 'Low to High Cable Flye', muscleGroup: 'chest', category: 'cable', instructions: 'Cables at low position. Bring handles up and together targeting upper chest.' },
+  { name: 'High to Low Cable Flye', muscleGroup: 'chest', category: 'cable', instructions: 'Cables at high position. Bring handles down and together targeting lower chest.' },
+  { name: 'Landmine Press', muscleGroup: 'chest', category: 'barbell', instructions: 'Barbell anchored at one end. Press bar overhead from shoulder.' },
+
+  // ── BACK (specialized) ─────────────────────────────────────────
+  { name: 'Landmine Row (Single Arm)', muscleGroup: 'back', category: 'barbell', instructions: 'Barbell anchored at one end. Row bar to hip, elbow close to body.' },
+  { name: 'Seal Row', muscleGroup: 'back', category: 'barbell', instructions: 'Lie prone on elevated bench. Row bar to lower chest, no body english.' },
+  { name: 'Meadows Row', muscleGroup: 'back', category: 'barbell', instructions: 'Landmine setup. Stand perpendicular, row bar to hip with one arm.' },
+  { name: 'Gorilla Row', muscleGroup: 'back', category: 'dumbbell', instructions: 'Hinged position, two dumbbells on floor. Alternate rowing each side.' },
+  { name: 'Chest-Supported Row (Dumbbell)', muscleGroup: 'back', category: 'dumbbell', instructions: 'Chest on incline bench. Row dumbbells to hips, eliminate momentum.' },
+
+  // ── LEGS (specialized) ─────────────────────────────────────────
+  { name: 'Landmine Squat', muscleGroup: 'legs', category: 'barbell', instructions: 'Barbell anchored at one end, hold at chest. Squat down, drive up.' },
+  { name: 'Landmine Romanian Deadlift', muscleGroup: 'legs', category: 'barbell', instructions: 'Barbell anchored at one end. Hinge at hips, feel hamstring stretch.' },
+  { name: 'Bulgarian Split Squat (Single Arm)', muscleGroup: 'legs', category: 'dumbbell', instructions: 'Rear foot elevated, hold one dumbbell. Single-side loading for core challenge.' },
+  { name: 'Spanish Squat', muscleGroup: 'legs', category: 'bodyweight', instructions: 'Band behind knees, heels elevated. Squat emphasizing quads.' },
+  { name: 'Wall Sit', muscleGroup: 'legs', category: 'bodyweight', instructions: 'Back against wall, thighs parallel to floor. Hold position.' },
+  { name: 'Nordic Curl', muscleGroup: 'legs', category: 'bodyweight', instructions: 'Kneel, anchor feet. Lower torso forward with control, hamstrings engaged.' },
+  { name: 'Reverse Nordic', muscleGroup: 'legs', category: 'bodyweight', instructions: 'Kneel upright. Lean back with control, quads engaged, return.' },
+  { name: 'Step-Up (Dumbbell)', muscleGroup: 'legs', category: 'dumbbell', instructions: 'Step onto box or bench, drive through heel, step down with control.' },
+  { name: 'Calf Press (Leg Press Machine)', muscleGroup: 'legs', category: 'machine', instructions: 'In leg press, press with balls of feet. Full range calf raises.' },
+
+  // ── SHOULDERS (specialized) ────────────────────────────────────
+  { name: 'Egyptian Lateral Raise', muscleGroup: 'shoulders', category: 'dumbbell', instructions: 'Lean to side. Raise dumbbell from hanging position to overhead.' },
+  { name: 'Lu Raise', muscleGroup: 'shoulders', category: 'dumbbell', instructions: 'Front raise to overhead, then lower behind head. Full shoulder rotation.' },
+  { name: 'Around the World (Shoulders)', muscleGroup: 'shoulders', category: 'dumbbell', instructions: 'Light weight. Circle arms from front to sides to back continuously.' },
+  { name: 'Cuban Press', muscleGroup: 'shoulders', category: 'dumbbell', instructions: 'Upright row, rotate to front rack, press overhead. Multi-plane movement.' },
+  { name: 'Trap 3 Raise', muscleGroup: 'shoulders', category: 'dumbbell', instructions: 'Lie prone on bench. Raise arms in Y position targeting lower traps.' },
+
+  // ── ARMS (specialized) ─────────────────────────────────────────
+  { name: 'Spider Curl', muscleGroup: 'arms', category: 'dumbbell', instructions: 'Chest on vertical side of preacher bench. Curl with arms hanging straight.' },
+  { name: 'Zottman Curl', muscleGroup: 'arms', category: 'dumbbell', instructions: 'Curl with supinated grip. Rotate to pronated at top, lower slowly.' },
+  { name: 'Overhead Cable Curl', muscleGroup: 'arms', category: 'cable', instructions: 'Cables at shoulder height. Curl handles toward head, bicep peak contraction.' },
+  { name: 'Cable Overhead Tricep Extension', muscleGroup: 'arms', category: 'cable', instructions: 'Cable high behind head. Extend arms overhead, control return.' },
+  { name: 'JM Press', muscleGroup: 'arms', category: 'barbell', instructions: 'Hybrid between close-grip press and skull crusher. Powerful tricep builder.' },
+
+  // ── CORE (specialized) ─────────────────────────────────────────
+  { name: 'Curl Up', muscleGroup: 'core', category: 'bodyweight', instructions: 'Lie on back, hands under lower back. Lift head and shoulders off ground, hold. Stability-focused core exercise.' },
+  { name: 'Reverse Crunch', muscleGroup: 'core', category: 'bodyweight', instructions: 'Lie on back, knees bent. Curl hips and lower back off floor, bring knees to chest.' },
+  { name: 'Hanging Knee Raise', muscleGroup: 'core', category: 'bodyweight', instructions: 'Hang from bar, bring knees to chest. Control down. Easier than leg raise.' },
+  { name: 'Ab Wheel Rollout', muscleGroup: 'core', category: 'bodyweight', instructions: 'Kneel with ab wheel. Roll forward keeping core tight, return. Advanced core stability.' },
+  { name: 'Bird Dog', muscleGroup: 'core', category: 'bodyweight', instructions: 'On hands and knees. Extend opposite arm and leg, hold, switch. Core stability pattern.' },
+  { name: 'Shoulder Taps', muscleGroup: 'core', category: 'bodyweight', instructions: 'High plank position. Tap opposite shoulder with hand, minimize hip rotation. Anti-rotation core.' },
+  { name: 'Landmine Twist', muscleGroup: 'core', category: 'barbell', instructions: 'Barbell anchored at one end. Rotate bar side to side from chest.' },
+  { name: 'Pallof Press', muscleGroup: 'core', category: 'cable', instructions: 'Cable at chest height. Press out resisting rotation, hold, return.' },
+  { name: 'Cable Woodchop (High to Low)', muscleGroup: 'core', category: 'cable', instructions: 'Cable high, pull down and across body in chopping motion.' },
+  { name: 'Cable Woodchop (Low to High)', muscleGroup: 'core', category: 'cable', instructions: 'Cable low, pull up and across body in lifting motion.' },
+  { name: 'Stir the Pot', muscleGroup: 'core', category: 'bodyweight', instructions: 'Plank on stability ball. Move arms in circular motion.' },
+  { name: 'Body Saw', muscleGroup: 'core', category: 'bodyweight', instructions: 'Forearm plank. Rock body forward and back maintaining plank.' },
+
+  // ── CARDIO (specialized) ───────────────────────────────────────
+  { name: 'Battle Ropes', muscleGroup: 'cardio', category: 'cardio', instructions: 'Hold one end each hand. Create waves, alternating or simultaneous.' },
+  { name: 'Sled Push', muscleGroup: 'cardio', category: 'cardio', instructions: 'Push weighted sled, lean forward, drive through legs.' },
+  { name: 'Sled Pull', muscleGroup: 'cardio', category: 'cardio', instructions: 'Attach rope to sled. Walk backward pulling sled toward you.' },
+  { name: 'Box Jump', muscleGroup: 'cardio', category: 'bodyweight', instructions: 'Jump onto box, land softly. Step down with control.' },
+
+  // ── MOBILITY & STRETCHING ──────────────────────────────────────
+  { name: 'Cat Cow', muscleGroup: 'mobility', category: 'bodyweight', instructions: 'On hands and knees. Arch back (cow), then round spine (cat). Flow between positions.' },
+  { name: 'Torso Mobility Flow', muscleGroup: 'mobility', category: 'bodyweight', instructions: 'Lying on floor. Rotate torso, open hips, move through full range of motion.' },
+  { name: 'World\'s Greatest Stretch', muscleGroup: 'mobility', category: 'bodyweight', instructions: 'Lunge position. Rotate torso, reach overhead, open hip flexor. Multi-plane stretch.' },
+  { name: 'Shoulder External Rotation', muscleGroup: 'mobility', category: 'bodyweight', instructions: 'Arm at 90 degrees. Rotate externally, feel stretch in front of shoulder.' },
+  { name: 'Upper Back Mobility (Broomstick)', muscleGroup: 'mobility', category: 'bodyweight', instructions: 'Hold stick overhead. Pass behind head and back, improving thoracic mobility.' },
+  { name: 'Hip Mobility Complex', muscleGroup: 'mobility', category: 'bodyweight', instructions: 'Series of hip movements: rotations, circles, flexion, extension. Full hip range.' },
+  { name: 'Fire Hydrant', muscleGroup: 'mobility', category: 'bodyweight', instructions: 'On hands and knees. Lift leg out to side, knee bent. Hip abduction movement.' },
+  { name: 'Ankle Dorsiflexion', muscleGroup: 'mobility', category: 'bodyweight', instructions: 'Knee to wall. Push knee forward over toes, stretching ankle and calf.' },
+  { name: '90/90 Hip Stretch', muscleGroup: 'mobility', category: 'bodyweight', instructions: 'Sit with both legs at 90 degrees. Switch sides, opening hip internal/external rotation.' },
+  { name: 'Shoulder Dislocates', muscleGroup: 'mobility', category: 'bodyweight', instructions: 'Hold band or stick wide. Pass overhead behind back and return. Shoulder mobility.' },
 ];
 
 export const MUSCLE_GROUPS = [
@@ -119,6 +197,7 @@ export const MUSCLE_GROUPS = [
   { id: 'arms',      label: 'Arms',       emoji: '💪' },
   { id: 'core',      label: 'Core',       emoji: '🎯' },
   { id: 'cardio',    label: 'Cardio',     emoji: '❤️' },
+  { id: 'mobility',  label: 'Mobility',   emoji: '🧘' },
   { id: 'full_body', label: 'Full Body',  emoji: '⚡' },
 ];
 
