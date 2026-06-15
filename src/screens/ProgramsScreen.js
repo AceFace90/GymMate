@@ -154,12 +154,14 @@ export default function ProgramsScreen({ navigation }) {
     });
   };
 
-  const renderProgram = ({ item }) => (
+  const renderProgram = ({ item }) => {
+    const isActive = Boolean(item.is_active);
+    return (
     <TouchableOpacity onPress={() => navigation.navigate('ProgramDetail', { programId: item.id })} activeOpacity={0.8}>
-      <Card style={[styles.programCard, item.is_active && { borderColor: theme.accent }]}>
+      <Card style={[styles.programCard, isActive && { borderColor: theme.accent }]}>
         <View style={styles.programHeader}>
           <View style={styles.programInfo}>
-            {item.is_active && (
+            {isActive && (
               <View style={[styles.activeBadge, { backgroundColor: theme.accentBg, borderColor: theme.accentBorder }]}>
                 <Text style={[styles.activeBadgeText, { color: theme.accent }]}>ACTIVE</Text>
               </View>
@@ -176,9 +178,9 @@ export default function ProgramsScreen({ navigation }) {
               style={[styles.actionBtn, { borderColor: theme.border }]}
             >
               <Ionicons
-                name={item.is_active ? 'checkmark-circle' : 'ellipse-outline'}
+                name={isActive ? 'checkmark-circle' : 'ellipse-outline'}
                 size={20}
-                color={item.is_active ? theme.accent : theme.textMuted}
+                color={isActive ? theme.accent : theme.textMuted}
               />
             </TouchableOpacity>
             <TouchableOpacity
@@ -191,7 +193,7 @@ export default function ProgramsScreen({ navigation }) {
         </View>
 
         {/* Start workout button for active program */}
-        {item.is_active && (
+        {isActive && (
           <Button
             title="Start Workout"
             onPress={() => navigation.navigate('ProgramDetail', { programId: item.id, startWorkout: true })}
@@ -200,7 +202,7 @@ export default function ProgramsScreen({ navigation }) {
         )}
       </Card>
     </TouchableOpacity>
-  );
+  )};
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]} edges={['top']}>

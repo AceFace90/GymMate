@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Linking } from 'react-native';
 import { confirmAction } from '../utils/confirm';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -219,9 +219,17 @@ export default function ProfileScreen({ navigation, onLogout }) {
           <Text style={styles.wipeText}>Wipe All My Data</Text>
         </TouchableOpacity>
 
-        <Text style={[styles.footer, { color: theme.textMuted }]}>
-          Made with 💚 to complement MacroMate
-        </Text>
+        <View style={styles.footer}>
+          <Text style={[styles.footerText, { color: theme.textMuted }]}>
+            Made with 💚 to complement{' '}
+            <Text
+              style={[styles.footerLink, { color: theme.accent }]}
+              onPress={() => Linking.openURL('https://macromate-xcu1.onrender.com/')}
+            >
+              MacroMate
+            </Text>
+          </Text>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -261,5 +269,7 @@ const styles = StyleSheet.create({
     marginTop: spacing[3],
   },
   wipeText: { color: '#ef4444', fontSize: typography.sizes.sm, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
-  footer: { textAlign: 'center', fontSize: typography.sizes.sm, marginTop: spacing[4], marginBottom: spacing[2] },
+  footer: { alignItems: 'center', marginTop: spacing[4], marginBottom: spacing[2] },
+  footerText: { fontSize: typography.sizes.sm, textAlign: 'center' },
+  footerLink: { fontWeight: '600' },
 });

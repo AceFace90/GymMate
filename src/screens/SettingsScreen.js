@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
-  TextInput,
+  TextInput, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -165,6 +165,21 @@ export default function SettingsScreen() {
           <Row label="Companion App" value="MacroMate" theme={theme} />
         </Card>
 
+        {/* Credits */}
+        <Text style={[styles.sectionHeader, { color: theme.textMuted }]}>Credits</Text>
+        <Card>
+          <Text style={[styles.creditsText, { color: theme.textSecondary }]}>
+            Exercise demonstration videos provided by{' '}
+            <Text
+              style={[styles.creditLink, { color: theme.accent }]}
+              onPress={() => Linking.openURL('https://www.youtube.com/@atppersonaltraining4506/featured')}
+            >
+              ATP Personal Training
+            </Text>
+            {' '}via YouTube.
+          </Text>
+        </Card>
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -201,4 +216,6 @@ const styles = StyleSheet.create({
   removeBtn: { paddingHorizontal: spacing[4], paddingVertical: spacing[3], borderRadius: radius.md, borderWidth: 1, alignItems: 'center' },
   removeBtnText: { fontSize: typography.sizes.base, fontWeight: '600' },
   keyHint: { fontSize: typography.sizes.xs, textAlign: 'center' },
+  creditsText: { fontSize: typography.sizes.sm, lineHeight: 20 },
+  creditLink: { fontWeight: '600' },
 });
