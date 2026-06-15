@@ -73,14 +73,16 @@ export default function ProgramsScreen({ navigation }) {
       const assignments = await programTemplates.getClientAssignments(currentUser.id);
       console.log('[ProgramsScreen] Found assignments:', assignments);
 
+      // Get existing programs once
+      const existingPrograms = await db.getPrograms();
+
       // Sync each assignment to local DB
       for (const assignment of assignments) {
         // Check if we already have this program locally (use assignment ID as linked_template_id for now)
-        const existingPrograms = await db.getPrograms();
         const existing = existingPrograms.find(p => p.linked_template_id === assignment.assignmentId);
 
         if (existing) {
-          console.log('[ProgramsScreen] Program already synced:', existing.id);
+          console.log('[ProgramsScreen] Program already synced:', existing.id, existing.name);
           continue; // Already synced
         }
 
