@@ -18,6 +18,7 @@ export default function ConnectTrainerScreen({ navigation }) {
   const [trainerInfo, setTrainerInfo] = useState(null);
   const [loading, setLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [existingTrainer, setExistingTrainer] = useState(null);
 
   React.useEffect(() => {
     loadUser();
@@ -26,6 +27,25 @@ export default function ConnectTrainerScreen({ navigation }) {
   async function loadUser() {
     const user = await auth.getCurrentUser();
     setCurrentUser(user);
+
+    // Check if user already has a trainer connection
+    if (user) {
+      try {
+        const trainer = await trainerClient.getMyTrainer(user.id);
+        if (trainer) {
+          setExistingTrainer(trainer);
+          // Navigate back immediately if already connected
+          if (Platform.OS === 'web') {
+            alert(`You're already connected to ${trainer.trainerName}`);
+          } else {
+            Alert.alert('Already Connected', `You're already connected to ${trainer.trainerName}`);
+          }
+          navigation.goBack();
+        }
+      } catch (error) {
+        console.log('[ConnectTrainerScreen] No existing trainer connection');
+      }
+    }
   }
 
   async function handleVerifyCode() {
