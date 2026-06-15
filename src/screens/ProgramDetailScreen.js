@@ -42,7 +42,7 @@ export default function ProgramDetailScreen({ route, navigation }) {
   const loadProgram = async () => {
     setLoading(true);
     const data = await db.getProgramById(programId);
-    console.log('[ProgramDetail] Loaded program:', data?.name, 'Days:', data?.days?.length || 0);
+    console.log('[ProgramDetail] Loaded program:', data?.name, 'Days:', data?.days?.length || 0, 'is_template:', data?.is_template);
     setProgram(data);
 
     // If this is an assigned program, fetch the trainer's name
@@ -176,7 +176,7 @@ export default function ProgramDetailScreen({ route, navigation }) {
         </View>
 
         {/* Start workout CTA */}
-        {(program.days?.length ?? 0) > 0 && (
+        {(program.days?.length ?? 0) > 0 && !program.is_template && (
           <Button title="▶  Start Workout" onPress={() => setShowPickDay(true)} size="lg" style={{ marginBottom: spacing[5] }} />
         )}
 
