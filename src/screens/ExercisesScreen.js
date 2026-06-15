@@ -14,11 +14,12 @@ import * as db from '../services/database';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import MuscleTag from '../components/MuscleTag';
+import { getExerciseVideo } from '../data/exercise-videos';
 
 const MUSCLE_COLORS = {
   chest: colors.chest, back: colors.back, legs: colors.legs,
   shoulders: colors.shoulders, arms: colors.arms, core: colors.core,
-  cardio: colors.cardio, full_body: colors.fullBody,
+  cardio: colors.cardio, mobility: colors.mobility, full_body: colors.fullBody,
 };
 
 export default function ExercisesScreen({ navigation }) {
@@ -71,83 +72,97 @@ export default function ExercisesScreen({ navigation }) {
     loadExercises();
   };
 
-  const renderItem = ({ item }) => (
-    <TouchableOpacity onPress={() => navigation.navigate('ExerciseDetail', { exerciseId: item.id })} activeOpacity={0.8}>
-      <View style={[styles.exRow, { borderBottomColor: theme.border }]}>
-        <View style={[styles.accentBar, { backgroundColor: MUSCLE_COLORS[item.muscle_group] || theme.accent }]} />
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.exName, { color: theme.text }]}>{item.name}</Text>
-          <View style={styles.exMeta}>
-            <MuscleTag group={item.muscle_group} />
-            <Text style={[styles.exCategory, { color: theme.textMuted }]}>{item.category}</Text>
-            {item.is_custom ? (
-              <View style={[styles.customBadge, { backgroundColor: theme.accentBg, borderColor: theme.accentBorder }]}>
-                <Text style={[styles.customBadgeText, { color: theme.accent }]}>custom</Text>
-              </View>
-            ) : null}
+  const renderItem = ({ item }) => {
+    const hasVideo = !!getExerciseVideo(item.name);
+
+    return (
+      <TouchableOpacity onPress={() => navigation.navigate('ExerciseDetail', { exerciseId: item.id })} activeOpacity={0.8}>
+        <View style={[styles.exRow, { borderBottomColor: theme.border }]}>
+          <View style={[styles.accentBar, { backgroundColor: MUSCLE_COLORS[item.muscle_group] || theme.accent }]} />
+          <View style={{ flex: 1 }}>
+            <View style={styles.exNameRow}>
+              <Text style={[styles.exName, { color: theme.text }]}>{item.name}</Text>
+              {hasVideo && (
+                <Ionicons name="play-circle" size={16} color={theme.accent} style={{ marginLeft: 6 }} />
+              )}
+            </View>
+            <View style={styles.exMeta}>
+              <MuscleTag group={item.muscle_group} />
+              <Text style={[styles.exCategory, { color: theme.textMuted }]}>{item.category}</Text>
+              {item.is_custom ? (
+                <View style={[styles.customBadge, { backgroundColor: theme.accentBg, borderColor: theme.accentBorder }]}>
+                  <Text style={[styles.customBadgeText, { color: theme.accent }]}>custom</Text>
+                </View>
+              ) : null}
+            </View>
           </View>
+          <Ionicons name="chevron-forward" size={16} color={theme.textMuted} />
         </View>
-        <Ionicons name="chevron-forward" size={16} color={theme.textMuted} />
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]} edges={['top']}>
-      {/* Search */}
-      <View style={[styles.searchBar, { backgroundColor: theme.input, borderColor: theme.border }]}>
-        <Ionicons name="search" size={16} color={theme.textMuted} />
-        <TextInput
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search exercises…"
-          placeholderTextColor={theme.textMuted}
-          style={[styles.searchInput, { color: theme.text }]}
-        />
-        {search ? (
-          <TouchableOpacity onPress={() => setSearch('')}>
-            <Ionicons name="close-circle" size={16} color={theme.textMuted} />
-          </TouchableOpacity>
-        ) : null}
-      </View>
+      <View style={styles.headerSection}>
+        {/* Search */}
+        <View style={[styles.searchBar, { backgroundColor: theme.input, borderColor: theme.border }]}>
+          <Ionicons name="search" size={16} color={theme.textMuted} />
+          <TextInput
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Search exercises…"
+            placeholderTextColor={theme.textMuted}
+            style={[styles.searchInput, { color: theme.text }]}
+          />
+          {search ? (
+            <TouchableOpacity onPress={() => setSearch('')}>
+              <Ionicons name="close-circle" size={16} color={theme.textMuted} />
+            </TouchableOpacity>
+          ) : null}
+        </View>
 
-      {/* Muscle group filter */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterRow}
-      >
-        <TouchableOpacity
-          onPress={() => setFilterGroup(null)}
-          style={[styles.filterChip, !filterGroup && { backgroundColor: theme.accentBg, borderColor: theme.accentBorder }]}
-        >
-          <Text style={[styles.filterChipText, { color: !filterGroup ? theme.accent : theme.textSecondary }]}>All</Text>
-        </TouchableOpacity>
-        {MUSCLE_GROUPS.map((g) => (
+        {/* Muscle group filter pills */}
+        <View style={styles.filterRow}>
           <TouchableOpacity
-            key={g.id}
-            onPress={() => setFilterGroup(filterGroup === g.id ? null : g.id)}
+            onPress={() => setFilterGroup(null)}
             style={[
               styles.filterChip,
-              { borderColor: filterGroup === g.id ? MUSCLE_COLORS[g.id] : theme.border },
-              filterGroup === g.id && { backgroundColor: MUSCLE_COLORS[g.id] + '22' },
+              { borderColor: !filterGroup ? theme.accentBorder : theme.border },
+              !filterGroup && { backgroundColor: theme.accentBg },
             ]}
           >
-            <Text style={[styles.filterChipText, { color: filterGroup === g.id ? MUSCLE_COLORS[g.id] : theme.textSecondary }]}>
-              {g.label}
+            <Text style={[styles.filterChipText, { color: !filterGroup ? theme.accent : theme.textSecondary }]}>
+              All
             </Text>
           </TouchableOpacity>
-        ))}
-      </ScrollView>
+          {MUSCLE_GROUPS.map((g) => (
+            <TouchableOpacity
+              key={g.id}
+              onPress={() => setFilterGroup(filterGroup === g.id ? null : g.id)}
+              style={[
+                styles.filterChip,
+                { borderColor: filterGroup === g.id ? MUSCLE_COLORS[g.id] : theme.border },
+                filterGroup === g.id && { backgroundColor: MUSCLE_COLORS[g.id] + '22' },
+              ]}
+            >
+              <Text style={[styles.filterChipText, { color: filterGroup === g.id ? MUSCLE_COLORS[g.id] : theme.textSecondary }]}>
+                {g.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
 
+      {/* Exercise List */}
       {loading ? (
-        <ActivityIndicator color={theme.accent} style={{ marginTop: spacing[10] }} />
+        <ActivityIndicator color={theme.accent} style={{ marginTop: spacing[8] }} />
       ) : (
         <FlatList
           data={exercises}
           keyExtractor={(item) => String(item.id)}
           renderItem={renderItem}
-          contentContainerStyle={{ backgroundColor: theme.card, borderRadius: radius.lg, marginHorizontal: spacing[4], overflow: 'hidden' }}
+          contentContainerStyle={[styles.flatListContent, { backgroundColor: theme.card }]}
           ItemSeparatorComponent={() => null}
           ListEmptyComponent={
             <View style={styles.empty}>
@@ -235,19 +250,54 @@ export default function ExercisesScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  searchBar: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginHorizontal: spacing[4], marginBottom: spacing[2], borderRadius: radius.lg, borderWidth: 1, paddingHorizontal: spacing[3], paddingVertical: spacing[2] },
+  headerSection: {
+    paddingBottom: spacing[3],
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+    marginHorizontal: spacing[4],
+    marginTop: spacing[2],
+    marginBottom: spacing[3],
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[2],
+  },
   searchInput: { flex: 1, fontSize: typography.sizes.base },
-  filterRow: { paddingHorizontal: spacing[4], paddingBottom: spacing[3], gap: spacing[2] },
+  filterRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: spacing[4],
+    gap: spacing[2],
+  },
   filterChip: {
-    borderRadius: radius.full, borderWidth: 1, borderColor: '#e5e7eb',
-    paddingHorizontal: spacing[3], paddingVertical: spacing[2],
-    height: 36, justifyContent: 'center', alignItems: 'center',
+    borderRadius: radius.full,
+    borderWidth: 1,
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[2],
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   filterChipText: { fontSize: typography.sizes.sm, fontWeight: '600' },
-  exRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing[3], paddingHorizontal: spacing[4], borderBottomWidth: StyleSheet.hairlineWidth },
+  flatListContent: {
+    borderRadius: radius.lg,
+    marginHorizontal: spacing[4],
+    marginBottom: spacing[4],
+    overflow: 'hidden',
+  },
+  exRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing[3],
+    paddingHorizontal: spacing[4],
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
   accentBar: { width: 3, height: 32, borderRadius: 2, marginRight: spacing[3] },
+  exNameRow: { flexDirection: 'row', alignItems: 'center' },
   exName: { fontSize: typography.sizes.base, fontWeight: '500' },
-  exMeta: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: 2 },
+  exMeta: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: 2, flexWrap: 'wrap' },
   exCategory: { fontSize: typography.sizes.xs, textTransform: 'capitalize' },
   customBadge: { borderRadius: radius.full, borderWidth: 1, paddingHorizontal: spacing[1] },
   customBadgeText: { fontSize: 10, fontWeight: '600' },
