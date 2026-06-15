@@ -15,51 +15,35 @@
 - Labels updated in Profile biometrics (Height, Weight)
 - ActiveWorkout weight column header shows kg/lbs based on preference
 
-## 🚧 Remaining Work
+## ✅ All Conversions Complete (Latest commit)
 
-### Critical: Weight Input/Output Conversion
+### Weight Display/Input Conversion — DONE
 
 **Database Note:** All weights stored in kg (standard unit). Convert on display and user input only.
 
-#### 1. ActiveWorkoutScreen (`src/screens/ActiveWorkoutScreen.js`)
-**Lines to update:**
-- Line 291: `Last: {last.weight_kg}kg` → use `formatWeight(last.weight_kg)`
-- Line 315-317: Weight TextInput - needs conversion:
-  ```js
-  // Display: convert kg to user's preferred unit
-  value={set.weight ? displayWeight(parseFloat(set.weight)) : ''}
-  // Placeholder: convert last set's kg to preferred unit
-  placeholder={last?.weight_kg ? displayWeight(last.weight_kg) : '—'}
-  ```
-- `completeSet()` function: Convert user input back to kg before saving:
-  ```js
-  const weightInKg = parseWeight(parseFloat(set.weight));
-  ```
+#### 1. ✅ ActiveWorkoutScreen (`src/screens/ActiveWorkoutScreen.js`)
+- Line 291: "Last" display now uses `displayWeight(last.weight_kg)`
+- Line 317: Weight input placeholder uses `displayWeight(last.weight_kg)`
+- `completeSet()` (line 172): Converts user input with `parseWeight()` before saving
+- `handleFinish()` (line 205): Auto-complete sets also use `parseWeight()`
 
-#### 2. ProfileScreen Biometrics (`src/screens/ProfileScreen.js` + `src/components/biometrics/UniversalFields.js`)
-**Current:** Labels show correct units but values are still stored/displayed as-is
-**Needs:**
-- Display conversion: Show weight in lbs if imperial, height in ft/in if imperial
-- Input conversion: Convert user input back to kg/cm before saving to `form.weightKg`, `form.heightCm`
-- Two approaches:
-  - A) Convert in ProfileScreen before passing to UniversalFields
-  - B) Add conversion logic inside UniversalFields component
+#### 2. ✅ ProfileScreen Biometrics (`src/components/biometrics/UniversalFields.js`)
+- Weight: displays in lbs if imperial, converts back to kg on input
+- Height: displays as ft'in" if imperial (e.g., "5'10""), accepts formats: "5'10", "5'10\"", or decimal feet "5.83"
+- All conversions happen in UniversalFields component
+- Values stored in `form.weightKg` and `form.heightCm` remain in metric
 
-**Height input for imperial:**
-- Need separate feet and inches inputs when `units === 'imperial'`
-- Combine to cm before saving: `feetToCm(feet, inches)`
+#### 3. ✅ Progress Charts (`src/screens/ProgressScreen.js`)
+- Line 273: Chart title shows `Weekly Volume (${weightUnit})`
+- Volume data converted to lbs if imperial: `units === 'imperial' ? kgToLbs(w.total_volume) : w.total_volume`
 
-#### 3. Progress Charts (`src/screens/ProgressScreen.js`)
-- Line 273: `Weekly Volume (kg)` → use `Weekly Volume (${weightUnit})`
-- Volume calculations: Convert kg to lbs for display if imperial
-- All weight-related stats need conversion
+#### 4. ✅ Exercise Detail (`src/screens/ExerciseDetailScreen.js`)
+- Best Weight stat: uses `formatWeight(bestWeight)`
+- Total Volume stat: uses `formatWeight(totalVolume, { decimals: 0 })`
+- History table (lines 221, 225): Max weight and volume now use `formatWeight()`
 
-#### 4. Exercise Detail PRs (`src/screens/ExerciseDetailScreen.js`)
-- Line 181: `Best Weight`, value: `${bestWeight} kg` → use `formatWeight(bestWeight)`
-- Line 183: `Total Volume`, value: `${totalVolume} kg` → use `formatWeight(totalVolume)`
-
-#### 5. Program Detail Screen (if it shows weight targets)
-Check if any weight recommendations are displayed
+#### 5. ✅ Personal Records (`src/screens/ProgressScreen.js` - Records tab)
+- Line 385: PR weights now use `formatWeight(pr.best_weight)`
 
 ### Testing Checklist
 - [ ] Toggle between metric/imperial in Settings
@@ -105,12 +89,14 @@ if (units === 'imperial') {
 }
 ```
 
-## Files Modified So Far
+## Files Modified
 - `App.js` - Added UnitsProvider wrapper
 - `src/hooks/useUnits.js` - NEW: Units context and conversions
 - `src/screens/SettingsScreen.js` - Added Units toggle
-- `src/components/biometrics/UniversalFields.js` - Updated labels
-- `src/screens/ActiveWorkoutScreen.js` - Updated weight column header
+- `src/components/biometrics/UniversalFields.js` - Height/weight conversion logic
+- `src/screens/ActiveWorkoutScreen.js` - Weight input/display + parseWeight on save
+- `src/screens/ProgressScreen.js` - Weekly volume chart conversion
+- `src/screens/ExerciseDetailScreen.js` - Stats display conversion
 
 ## Notes
 - All internal storage remains in kg/cm (metric) - NEVER change this

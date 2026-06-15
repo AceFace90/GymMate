@@ -8,6 +8,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '../hooks/useTheme';
+import { useUnits } from '../hooks/useUnits';
 import { spacing, typography, radius, colors } from '../theme';
 import * as db from '../services/database';
 import Card from '../components/Card';
@@ -54,6 +55,7 @@ const TABS = ['Overview', 'History', 'Records'];
 
 export default function ProgressScreen() {
   const { theme } = useTheme();
+  const { weightUnit, kgToLbs, units, formatWeight } = useUnits();
   const [tab, setTab] = useState('Overview');
   const [loading, setLoading] = useState(true);
 
@@ -270,11 +272,13 @@ export default function ProgressScreen() {
 
               {/* Weekly volume chart */}
               <Card>
-                <Text style={[styles.sectionTitle, { color: theme.text }]}>Weekly Volume (kg)</Text>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>Weekly Volume ({weightUnit})</Text>
                 {weeklyVolume.length > 0 ? (
                   <>
                     <SimpleBarChart
-                      data={weeklyVolume.map((w) => ({ value: w.total_volume || 0 }))}
+                      data={weeklyVolume.map((w) => ({
+                        value: units === 'imperial' ? kgToLbs(w.total_volume || 0) : (w.total_volume || 0)
+                      }))}
                       color={theme.accent}
                       height={80}
                     />
@@ -378,7 +382,7 @@ export default function ProgressScreen() {
                       </View>
                       <View style={styles.prWeightCol}>
                         <Text style={[styles.prWeight, { color: theme.accent }]}>
-                          {pr.best_weight ? `${pr.best_weight} kg` : '—'}
+                          {pr.best_weight ? formatWeight(pr.best_weight) : '—'}
                         </Text>
                         {pr.reps_at_best ? (
                           <Text style={[styles.prReps, { color: theme.textSecondary }]}>× {pr.reps_at_best}</Text>

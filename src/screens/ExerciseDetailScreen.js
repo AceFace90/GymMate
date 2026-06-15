@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '../hooks/useTheme';
+import { useUnits } from '../hooks/useUnits';
 import { spacing, typography, radius, colors } from '../theme';
 import * as db from '../services/database';
 import Card from '../components/Card';
@@ -80,6 +81,7 @@ function MiniLineChart({ data, color, height = 60 }) {
 export default function ExerciseDetailScreen({ route }) {
   const { exerciseId } = route.params;
   const { theme } = useTheme();
+  const { formatWeight } = useUnits();
   const [exercise, setExercise] = useState(null);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -178,9 +180,9 @@ export default function ExerciseDetailScreen({ route }) {
         {/* Stats */}
         <View style={styles.statsRow}>
           {[
-            { label: 'Best Weight', value: bestWeight ? `${bestWeight} kg` : '—' },
+            { label: 'Best Weight', value: bestWeight ? formatWeight(bestWeight) : '—' },
             { label: 'Sessions', value: totalSessions || '—' },
-            { label: 'Total Volume', value: totalVolume ? `${Math.round(totalVolume)} kg` : '—' },
+            { label: 'Total Volume', value: totalVolume ? formatWeight(totalVolume, { decimals: 0 }) : '—' },
           ].map((s) => (
             <Card key={s.label} style={styles.statCard}>
               <Text style={[styles.statValue, { color: theme.accent }]}>{s.value}</Text>
@@ -216,11 +218,11 @@ export default function ExerciseDetailScreen({ route }) {
               >
                 <Text style={[styles.historyDate, { color: theme.textSecondary }]}>{formatDate(h.date)}</Text>
                 <Text style={[styles.historyWeight, { color: theme.text }]}>
-                  {h.max_weight ? `${h.max_weight} kg` : '—'}
+                  {h.max_weight ? formatWeight(h.max_weight) : '—'}
                 </Text>
                 <Text style={[styles.historySets, { color: theme.textMuted }]}>{h.total_sets} sets</Text>
                 <Text style={[styles.historyVol, { color: theme.textMuted }]}>
-                  {h.total_volume ? `${Math.round(h.total_volume)} kg` : ''}
+                  {h.total_volume ? formatWeight(h.total_volume, { decimals: 0 }) : ''}
                 </Text>
               </View>
             ))}

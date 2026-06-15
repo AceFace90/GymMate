@@ -169,7 +169,7 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
   const completeSet = async (exercise, setIndex) => {
     const setData = sets[exercise.exercise_id]?.[setIndex];
     if (!setData) return;
-    const w = parseFloat(setData.weight) || null;
+    const w = setData.weight ? parseWeight(parseFloat(setData.weight)) : null;
     const r = parseInt(setData.reps) || null;
     const result = await db.logSet({
       sessionId,
@@ -202,7 +202,7 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
         const set = exSets[i];
         if (!set.completed && (set.weight || set.reps)) {
           // Has data but wasn't explicitly completed — persist it now
-          const w = parseFloat(set.weight) || null;
+          const w = set.weight ? parseWeight(parseFloat(set.weight)) : null;
           const r = parseInt(set.reps) || null;
           await db.logSet({
             sessionId,
@@ -288,7 +288,7 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
                     <MuscleTag group={exercise.muscle_group} />
                     {last && (
                       <Text style={[styles.lastSet, { color: theme.textMuted }]}>
-                        Last: {last.weight_kg ? `${last.weight_kg}kg` : '—'} × {last.reps ?? '—'}
+                        Last: {last.weight_kg ? displayWeight(last.weight_kg) : '—'} × {last.reps ?? '—'}
                       </Text>
                     )}
                   </View>
@@ -314,7 +314,7 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
                   <TextInput
                     value={set.weight}
                     onChangeText={(v) => updateSet(exercise.exercise_id, i, 'weight', v)}
-                    placeholder={last?.weight_kg ? String(last.weight_kg) : '—'}
+                    placeholder={last?.weight_kg ? displayWeight(last.weight_kg) : '—'}
                     placeholderTextColor={theme.textMuted}
                     keyboardType="decimal-pad"
                     editable={!set.completed}

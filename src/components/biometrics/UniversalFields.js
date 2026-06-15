@@ -79,9 +79,60 @@ function Field({ label, optional, children, theme, style }) {
 
 export default function UniversalFields({ form, onChange, theme: themeProp }) {
   const { theme: ctxTheme } = useTheme();
-  const { weightUnit, heightUnit } = useUnits();
+  const { weightUnit, heightUnit, units, kgToLbs, lbsToKg, cmToFeet, feetToCm } = useUnits();
   const theme = themeProp || ctxTheme;
   const input = [styles.input, { backgroundColor: theme.input, color: theme.text, borderColor: theme.border }];
+
+  // Convert stored kg/cm to display units
+  const displayWeight = form.weightKg && units === 'imperial'
+    ? kgToLbs(parseFloat(form.weightKg)).toFixed(1)
+    : form.weightKg;
+
+  const displayHeight = form.heightCm && units === 'imperial'
+    ? (() => {
+        const { feet, inches } = cmToFeet(parseFloat(form.heightCm));
+        return `${feet}'${inches}"`;
+      })()
+    : form.heightCm;
+
+  // Parse user input back to kg/cm
+  const handleWeightChange = (value) => {
+    if (!value) {
+      onChange('weightKg', '');
+      return;
+    }
+    const num = parseFloat(value);
+    if (isNaN(num)) return;
+    const kg = units === 'imperial' ? lbsToKg(num) : num;
+    onChange('weightKg', kg.toFixed(1));
+  };
+
+  const handleHeightChange = (value) => {
+    if (!value) {
+      onChange('heightCm', '');
+      return;
+    }
+    if (units === 'imperial') {
+      // Parse formats: "5'11\"", "5'11", "5.9" (decimal feet)
+      const feetInchMatch = value.match(/(\d+)'(\d+)/);
+      if (feetInchMatch) {
+        const cm = feetToCm(parseInt(feetInchMatch[1]), parseInt(feetInchMatch[2]));
+        onChange('heightCm', Math.round(cm).toString());
+      } else {
+        const decimalFeet = parseFloat(value);
+        if (!isNaN(decimalFeet)) {
+          const totalInches = decimalFeet * 12;
+          const cm = totalInches * 2.54;
+          onChange('heightCm', Math.round(cm).toString());
+        }
+      }
+    } else {
+      const num = parseFloat(value);
+      if (!isNaN(num)) {
+        onChange('heightCm', Math.round(num).toString());
+      }
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -122,10 +173,24 @@ export default function UniversalFields({ form, onChange, theme: themeProp }) {
 
       <View style={styles.row}>
         <Field label={`Height (${heightUnit})`} theme={theme}>
-          <TextInput style={input} value={String(form.heightCm || '')} onChangeText={(v) => onChange('heightCm', v)} placeholder={heightUnit} placeholderTextColor={theme.textMuted} keyboardType="numeric" />
+          <TextInput
+            style={input}
+            value={String(displayHeight || '')}
+            onChangeText={handleHeightChange}
+            placeholder={units === 'imperial' ? "5'10\"" : 'cm'}
+            placeholderTextColor={theme.textMuted}
+            keyboardType="numeric"
+          />
         </Field>
         <Field label={`Weight (${weightUnit})`} theme={theme}>
-          <TextInput style={input} value={String(form.weightKg || '')} onChangeText={(v) => onChange('weightKg', v)} placeholder={weightUnit} placeholderTextColor={theme.textMuted} keyboardType="numeric" />
+          <TextInput
+            style={input}
+            value={String(displayWeight || '')}
+            onChangeText={handleWeightChange}
+            placeholder={weightUnit}
+            placeholderTextColor={theme.textMuted}
+            keyboardType="decimal-pad"
+          />
         </Field>
         <Field label="Body Fat %" optional theme={theme}>
           <TextInput style={input} value={String(form.bodyFatPct || '')} onChangeText={(v) => onChange('bodyFatPct', v)} placeholder="%" placeholderTextColor={theme.textMuted} keyboardType="numeric" />
