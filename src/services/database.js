@@ -85,6 +85,23 @@ const MIGRATIONS = [
 
   INSERT OR IGNORE INTO schema_version (version) VALUES (1);
   `,
+
+  // v2 — PT-client collaboration
+  `
+  ALTER TABLE programs ADD COLUMN created_by_user_id TEXT;
+  ALTER TABLE programs ADD COLUMN is_template INTEGER DEFAULT 0;
+  ALTER TABLE programs ADD COLUMN linked_template_id TEXT;
+
+  CREATE TABLE IF NOT EXISTS workout_feedback (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id      INTEGER NOT NULL REFERENCES workout_sessions(id) ON DELETE CASCADE,
+    trainer_user_id TEXT    NOT NULL,
+    feedback_text   TEXT    NOT NULL,
+    created_at      TEXT    DEFAULT (datetime('now'))
+  );
+
+  INSERT OR IGNORE INTO schema_version (version) VALUES (2);
+  `,
 ];
 
 export async function initDatabase(builtinExercises) {
