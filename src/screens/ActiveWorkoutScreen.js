@@ -46,6 +46,8 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
   const [notes, setNotes] = useState('');
   const [showFinish, setShowFinish] = useState(false);
   const [finishing, setFinishing] = useState(false);
+  const [useManualDuration, setUseManualDuration] = useState(false);
+  const [manualMinutes, setManualMinutes] = useState('');
 
   // Ad-hoc exercise picker (Quick Workout, or adding to any session)
   const [showAddExercise, setShowAddExercise] = useState(false);
@@ -205,7 +207,10 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
       }
     }
 
-    await db.completeSession(sessionId, { durationSeconds: elapsed, notes });
+    const duration = useManualDuration && manualMinutes
+      ? parseInt(manualMinutes) * 60
+      : elapsed;
+    await db.completeSession(sessionId, { durationSeconds: duration, notes });
     // Back up immediately so the session survives closing the tab without an
     // explicit sign-out (no-op for demo / local-only users). Best-effort; never
     // block the finish flow even if backup fails.
@@ -385,7 +390,9 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
           <View style={styles.modalContent}>
             <View style={styles.summaryRow}>
               <View style={[styles.summaryItem, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                <Text style={[styles.summaryValue, { color: theme.accent }]}>{formatTime(elapsed)}</Text>
+                <Text style={[styles.summaryValue, { color: theme.accent }]}>
+                  {useManualDuration && manualMinutes ? `${manualMinutes}m` : formatTime(elapsed)}
+                </Text>
                 <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Duration</Text>
               </View>
               <View style={[styles.summaryItem, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -393,6 +400,36 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
                 <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Sets Done</Text>
               </View>
             </View>
+
+            {/* Manual duration toggle */}
+            <TouchableOpacity
+              onPress={() => setUseManualDuration(!useManualDuration)}
+              style={[styles.manualToggle, { borderColor: theme.border }]}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={useManualDuration ? "checkbox" : "square-outline"}
+                size={20}
+                color={useManualDuration ? theme.accent : theme.textMuted}
+              />
+              <Text style={[styles.manualToggleText, { color: theme.text }]}>
+                Set duration manually (for retroactive logging)
+              </Text>
+            </TouchableOpacity>
+
+            {useManualDuration && (
+              <View style={styles.manualDurationRow}>
+                <TextInput
+                  value={manualMinutes}
+                  onChangeText={setManualMinutes}
+                  placeholder="45"
+                  placeholderTextColor={theme.textMuted}
+                  keyboardType="number-pad"
+                  style={[styles.manualInput, { backgroundColor: theme.input, borderColor: theme.border, color: theme.text }]}
+                />
+                <Text style={[styles.manualLabel, { color: theme.textSecondary }]}>minutes</Text>
+              </View>
+            )}
             <Text style={[styles.notesLabel, { color: theme.textSecondary }]}>Notes (optional)</Text>
             <TextInput
               value={notes}
@@ -522,6 +559,19 @@ const styles = StyleSheet.create({
   summaryItem: { flex: 1, borderRadius: radius.lg, borderWidth: 1, padding: spacing[4], alignItems: 'center' },
   summaryValue: { fontSize: typography.sizes['2xl'], fontWeight: '700' },
   summaryLabel: { fontSize: typography.sizes.sm, marginTop: 2 },
-  notesLabel: { fontSize: typography.sizes.sm, fontWeight: '500', marginBottom: spacing[1] },
+  manualToggle: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing[2],
+    paddingVertical: spacing[3], paddingHorizontal: spacing[3],
+    borderWidth: 1, borderRadius: radius.md, marginTop: spacing[3],
+  },
+  manualToggleText: { flex: 1, fontSize: typography.sizes.sm },
+  manualDurationRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[2] },
+  manualInput: {
+    borderWidth: 1, borderRadius: radius.md,
+    paddingHorizontal: spacing[3], paddingVertical: spacing[2],
+    fontSize: typography.sizes.lg, width: 80, textAlign: 'center',
+  },
+  manualLabel: { fontSize: typography.sizes.base },
+  notesLabel: { fontSize: typography.sizes.sm, fontWeight: '500', marginBottom: spacing[1], marginTop: spacing[3] },
   notesInput: { borderRadius: radius.md, borderWidth: 1, paddingHorizontal: spacing[3], paddingVertical: spacing[3], fontSize: typography.sizes.base, minHeight: 80, textAlignVertical: 'top' },
 });
