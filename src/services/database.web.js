@@ -85,7 +85,16 @@ function dateStr(iso) {
 
 export async function initDatabase(builtinExercises) {
   const existing = getTable('exercises');
-  if (existing.filter((e) => !e.is_custom).length === 0 && builtinExercises) {
+  const builtInCount = existing.filter((e) => !e.is_custom).length;
+  console.log('[DB] initDatabase: existing built-in exercises:', builtInCount, '/ expected:', builtinExercises?.length || 0);
+
+  // Seed if no exercises, OR if count doesn't match (missing exercises from updates)
+  if (builtinExercises && (builtInCount === 0 || builtInCount !== builtinExercises.length)) {
+    console.log('[DB] Seeding', builtinExercises.length, 'built-in exercises (preserving custom)');
+
+    // Keep custom exercises
+    const customExercises = existing.filter((e) => e.is_custom);
+
     const seeded = builtinExercises.map((ex, i) => ({
       id: nextId('exercises'),
       name: ex.name,
@@ -95,7 +104,10 @@ export async function initDatabase(builtinExercises) {
       is_custom: 0,
       created_at: now(),
     }));
-    setTable('exercises', seeded);
+
+    // Combine built-in + custom
+    setTable('exercises', [...seeded, ...customExercises]);
+    console.log('[DB] Seeded', seeded.length, 'built-in +', customExercises.length, 'custom exercises');
   }
 }
 
@@ -103,7 +115,11 @@ export async function initDatabase(builtinExercises) {
 
 export async function getExercises({ muscleGroup, category, search } = {}) {
   let rows = getTable('exercises');
-  if (muscleGroup) rows = rows.filter((e) => e.muscle_group === muscleGroup);
+  console.log('[DB] getExercises: total exercises:', rows.length, 'filter:', muscleGroup || 'none');
+  if (muscleGroup) {
+    rows = rows.filter((e) => e.muscle_group === muscleGroup);
+    console.log('[DB] After muscle group filter:', rows.length, 'exercises');
+  }
   if (category)    rows = rows.filter((e) => e.category === category);
   if (search)      rows = rows.filter((e) => e.name.toLowerCase().includes(search.toLowerCase()));
   return rows.sort((a, b) => a.name.localeCompare(b.name));
@@ -165,8 +181,12 @@ export async function createProgram({ name, description, daysPerWeek }) {
   return id;
 }
 
-export async function updateProgram(id, { name, description, daysPerWeek, isActive }) {
+export async function updateProgram(id, { name, description, daysPerWeek, isActive, isTemplate }) {
   const rows = getTable('programs');
+  if (isTemplate !== undefined) {
+    const program = rows.find((p) => p.id === id);
+    if (program) program.is_template = isTemplate ? 1 : 0;
+  }
   if (isActive !== undefined) {
     rows.forEach((p) => { p.is_active = 0; });
     const p = rows.find((p) => p.id === id);
