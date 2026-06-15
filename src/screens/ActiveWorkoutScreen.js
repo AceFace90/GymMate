@@ -22,6 +22,7 @@ import Button from '../components/Button';
 import MuscleTag from '../components/MuscleTag';
 import ExerciseScannerModal from '../components/ExerciseScannerModal';
 import { confirmAction } from '../utils/confirm';
+import { getGeminiKey } from './SettingsScreen';
 
 // Format seconds as M:SS
 function formatTime(secs) {
@@ -55,9 +56,15 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
   const [exSearch, setExSearch] = useState('');
   const [exLoading, setExLoading] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
+  const [hasGeminiKey, setHasGeminiKey] = useState(false);
 
   const timerRef = useRef(null);
   const restRef = useRef(null);
+
+  // Check for Gemini API key
+  useEffect(() => {
+    getGeminiKey().then((k) => setHasGeminiKey(!!k));
+  }, []);
 
   // Start elapsed timer
   useEffect(() => {
@@ -453,14 +460,16 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
               <Ionicons name="close" size={24} color={theme.textSecondary} />
             </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            onPress={() => setShowScanner(true)}
-            style={[styles.scanBtn, { borderColor: theme.accentBorder, backgroundColor: theme.accentBg }]}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="camera-outline" size={18} color={theme.accent} />
-            <Text style={[styles.scanBtnText, { color: theme.accent }]}>Scan a machine with your camera</Text>
-          </TouchableOpacity>
+          {hasGeminiKey && (
+            <TouchableOpacity
+              onPress={() => setShowScanner(true)}
+              style={[styles.scanBtn, { borderColor: theme.accentBorder, backgroundColor: theme.accentBg }]}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="camera-outline" size={18} color={theme.accent} />
+              <Text style={[styles.scanBtnText, { color: theme.accent }]}>Scan a machine with your camera</Text>
+            </TouchableOpacity>
+          )}
           <View style={[styles.searchBar, { backgroundColor: theme.input, borderColor: theme.border }]}>
             <Ionicons name="search" size={16} color={theme.textMuted} />
             <TextInput

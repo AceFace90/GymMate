@@ -31,9 +31,10 @@ function ProgramsStackNav() {
     <ProgramsStack.Navigator
       screenOptions={{
         headerStyle: { backgroundColor: theme.bg },
-        headerTintColor: theme.text,
+        headerTintColor: theme.accent,
         headerShadowVisible: false,
         contentStyle: { backgroundColor: theme.bg },
+        headerTitleStyle: { color: theme.accent, fontWeight: '700' },
       }}
     >
       <ProgramsStack.Screen name="ProgramsList" component={ProgramsScreen} options={{ title: 'Programs' }} />
@@ -53,9 +54,10 @@ function ProgressStackNav() {
     <ProgressStack.Navigator
       screenOptions={{
         headerStyle: { backgroundColor: theme.bg },
-        headerTintColor: theme.text,
+        headerTintColor: theme.accent,
         headerShadowVisible: false,
         contentStyle: { backgroundColor: theme.bg },
+        headerTitleStyle: { color: theme.accent, fontWeight: '700' },
       }}
     >
       <ProgressStack.Screen name="ProgressMain" component={ProgressScreen} options={{ title: 'Progress' }} />
@@ -69,9 +71,10 @@ function ProfileStackNav({ onLogout }) {
     <ProfileStack.Navigator
       screenOptions={{
         headerStyle: { backgroundColor: theme.bg },
-        headerTintColor: theme.text,
+        headerTintColor: theme.accent,
         headerShadowVisible: false,
         contentStyle: { backgroundColor: theme.bg },
+        headerTitleStyle: { color: theme.accent, fontWeight: '700' },
       }}
     >
       <ProfileStack.Screen
@@ -102,9 +105,10 @@ function ExercisesStackNav() {
     <ExercisesStack.Navigator
       screenOptions={{
         headerStyle: { backgroundColor: theme.bg },
-        headerTintColor: theme.text,
+        headerTintColor: theme.accent,
         headerShadowVisible: false,
         contentStyle: { backgroundColor: theme.bg },
+        headerTitleStyle: { color: theme.accent, fontWeight: '700' },
       }}
     >
       <ExercisesStack.Screen name="ExercisesList" component={ExercisesScreen} options={{ title: 'Exercises' }} />
