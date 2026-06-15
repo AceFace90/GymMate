@@ -150,7 +150,7 @@ export default function ProgramDetailScreen({ route, navigation }) {
         </View>
 
         {/* Start workout CTA */}
-        {(program.days?.length ?? 0) > 0 && (
+        {(program.days?.length ?? 0) > 0 && !program.is_template && (
           <Button title="▶  Start Workout" onPress={() => setShowPickDay(true)} size="lg" style={{ marginBottom: spacing[5] }} />
         )}
 
