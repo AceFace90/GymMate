@@ -1,65 +1,78 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
 
-Mobility
-Cat Cow (mobility)
-Bird Dog (core/stability)
-Torso Mobility (from the floor)
-Banded Crab Walk knee height
-Best World Stretching
-Shoulder external rotation (front)
-Upper back mobility with broomstick
-Ankle dorsi flexion (with band)
-7 views
+    // Helper function to check if user is authenticated
+    function isSignedIn() {
+      return request.auth != null;
+    }
 
+    // Helper function to check if user owns the resource
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
 
-Ankle dorsi flexion
-41 views
+    // User data (existing rule)
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+    }
 
+    // Trainer-Client Relationships
+    match /trainer_clients/{relationshipId} {
+      // Trainer can read/write their own relationships
+      allow read: if isSignedIn() && (
+        request.auth.uid == resource.data.trainerId ||
+        request.auth.uid == resource.data.clientId
+      );
 
-Shin box (hard version)
-2 views
+      // Trainer can create invite (relationship)
+      allow create: if isSignedIn() && request.resource.data.trainerId == request.auth.uid;
 
+      // Either party can update (for accepting or revoking)
+      allow update: if isSignedIn() && (
+        request.auth.uid == resource.data.trainerId ||
+        request.auth.uid == resource.data.clientId
+      );
 
-Hip mobility complex
-12 views
+      // Only trainer can delete
+      allow delete: if isSignedIn() && request.auth.uid == resource.data.trainerId;
+    }
 
+    // Program Templates
+    match /program_templates/{templateId} {
+      // Trainer can read/write their own templates
+      allow read, write: if isSignedIn() && resource.data.trainerId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.trainerId == request.auth.uid;
+    }
 
-Shin box (easy version)
-34 views
+    // Program Assignments
+    match /program_assignments/{assignmentId} {
+      // Trainer can read/write assignments they created
+      // Client can read assignments assigned to them
+      allow read: if isSignedIn() && (
+        request.auth.uid == resource.data.trainerId ||
+        request.auth.uid == resource.data.clientId
+      );
 
+      // Only trainer can create/update/delete assignments
+      allow create: if isSignedIn() && request.resource.data.trainerId == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.trainerId == request.auth.uid;
+    }
 
-Fire Hydrant (hip mobility)
-20 views
+    // Workout Feedback
+    match /workout_feedback_cloud/{feedbackId} {
+      // Trainer can read/write feedback they created
+      // Client can read feedback for their workouts
+      allow read: if isSignedIn() && (
+        request.auth.uid == resource.data.trainerId ||
+        request.auth.uid == resource.data.clientId
+      );
 
+      // Only trainer can create feedback
+      allow create: if isSignedIn() && request.resource.data.trainerId == request.auth.uid;
 
-Shoulders external rotation (with band)2
-4 views
-
-
-Toe touch
-24 views
-
-
-Shoulder dislocation (with band)
-138 views
-
-
-Farmer Carry
-63 views
-
-
-Band gluteus bridge
-9 views
-
-
-Air Squat
-38 views
-
-
-
-
-
-
-Core 
-Curl Up (core/stability)
-5 views
-
+      // Only trainer who created it can update/delete
+      allow update, delete: if isSignedIn() && resource.data.trainerId == request.auth.uid;
+    }
+  }
+}
