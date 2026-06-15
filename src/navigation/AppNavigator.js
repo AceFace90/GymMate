@@ -19,11 +19,23 @@ import ExerciseDetailScreen from '../screens/ExerciseDetailScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 
+// Trainer Screens
+import TrainerDashboardScreen from '../screens/trainer/TrainerDashboardScreen';
+import ClientDetailScreen from '../screens/trainer/ClientDetailScreen';
+import ConnectionScreen from '../screens/trainer/ConnectionScreen';
+import TemplatesScreen from '../screens/trainer/TemplatesScreen';
+import AssignProgramScreen from '../screens/trainer/AssignProgramScreen';
+
+// Client Screens
+import ConnectTrainerScreen from '../screens/client/ConnectTrainerScreen';
+
 const Tab = createBottomTabNavigator();
 const ProgramsStack = createStackNavigator();
 const ProgressStack = createStackNavigator();
 const ExercisesStack = createStackNavigator();
 const ProfileStack = createStackNavigator();
+const ClientsStack = createStackNavigator();
+const TemplatesStack = createStackNavigator();
 
 function ProgramsStackNav() {
   const { theme } = useTheme();
@@ -95,7 +107,45 @@ function ProfileStackNav({ onLogout }) {
         {(props) => <ProfileScreen {...props} onLogout={onLogout} />}
       </ProfileStack.Screen>
       <ProfileStack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
+      <ProfileStack.Screen name="ConnectTrainer" component={ConnectTrainerScreen} options={{ headerShown: false }} />
     </ProfileStack.Navigator>
+  );
+}
+
+function ClientsStackNav() {
+  const { theme } = useTheme();
+  return (
+    <ClientsStack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: theme.bg },
+        headerTintColor: theme.accent,
+        headerShadowVisible: false,
+        contentStyle: { backgroundColor: theme.bg },
+        headerTitleStyle: { color: theme.accent, fontWeight: '700' },
+      }}
+    >
+      <ClientsStack.Screen name="ClientsList" component={TrainerDashboardScreen} options={{ headerShown: false }} />
+      <ClientsStack.Screen name="ClientDetail" component={ClientDetailScreen} options={{ headerShown: false }} />
+      <ClientsStack.Screen name="Connection" component={ConnectionScreen} options={{ headerShown: false }} />
+      <ClientsStack.Screen name="AssignProgram" component={AssignProgramScreen} options={{ headerShown: false }} />
+    </ClientsStack.Navigator>
+  );
+}
+
+function TemplatesStackNav() {
+  const { theme } = useTheme();
+  return (
+    <TemplatesStack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: theme.bg },
+        headerTintColor: theme.accent,
+        headerShadowVisible: false,
+        contentStyle: { backgroundColor: theme.bg },
+        headerTitleStyle: { color: theme.accent, fontWeight: '700' },
+      }}
+    >
+      <TemplatesStack.Screen name="TemplatesList" component={TemplatesScreen} options={{ headerShown: false }} />
+    </TemplatesStack.Navigator>
   );
 }
 
@@ -119,6 +169,7 @@ function ExercisesStackNav() {
 
 export default function AppNavigator({ user, onLogout }) {
   const { theme } = useTheme();
+  const isTrainer = user?.role === 'trainer';
 
   return (
     <NavigationContainer>
@@ -145,6 +196,8 @@ export default function AppNavigator({ user, onLogout }) {
               Progress: '📈',
               Exercises: '📚',
               Profile: '👤',
+              Clients: '👥',
+              Templates: '📋',
             };
             return (
               <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.5 }}>
@@ -160,6 +213,15 @@ export default function AppNavigator({ user, onLogout }) {
         <Tab.Screen name="Programs" component={ProgramsStackNav} />
         <Tab.Screen name="Progress" component={ProgressStackNav} />
         <Tab.Screen name="Exercises" component={ExercisesStackNav} />
+
+        {/* Trainer-only tabs */}
+        {isTrainer && (
+          <>
+            <Tab.Screen name="Clients" component={ClientsStackNav} />
+            <Tab.Screen name="Templates" component={TemplatesStackNav} />
+          </>
+        )}
+
         <Tab.Screen
           name="Profile"
           children={() => <ProfileStackNav onLogout={onLogout} />}

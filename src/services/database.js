@@ -231,11 +231,20 @@ export async function getProgramById(id) {
   return program;
 }
 
-export async function createProgram({ name, description, daysPerWeek }) {
+export async function createProgram({ name, description, daysPerWeek, isActive, createdByUserId, isTemplate, linkedTemplateId }) {
   const database = await getDb();
   const result = await database.runAsync(
-    'INSERT INTO programs (name, description, days_per_week) VALUES (?, ?, ?)',
-    [name, description || null, daysPerWeek || 3]
+    `INSERT INTO programs (name, description, days_per_week, is_active, created_by_user_id, is_template, linked_template_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [
+      name,
+      description || null,
+      daysPerWeek || 3,
+      isActive ? 1 : 0,
+      createdByUserId || null,
+      isTemplate ? 1 : 0,
+      linkedTemplateId || null,
+    ]
   );
   return result.lastInsertRowId;
 }
