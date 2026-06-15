@@ -492,7 +492,7 @@ export async function getDailyActivity(daysBack = 14) {
      FROM workout_sessions ws
      LEFT JOIN session_sets ss ON ss.session_id = ws.id
      WHERE ws.completed_at IS NOT NULL
-       AND ws.started_at >= datetime('now', '-' || ? || ' days')
+       AND DATE(ws.started_at) >= DATE('now', '-' || ? || ' days')
      GROUP BY DATE(ws.started_at)
      ORDER BY date ASC`,
     [daysBack]

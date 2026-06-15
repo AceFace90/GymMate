@@ -139,7 +139,7 @@ export default function ProgressScreen() {
   // Sum a window of N days ending `offset` days ago (offset 0 = current 7 days)
   const sumWindow = (startDaysAgo, endDaysAgo) => {
     let sessions = 0, sets = 0, volume = 0, minutes = 0;
-    for (let i = startDaysAgo; i > endDaysAgo; i--) {
+    for (let i = startDaysAgo - 1; i >= endDaysAgo; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const e = dayMap[isoDay(d)];
