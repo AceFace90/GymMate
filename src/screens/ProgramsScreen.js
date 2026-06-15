@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '../hooks/useTheme';
-import { spacing, typography, radius } from '../theme';
+import { spacing, typography, radius, colors } from '../theme';
 import * as db from '../services/database';
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -101,13 +101,6 @@ export default function ProgramsScreen({ navigation }) {
         // Check if we already have this program locally
         const existing = existingPrograms.find(p => p.linked_template_id === assignment.assignmentId);
 
-        if (existing) {
-          // Already exists - skip for now to avoid duplicates
-          // TODO: Check updatedAt to detect actual changes and re-sync only when needed
-          console.log('[ProgramsScreen] Program already exists, skipping:', existing.name);
-          continue;
-        }
-
         // Use data from assignment (no need to fetch template - client can't access it)
         // Assignment already contains programData with name, description, days, exercises
         const programData = assignment.programData || {};
@@ -115,16 +108,40 @@ export default function ProgramsScreen({ navigation }) {
         const programDesc = programData.description || 'Assigned by your trainer';
         const daysPerWeek = programData.daysPerWeek || programData.days_per_week || 3;
 
-        // Create local program (as read-only, linked to assignment)
-        const programId = await db.createProgram({
-          name: `🔒 ${programName}`,
-          description: programDesc,
-          daysPerWeek: daysPerWeek,
-          isActive: false,
-          createdByUserId: assignment.trainerId,
-          isTemplate: false,
-          linkedTemplateId: assignment.assignmentId, // Store assignment ID here
-        });
+        let programId;
+
+        if (existing) {
+          // Program exists - update it with fresh data
+          console.log('[ProgramsScreen] Updating existing program:', existing.name);
+          programId = existing.id;
+
+          // Update program metadata
+          await db.updateProgram(programId, {
+            name: `🔒 ${programName}`,
+            description: programDesc,
+            days_per_week: daysPerWeek,
+          });
+
+          // Delete all existing days (and their exercises cascade)
+          const existingProgram = await db.getProgramById(programId);
+          if (existingProgram?.days) {
+            for (const day of existingProgram.days) {
+              await db.deleteProgramDay(day.id);
+            }
+          }
+        } else {
+          // Create new local program (as read-only, linked to assignment)
+          programId = await db.createProgram({
+            name: `🔒 ${programName}`,
+            description: programDesc,
+            daysPerWeek: daysPerWeek,
+            isActive: false,
+            createdByUserId: assignment.trainerId,
+            isTemplate: false,
+            linkedTemplateId: assignment.assignmentId, // Store assignment ID here
+          });
+          newCount++; // Count new assignments
+        }
 
         // Sync days and exercises from programData
         if (programData.days && Array.isArray(programData.days)) {
@@ -138,8 +155,26 @@ export default function ProgramsScreen({ navigation }) {
             // Sync exercises for this day
             if (day.exercises && Array.isArray(day.exercises)) {
               for (const exercise of day.exercises) {
+                // Match exercise by NAME instead of ID (IDs differ between users)
+                const exerciseName = exercise.exercise_name || exercise.exerciseName;
+                if (!exerciseName) {
+                  console.warn('[ProgramsScreen] Exercise missing name, skipping:', exercise);
+                  continue;
+                }
+
+                // Find the exercise in the client's local library by name
+                const allExercises = await db.getExercises({});
+                const matchedExercise = allExercises.find(e =>
+                  e.name.toLowerCase() === exerciseName.toLowerCase()
+                );
+
+                if (!matchedExercise) {
+                  console.warn('[ProgramsScreen] Exercise not found in client library:', exerciseName);
+                  continue;
+                }
+
                 await db.addExerciseToDay(dayId, {
-                  exerciseId: exercise.exercise_id || exercise.exerciseId,
+                  exerciseId: matchedExercise.id, // Use CLIENT's exercise ID
                   sets: exercise.sets || 3,
                   reps: exercise.reps || '8-12',
                   restSeconds: exercise.rest_seconds || exercise.restSeconds || 90,
@@ -151,8 +186,7 @@ export default function ProgramsScreen({ navigation }) {
           }
         }
 
-        console.log('[ProgramsScreen] Synced program with days/exercises:', programName);
-        newCount++; // Count new assignments
+        console.log('[ProgramsScreen] Synced program with days/exercises:', programName, '(' + (programData.days?.length || 0) + ' days)')
 
         // Update assignment with last synced timestamp
         try {
@@ -323,13 +357,13 @@ export default function ProgramsScreen({ navigation }) {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]} edges={['top']}>
       {/* New assignments notification */}
       {newAssignmentsCount > 0 && (
-        <View style={[styles.notificationBanner, { backgroundColor: colors.green + '20', borderColor: colors.green + '40' }]}>
-          <Ionicons name="checkmark-circle" size={18} color={colors.green} />
-          <Text style={[styles.notificationText, { color: colors.green }]}>
+        <View style={[styles.notificationBanner, { backgroundColor: '#10b981' }]}>
+          <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
+          <Text style={[styles.notificationText, { color: '#ffffff', fontWeight: '600' }]}>
             {newAssignmentsCount} new program{newAssignmentsCount !== 1 ? 's' : ''} assigned by your trainer!
           </Text>
-          <TouchableOpacity onPress={() => setNewAssignmentsCount(0)}>
-            <Ionicons name="close" size={18} color={colors.green} />
+          <TouchableOpacity onPress={() => setNewAssignmentsCount(0)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="close" size={20} color="#ffffff" />
           </TouchableOpacity>
         </View>
       )}

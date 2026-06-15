@@ -74,9 +74,9 @@ export async function updateTemplateAndSync(templateId, trainerId) {
   const template = await getTemplate(templateId);
   console.log('[updateTemplateAndSync] Template fetched:', template.name);
 
-  // Fetch the full program structure if not already present
+  // Fetch the full program structure from local DB (always get latest)
   let fullProgramData = template.programData;
-  if (template.programId && !fullProgramData?.days) {
+  if (template.programId) {
     const program = await db.getProgramById(template.programId);
     if (program) {
       fullProgramData = {
