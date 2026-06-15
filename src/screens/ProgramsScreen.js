@@ -93,52 +93,10 @@ export default function ProgramsScreen({ navigation }) {
         const existing = existingPrograms.find(p => p.linked_template_id === assignment.assignmentId);
 
         if (existing) {
-          // Check if assignment has been updated (trainer pushed changes)
-          // For now, always re-sync to ensure latest data
-          // TODO: Add updatedAt timestamp comparison for efficiency
-          console.log('[ProgramsScreen] Re-syncing updated program:', existing.name);
-
-          // Delete old days and exercises
-          const program = await db.getProgramById(existing.id);
-          if (program?.days) {
-            for (const day of program.days) {
-              await db.deleteProgramDay(day.id);
-            }
-          }
-
-          // Update metadata
-          const programData = assignment.programData || {};
-          await db.updateProgram(existing.id, {
-            name: `🔒 ${programData.name || existing.name}`,
-            description: programData.description || existing.description,
-            daysPerWeek: programData.daysPerWeek || programData.days_per_week || existing.days_per_week,
-          });
-
-          // Re-create days and exercises with fresh data
-          if (programData.days && Array.isArray(programData.days)) {
-            for (const day of programData.days) {
-              const dayId = await db.addProgramDay(existing.id, {
-                name: day.name || `Day ${day.day_number || day.dayNumber || 1}`,
-                dayNumber: day.day_number || day.dayNumber || 1,
-                sortOrder: day.sort_order || day.sortOrder || 0,
-              });
-
-              if (day.exercises && Array.isArray(day.exercises)) {
-                for (const exercise of day.exercises) {
-                  await db.addExerciseToDay(dayId, {
-                    exerciseId: exercise.exercise_id || exercise.exerciseId,
-                    sets: exercise.sets || 3,
-                    reps: exercise.reps || '8-12',
-                    restSeconds: exercise.rest_seconds || exercise.restSeconds || 90,
-                    notes: exercise.notes || null,
-                    sortOrder: exercise.sort_order || exercise.sortOrder || 0,
-                  });
-                }
-              }
-            }
-          }
-
-          continue; // Already handled
+          // Already exists - skip for now to avoid duplicates
+          // TODO: Check updatedAt to detect actual changes and re-sync only when needed
+          console.log('[ProgramsScreen] Program already exists, skipping:', existing.name);
+          continue;
         }
 
         // Use data from assignment (no need to fetch template - client can't access it)
