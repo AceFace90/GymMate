@@ -11,6 +11,9 @@ import { spacing, typography, radius } from '../../theme';
 import * as programTemplates from '../../services/programTemplates';
 import * as auth from '../../services/auth';
 import * as db from '../../services/database';
+import { generateProgram } from '../../services/gemini';
+import { getGeminiKey } from '../SettingsScreen';
+import { bestMatch } from '../../utils/matchExercise';
 
 export default function TemplatesScreen({ navigation }) {
   const { theme } = useTheme();
@@ -21,10 +24,16 @@ export default function TemplatesScreen({ navigation }) {
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [creating, setCreating] = useState(false);
+  const [createMode, setCreateMode] = useState('manual'); // 'manual' or 'ai'
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiError, setAiError] = useState('');
+  const [hasKey, setHasKey] = useState(false);
 
   useFocusEffect(
     React.useCallback(() => {
       loadTemplates();
+      getGeminiKey().then((k) => setHasKey(!!k));
     }, [])
   );
 
@@ -49,6 +58,86 @@ export default function TemplatesScreen({ navigation }) {
 
   function handleCreateTemplate() {
     setShowCreate(true);
+    setCreateMode(hasKey ? 'ai' : 'manual');
+  }
+
+  async function handleAiGenerate() {
+    const prompt = aiPrompt.trim();
+    if (!prompt) {
+      if (Platform.OS === 'web') {
+        alert('Please enter a program description');
+      } else {
+        Alert.alert('Error', 'Please enter a program description');
+      }
+      return;
+    }
+
+    setAiGenerating(true);
+    setAiError('');
+
+    try {
+      const exercises = await db.getExercises();
+      const exerciseNames = exercises.map((e) => e.name);
+
+      // Parse days/week from prompt or default 3
+      const daysMatch = prompt.match(/(\d)\s*(?:day|x)/i);
+      const daysPerWeek = daysMatch ? parseInt(daysMatch[1]) : 3;
+
+      const result = await generateProgram({
+        goal: prompt,
+        daysPerWeek,
+        equipment: 'full gym',
+        notes: '',
+        exerciseNames,
+      });
+
+      // Create program as template
+      const progId = await db.createProgram(result.name, result.description, true, currentUser.id);
+
+      // Save days + exercises
+      for (let i = 0; i < (result.days || []).length; i++) {
+        const day = result.days[i];
+        const dayId = await db.addProgramDay(progId, {
+          name: day.name,
+          dayNumber: i + 1,
+          sortOrder: i,
+        });
+        for (let j = 0; j < (day.exercises || []).length; j++) {
+          const ex = day.exercises[j];
+          const match =
+            exercises.find((e) => e.name.toLowerCase() === ex.name.toLowerCase()) ||
+            bestMatch(ex.name, exercises);
+          if (match) {
+            await db.addExerciseToDay(dayId, {
+              exerciseId: match.id,
+              sets: ex.sets || 3,
+              reps: ex.reps || '8-12',
+              restSeconds: ex.restSeconds || 90,
+              sortOrder: j,
+            });
+          }
+        }
+      }
+
+      // Create Firestore template
+      await programTemplates.createTemplate(currentUser.id, {
+        name: result.name,
+        description: result.description || '',
+        daysPerWeek: result.days?.length || daysPerWeek,
+        programId: progId,
+      });
+
+      setAiGenerating(false);
+      setShowCreate(false);
+      setAiPrompt('');
+      setAiError('');
+      await loadTemplates();
+
+      navigation.navigate('ProgramDetail', { programId: progId, isTemplate: true });
+    } catch (e) {
+      setAiGenerating(false);
+      setAiError(e.message === 'NO_KEY' ? 'Add your Gemini API key in Settings first.' : e.message);
+    }
   }
 
   async function handleCreateSubmit() {
@@ -193,50 +282,122 @@ export default function TemplatesScreen({ navigation }) {
         visible={showCreate}
         transparent
         animationType="fade"
-        onRequestClose={() => setShowCreate(false)}
+        onRequestClose={() => {
+          setShowCreate(false);
+          setNewName('');
+          setNewDesc('');
+          setAiPrompt('');
+          setAiError('');
+        }}
       >
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
             <Text style={[styles.modalTitle, { color: theme.text }]}>Create Template</Text>
 
-            <Text style={[styles.label, { color: theme.text }]}>Template Name</Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: theme.input, color: theme.text, borderColor: theme.border }]}
-              value={newName}
-              onChangeText={setNewName}
-              placeholder="e.g. Beginner Strength Program"
-              placeholderTextColor={theme.textMuted}
-            />
+            {/* Tabs */}
+            {hasKey && (
+              <View style={styles.tabs}>
+                <TouchableOpacity
+                  style={[
+                    styles.tab,
+                    createMode === 'ai' && { borderBottomColor: theme.accent, borderBottomWidth: 2 },
+                  ]}
+                  onPress={() => setCreateMode('ai')}
+                >
+                  <Text style={[styles.tabText, { color: createMode === 'ai' ? theme.accent : theme.textSecondary }]}>
+                    🤖 AI Generate
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.tab,
+                    createMode === 'manual' && { borderBottomColor: theme.accent, borderBottomWidth: 2 },
+                  ]}
+                  onPress={() => setCreateMode('manual')}
+                >
+                  <Text style={[styles.tabText, { color: createMode === 'manual' ? theme.accent : theme.textSecondary }]}>
+                    ✍️ Manual
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
-            <Text style={[styles.label, { color: theme.text }]}>Description (Optional)</Text>
-            <TextInput
-              style={[styles.input, styles.textArea, { backgroundColor: theme.input, color: theme.text, borderColor: theme.border }]}
-              value={newDesc}
-              onChangeText={setNewDesc}
-              placeholder="Add details about this template"
-              placeholderTextColor={theme.textMuted}
-              multiline
-              numberOfLines={3}
-            />
+            {/* AI Mode */}
+            {createMode === 'ai' ? (
+              <>
+                <Text style={[styles.label, { color: theme.text }]}>Describe your program</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea, { backgroundColor: theme.input, color: theme.text, borderColor: theme.border }]}
+                  value={aiPrompt}
+                  onChangeText={setAiPrompt}
+                  placeholder="e.g. 3 day upper/lower split for strength, 60 min sessions"
+                  placeholderTextColor={theme.textMuted}
+                  multiline
+                  numberOfLines={4}
+                />
+                {aiError ? <Text style={[styles.errorText, { color: '#ef4444' }]}>{aiError}</Text> : null}
 
-            <View style={styles.modalButtons}>
-              <Button
-                title="Cancel"
-                onPress={() => {
-                  setShowCreate(false);
-                  setNewName('');
-                  setNewDesc('');
-                }}
-                variant="secondary"
-                style={{ flex: 1 }}
-              />
-              <Button
-                title="Create"
-                onPress={handleCreateSubmit}
-                loading={creating}
-                style={{ flex: 1 }}
-              />
-            </View>
+                <View style={styles.modalButtons}>
+                  <Button
+                    title="Cancel"
+                    onPress={() => {
+                      setShowCreate(false);
+                      setAiPrompt('');
+                      setAiError('');
+                    }}
+                    variant="secondary"
+                    style={{ flex: 1 }}
+                  />
+                  <Button
+                    title="Generate"
+                    onPress={handleAiGenerate}
+                    loading={aiGenerating}
+                    style={{ flex: 1 }}
+                  />
+                </View>
+              </>
+            ) : (
+              <>
+                <Text style={[styles.label, { color: theme.text }]}>Template Name</Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: theme.input, color: theme.text, borderColor: theme.border }]}
+                  value={newName}
+                  onChangeText={setNewName}
+                  placeholder="e.g. Beginner Strength Program"
+                  placeholderTextColor={theme.textMuted}
+                />
+
+                <Text style={[styles.label, { color: theme.text }]}>Description (Optional)</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea, { backgroundColor: theme.input, color: theme.text, borderColor: theme.border }]}
+                  value={newDesc}
+                  onChangeText={setNewDesc}
+                  placeholder="Add details about this template"
+                  placeholderTextColor={theme.textMuted}
+                  multiline
+                  numberOfLines={3}
+                />
+
+                <View style={styles.modalButtons}>
+                  <Button
+                    title="Cancel"
+                    onPress={() => {
+                      setShowCreate(false);
+                      setNewName('');
+                      setNewDesc('');
+                    }}
+                    variant="secondary"
+                    style={{ flex: 1 }}
+                  />
+                  <Button
+                    title="Create"
+                    onPress={handleCreateSubmit}
+                    loading={creating}
+                    style={{ flex: 1 }}
+                  />
+                </View>
+              </>
+            )}
           </View>
         </View>
       </Modal>
@@ -316,5 +477,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing[3],
     marginTop: spacing[6],
+  },
+  tabs: {
+    flexDirection: 'row',
+    marginBottom: spacing[4],
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: spacing[3],
+    alignItems: 'center',
+  },
+  tabText: {
+    fontSize: typography.sizes.base,
+    fontWeight: typography.weights.semibold,
+  },
+  errorText: {
+    fontSize: typography.sizes.sm,
+    marginTop: spacing[2],
   },
 });
