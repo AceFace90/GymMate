@@ -48,6 +48,7 @@ export default function TemplatesScreen({ navigation }) {
       }
 
       const fetchedTemplates = await programTemplates.getMyTemplates(user.id);
+      console.log('[TemplatesScreen] Loaded templates:', fetchedTemplates);
       setTemplates(fetchedTemplates);
     } catch (error) {
       console.error('Failed to load templates:', error);
