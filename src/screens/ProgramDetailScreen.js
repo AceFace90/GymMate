@@ -33,6 +33,7 @@ export default function ProgramDetailScreen({ route, navigation }) {
   const [activeDayId, setActiveDayId] = useState(null);
   const [exercises, setExercises] = useState([]);
   const [exSearch, setExSearch] = useState('');
+  const [exMuscleFilter, setExMuscleFilter] = useState(null);
   const [exLoading, setExLoading] = useState(false);
 
   // Select day to start workout
@@ -59,9 +60,12 @@ export default function ProgramDetailScreen({ route, navigation }) {
     if (startWorkout && program) setShowPickDay(true);
   }, [startWorkout, program]);
 
-  const searchExercises = async (query) => {
+  const searchExercises = async (query, muscleGroup) => {
     setExLoading(true);
-    const results = await db.getExercises({ search: query || undefined });
+    const results = await db.getExercises({
+      search: query || undefined,
+      muscleGroup: muscleGroup || undefined
+    });
     setExercises(results);
     setExLoading(false);
   };
@@ -69,7 +73,8 @@ export default function ProgramDetailScreen({ route, navigation }) {
   const openAddExercise = (dayId) => {
     setActiveDayId(dayId);
     setExSearch('');
-    searchExercises('');
+    setExMuscleFilter(null);
+    searchExercises('', null);
     setShowAddExercise(true);
   };
 
@@ -285,13 +290,46 @@ export default function ProgramDetailScreen({ route, navigation }) {
             <Ionicons name="search" size={16} color={theme.textMuted} />
             <TextInput
               value={exSearch}
-              onChangeText={(v) => { setExSearch(v); searchExercises(v); }}
+              onChangeText={(v) => { setExSearch(v); searchExercises(v, exMuscleFilter); }}
               placeholder="Search exercises…"
               placeholderTextColor={theme.textMuted}
               style={[styles.searchInput, { color: theme.text }]}
               autoFocus
             />
           </View>
+          {/* Muscle group filters */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
+            {['All', 'Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core'].map((group) => (
+              <TouchableOpacity
+                key={group}
+                onPress={() => {
+                  const filter = group === 'All' ? null : group;
+                  setExMuscleFilter(filter);
+                  searchExercises(exSearch, filter);
+                }}
+                style={[
+                  styles.filterChip,
+                  {
+                    backgroundColor: (exMuscleFilter === null && group === 'All') || exMuscleFilter === group
+                      ? theme.accentBg
+                      : theme.card,
+                    borderColor: (exMuscleFilter === null && group === 'All') || exMuscleFilter === group
+                      ? theme.accent
+                      : theme.border,
+                  }
+                ]}
+              >
+                <Text style={[
+                  styles.filterChipText,
+                  {
+                    color: (exMuscleFilter === null && group === 'All') || exMuscleFilter === group
+                      ? theme.accent
+                      : theme.text,
+                  }
+                ]}>{group}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
           {exLoading ? (
             <ActivityIndicator color={theme.accent} style={{ marginTop: spacing[8] }} />
           ) : (
@@ -377,6 +415,9 @@ const styles = StyleSheet.create({
   textInput: { borderRadius: radius.md, borderWidth: 1, paddingHorizontal: spacing[3], paddingVertical: spacing[3], fontSize: typography.sizes.base },
   searchBar: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginHorizontal: spacing[4], marginBottom: spacing[2], borderRadius: radius.md, borderWidth: 1, paddingHorizontal: spacing[3], paddingVertical: spacing[2] },
   searchInput: { flex: 1, fontSize: typography.sizes.base },
+  filterRow: { paddingHorizontal: spacing[4], marginBottom: spacing[3] },
+  filterChip: { paddingHorizontal: spacing[3], paddingVertical: spacing[2], borderRadius: radius.full, borderWidth: 1, marginRight: spacing[2] },
+  filterChipText: { fontSize: typography.sizes.sm, fontWeight: '600' },
   exListItem: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing[5], paddingVertical: spacing[3], borderBottomWidth: 1 },
   exListName: { fontSize: typography.sizes.base, fontWeight: '500' },
   exListCategory: { fontSize: typography.sizes.sm, textTransform: 'capitalize' },
