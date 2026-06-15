@@ -177,6 +177,14 @@ export async function removeAssignment(assignmentId) {
   await deleteDoc(assignmentRef);
 }
 
+// Update assignment with last synced timestamp (called by client)
+export async function updateAssignmentLastSync(assignmentId) {
+  const assignmentRef = doc(firestore, 'program_assignments', assignmentId);
+  await updateDoc(assignmentRef, {
+    lastSyncedAt: serverTimestamp(),
+  });
+}
+
 // Sync assigned programs to client's local database
 export async function syncAssignedPrograms(clientId, currentUserId) {
   const assignments = await getClientAssignments(clientId);

@@ -186,6 +186,13 @@ export default function ProgramsScreen({ navigation }) {
 
         console.log('[ProgramsScreen] Synced program with days/exercises:', programName);
         newCount++; // Count new assignments
+
+        // Update assignment with last synced timestamp
+        try {
+          await programTemplates.updateAssignmentLastSync(assignment.assignmentId);
+        } catch (e) {
+          console.error('[ProgramsScreen] Failed to update lastSyncedAt:', e);
+        }
       }
 
       setNewAssignmentsCount(newCount);

@@ -154,6 +154,11 @@ export default function ClientDetailScreen({ route, navigation }) {
                   <Text style={[styles.assignmentMeta, { color: theme.textSecondary }]}>
                     {assignment.assignmentType === 'linked' ? '🔗 Linked' : '📄 Custom'} • Assigned {formatDate(assignment.assignedAt)}
                   </Text>
+                  {assignment.lastSyncedAt && (
+                    <Text style={[styles.assignmentMeta, { color: theme.textMuted, fontSize: typography.sizes.xs }]}>
+                      Last synced {formatDate(assignment.lastSyncedAt)}
+                    </Text>
+                  )}
                 </View>
                 <TouchableOpacity
                   onPress={() => handleRemoveAssignment(assignment)}
