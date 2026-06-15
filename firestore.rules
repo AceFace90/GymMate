@@ -52,9 +52,14 @@ service cloud.firestore {
 
     // Program Templates
     match /program_templates/{templateId} {
-      // Trainer can read/write their own templates
-      allow read, write: if isSignedIn() && isUserMatch(resource.data.trainerId);
+      // Trainer can read their own templates
+      allow read: if isSignedIn() && isUserMatch(resource.data.trainerId);
+
+      // Trainer can create templates they own
       allow create: if isSignedIn() && isUserMatch(request.resource.data.trainerId);
+
+      // Trainer can update/delete their own templates
+      allow update, delete: if isSignedIn() && isUserMatch(resource.data.trainerId);
     }
 
     // Program Assignments

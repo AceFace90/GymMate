@@ -41,6 +41,7 @@ export default function ProgramDetailScreen({ route, navigation }) {
   const loadProgram = async () => {
     setLoading(true);
     const data = await db.getProgramById(programId);
+    console.log('[ProgramDetail] Loaded program:', data?.name, 'Days:', data?.days?.length || 0);
     setProgram(data);
 
     // If this is an assigned program, fetch the trainer's name
