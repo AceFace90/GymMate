@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../hooks/useTheme';
 import { spacing, typography, radius, colors } from '../theme';
 import * as db from '../services/database';
+import * as auth from '../services/auth';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import MuscleTag from '../components/MuscleTag';
@@ -21,6 +22,7 @@ export default function ProgramDetailScreen({ route, navigation }) {
 
   const [program, setProgram] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [trainerName, setTrainerName] = useState(null);
 
   // Add day modal
   const [showAddDay, setShowAddDay] = useState(false);
@@ -40,6 +42,13 @@ export default function ProgramDetailScreen({ route, navigation }) {
     setLoading(true);
     const data = await db.getProgramById(programId);
     setProgram(data);
+
+    // If this is an assigned program, fetch the trainer's name
+    if (data?.created_by_user_id) {
+      const trainer = await auth.getUserById(data.created_by_user_id);
+      setTrainerName(trainer?.name || null);
+    }
+
     setLoading(false);
   };
 
@@ -154,7 +163,7 @@ export default function ProgramDetailScreen({ route, navigation }) {
             <View style={[styles.assignedBanner, { backgroundColor: colors.blue + '20', borderColor: colors.blue + '40' }]}>
               <Ionicons name="lock-closed" size={14} color={colors.blue} />
               <Text style={[styles.assignedText, { color: colors.blue }]}>
-                Assigned by your trainer • Read-only
+                {trainerName ? `Assigned by ${trainerName}` : 'Assigned by your trainer'} • Read-only
               </Text>
             </View>
           )}

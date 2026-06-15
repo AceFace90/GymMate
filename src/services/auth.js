@@ -17,6 +17,11 @@ export async function getCurrentUser() {
   return raw ? JSON.parse(raw) : null;
 }
 
+export async function getUserById(userId) {
+  const users = await getAllUsers();
+  return users.find((u) => u.id === userId) || null;
+}
+
 export async function saveCurrentUser(user) {
   await AsyncStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
 }
