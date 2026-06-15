@@ -301,6 +301,7 @@ export default function ProgramsScreen({ navigation }) {
 
   const renderProgram = ({ item }) => {
     const isActive = Boolean(item.is_active);
+    const isAssigned = Boolean(item.linked_template_id);
     return (
     <TouchableOpacity onPress={() => navigation.navigate('ProgramDetail', { programId: item.id })} activeOpacity={0.8}>
       <Card style={[styles.programCard, isActive && { borderColor: theme.accent }]}>
@@ -328,12 +329,14 @@ export default function ProgramsScreen({ navigation }) {
                 color={isActive ? theme.accent : theme.textMuted}
               />
             </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => handleDelete(item)}
-              style={[styles.actionBtn, { borderColor: theme.border }]}
-            >
-              <Ionicons name="trash-outline" size={18} color="#ef4444" />
-            </TouchableOpacity>
+            {!isAssigned && (
+              <TouchableOpacity
+                onPress={() => handleDelete(item)}
+                style={[styles.actionBtn, { borderColor: theme.border }]}
+              >
+                <Ionicons name="trash-outline" size={18} color="#ef4444" />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
