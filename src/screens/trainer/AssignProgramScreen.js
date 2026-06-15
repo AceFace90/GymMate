@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
@@ -54,13 +54,26 @@ export default function AssignProgramScreen({ route, navigation }) {
   }
 
   async function handleAssign() {
+    console.log('[AssignProgramScreen] handleAssign called');
+    console.log('[AssignProgramScreen] selectedTemplate:', selectedTemplate);
+    console.log('[AssignProgramScreen] selectedClients:', selectedClients);
+    console.log('[AssignProgramScreen] assignmentType:', assignmentType);
+
     if (!selectedTemplate) {
-      Alert.alert('Error', 'Please select a template');
+      if (Platform.OS === 'web') {
+        alert('Error: Please select a template');
+      } else {
+        Alert.alert('Error', 'Please select a template');
+      }
       return;
     }
 
     if (selectedClients.length === 0) {
-      Alert.alert('Error', 'Please select at least one client');
+      if (Platform.OS === 'web') {
+        alert('Error: Please select at least one client');
+      } else {
+        Alert.alert('Error', 'Please select at least one client');
+      }
       return;
     }
 
@@ -68,6 +81,7 @@ export default function AssignProgramScreen({ route, navigation }) {
 
     try {
       for (const client of selectedClients) {
+        console.log('[AssignProgramScreen] Assigning to client:', client.clientId);
         await programTemplates.assignToClient(
           selectedTemplate.templateId,
           client.clientId,
@@ -76,14 +90,24 @@ export default function AssignProgramScreen({ route, navigation }) {
         );
       }
 
-      Alert.alert(
-        'Success',
-        `Program assigned to ${selectedClients.length} client${selectedClients.length > 1 ? 's' : ''}`
-      );
+      console.log('[AssignProgramScreen] Assignment complete');
+
+      if (Platform.OS === 'web') {
+        alert(`Success!\n\nProgram assigned to ${selectedClients.length} client${selectedClients.length > 1 ? 's' : ''}`);
+      } else {
+        Alert.alert(
+          'Success',
+          `Program assigned to ${selectedClients.length} client${selectedClients.length > 1 ? 's' : ''}`
+        );
+      }
       navigation.goBack();
     } catch (error) {
-      console.error('Failed to assign program:', error);
-      Alert.alert('Error', 'Failed to assign program');
+      console.error('[AssignProgramScreen] Failed to assign program:', error);
+      if (Platform.OS === 'web') {
+        alert(`Error: Failed to assign program\n\n${error.message}`);
+      } else {
+        Alert.alert('Error', 'Failed to assign program');
+      }
     } finally {
       setLoading(false);
     }
