@@ -52,6 +52,9 @@ jobs:
           FONT_CSS="<style>@font-face{font-family:'Ionicons';src:url('/gymmate/${IONICONS_FILE}') format('truetype');font-weight:normal;font-style:normal;}</style>"
           sed -i "s|</head>|${FONT_CSS}</head>|" dist/index.html
 
+          # Add PWA manifest link for proper "Add to Home Screen" icon
+          sed -i 's|</head>|<link rel="manifest" href="/gymmate/manifest.json"></head>|' dist/index.html
+
           # Copy to 404.html for SPA routing (back button, direct links)
           cp dist/index.html dist/404.html
 

@@ -149,10 +149,11 @@ const styles = StyleSheet.create({
   },
   segmented: { flexDirection: 'row', borderWidth: 1, borderRadius: radius.md, overflow: 'hidden' },
   segment: { flex: 1, textAlign: 'center', paddingVertical: spacing[2], fontSize: typography.sizes.sm, fontWeight: '600' },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2], marginTop: spacing[1] },
   chip: {
     borderWidth: 1, borderRadius: radius.full,
-    paddingHorizontal: spacing[3], paddingVertical: spacing[1],
-    fontSize: typography.sizes.sm, fontWeight: '500',
+    paddingHorizontal: spacing[3], paddingVertical: spacing[2],
+    fontSize: typography.sizes.xs, fontWeight: '500',
+    textAlign: 'center',
   },
 });

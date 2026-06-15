@@ -1,0 +1,21 @@
+{
+  "name": "GymMate",
+  "short_name": "GymMate",
+  "description": "Build programs. Log sessions. Track PRs.",
+  "start_url": "/gymmate/",
+  "display": "standalone",
+  "theme_color": "#39ff14",
+  "background_color": "#1a1a1a",
+  "icons": [
+    {
+      "src": "/gymmate/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/gymmate/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
