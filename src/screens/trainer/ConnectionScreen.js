@@ -32,6 +32,7 @@ export default function ConnectionScreen({ navigation }) {
       return;
     }
 
+    console.log('[ConnectionScreen] Generating code for user:', currentUser);
     setLoading(true);
 
     try {
@@ -40,11 +41,12 @@ export default function ConnectionScreen({ navigation }) {
         currentUser.name
       );
 
+      console.log('[ConnectionScreen] Code generated:', code);
       setInviteCode(code);
       setExpiresAt(new Date(Date.now() + 24 * 60 * 60 * 1000));
     } catch (error) {
-      console.error('Failed to generate invite:', error);
-      Alert.alert('Error', 'Failed to generate invite code. Please try again.');
+      console.error('[ConnectionScreen] Failed to generate invite:', error);
+      Alert.alert('Error', `Failed to generate invite code: ${error.message}`);
     } finally {
       setLoading(false);
     }

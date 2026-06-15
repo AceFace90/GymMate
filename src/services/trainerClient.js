@@ -13,26 +13,36 @@ export function generateInviteCode() {
 
 // Trainer creates invite and stores relationship doc
 export async function sendInvite(trainerId, trainerName) {
+  console.log('[trainerClient] sendInvite called with:', { trainerId, trainerName });
+
   const inviteCode = generateInviteCode();
   const relationshipId = `${trainerId}_${inviteCode}`;
 
+  console.log('[trainerClient] Generated code:', inviteCode, 'relationshipId:', relationshipId);
+
   const relationshipRef = doc(firestore, 'trainer_clients', relationshipId);
 
-  await setDoc(relationshipRef, {
-    trainerId,
-    trainerName,
-    clientId: null,
-    clientName: null,
-    trainerStatus: 'pending',
-    clientStatus: 'pending',
-    inviteCode,
-    createdAt: serverTimestamp(),
-    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h expiry
-    acceptedAt: null,
-    revokedAt: null,
-  });
+  try {
+    await setDoc(relationshipRef, {
+      trainerId,
+      trainerName,
+      clientId: null,
+      clientName: null,
+      trainerStatus: 'pending',
+      clientStatus: 'pending',
+      inviteCode,
+      createdAt: serverTimestamp(),
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h expiry
+      acceptedAt: null,
+      revokedAt: null,
+    });
 
-  return { inviteCode, relationshipId };
+    console.log('[trainerClient] Invite saved to Firestore successfully');
+    return { inviteCode, relationshipId };
+  } catch (error) {
+    console.error('[trainerClient] Failed to save invite:', error);
+    throw error;
+  }
 }
 
 // Client enters code and finds the relationship

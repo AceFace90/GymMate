@@ -90,8 +90,16 @@ export default function ProfileScreen({ navigation, onLogout }) {
       await auth.updateUserRole(currentUser.id, newRole);
       const updatedUser = await auth.getCurrentUser();
       setCurrentUser(updatedUser);
+
+      // Force app to reload to update navigation tabs
+      alert(newRole === 'trainer'
+        ? 'Trainer mode enabled! Refreshing app...'
+        : 'Trainer mode disabled! Refreshing app...'
+      );
+      window.location.reload();
     } catch (error) {
       console.error('Failed to update role:', error);
+      alert('Failed to update trainer mode. Please try again.');
     }
   }
 
