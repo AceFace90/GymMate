@@ -27,8 +27,10 @@ service cloud.firestore {
 
     // Trainer-Client Relationships
     match /trainer_clients/{relationshipId} {
-      // Trainer can read/write their own relationships
+      // Anyone authenticated can read pending invites (clientId is null) to verify codes
+      // Trainer/client can read their own accepted relationships
       allow read: if isSignedIn() && (
+        resource.data.clientId == null ||
         isUserMatch(resource.data.trainerId) ||
         isUserMatch(resource.data.clientId)
       );
@@ -37,9 +39,11 @@ service cloud.firestore {
       allow create: if isSignedIn() && isUserMatch(request.resource.data.trainerId);
 
       // Either party can update (for accepting or revoking)
+      // Also allow any authenticated user to accept a pending invite (sets clientId)
       allow update: if isSignedIn() && (
         isUserMatch(resource.data.trainerId) ||
-        isUserMatch(resource.data.clientId)
+        isUserMatch(resource.data.clientId) ||
+        (resource.data.clientId == null && request.resource.data.clientId != null)
       );
 
       // Only trainer can delete
