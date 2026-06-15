@@ -16,6 +16,8 @@ import { generateProgram } from '../services/gemini';
 import { getGeminiKey } from './SettingsScreen';
 import { confirmAction } from '../utils/confirm';
 import { bestMatch } from '../utils/matchExercise';
+import * as programTemplates from '../services/programTemplates';
+import * as auth from '../services/auth';
 
 export default function ProgramsScreen({ navigation }) {
   const { theme } = useTheme();
@@ -51,10 +53,59 @@ export default function ProgramsScreen({ navigation }) {
 
   const loadPrograms = async () => {
     setLoading(true);
+
+    // Sync assigned programs from Firestore
+    await syncAssignedPrograms();
+
     const data = await db.getPrograms();
     setPrograms(data);
     setLoading(false);
   };
+
+  async function syncAssignedPrograms() {
+    try {
+      const currentUser = await auth.getCurrentUser();
+      if (!currentUser) return;
+
+      console.log('[ProgramsScreen] Syncing assigned programs for user:', currentUser.id);
+
+      // Get assignments from Firestore
+      const assignments = await programTemplates.getClientAssignments(currentUser.id);
+      console.log('[ProgramsScreen] Found assignments:', assignments);
+
+      // Sync each assignment to local DB
+      for (const assignment of assignments) {
+        // Check if we already have this program locally (use assignment ID as linked_template_id for now)
+        const existingPrograms = await db.getPrograms();
+        const existing = existingPrograms.find(p => p.linked_template_id === assignment.assignmentId);
+
+        if (existing) {
+          console.log('[ProgramsScreen] Program already synced:', existing.id);
+          continue; // Already synced
+        }
+
+        console.log('[ProgramsScreen] Creating local program for assignment:', assignment.assignmentId);
+
+        // Get template data
+        const template = await programTemplates.getTemplate(assignment.templateId);
+
+        // Create local program (as read-only, linked to assignment)
+        const programId = await db.createProgram({
+          name: `🔒 ${template.name}`,
+          description: template.description || 'Assigned by your trainer',
+          daysPerWeek: template.daysPerWeek || 3,
+          isActive: false,
+          createdByUserId: assignment.trainerId,
+          isTemplate: false,
+          linkedTemplateId: assignment.assignmentId, // Store assignment ID here
+        });
+
+        console.log('[ProgramsScreen] Created local program:', programId);
+      }
+    } catch (error) {
+      console.error('[ProgramsScreen] Failed to sync assigned programs:', error);
+    }
+  }
 
   useFocusEffect(useCallback(() => { loadPrograms(); }, []));
 
