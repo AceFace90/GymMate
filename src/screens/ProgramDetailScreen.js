@@ -298,22 +298,22 @@ export default function ProgramDetailScreen({ route, navigation }) {
             />
           </View>
           {/* Muscle group filters */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
-            {['All', 'Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core'].map((group) => (
+          <View style={styles.filterRow}>
+            {['All', 'Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core', 'Cardio', 'Mobility', 'Full Body'].map((group) => (
               <TouchableOpacity
                 key={group}
                 onPress={() => {
-                  const filter = group === 'All' ? null : group;
+                  const filter = group === 'All' ? null : group.toLowerCase().replace(' ', '_');
                   setExMuscleFilter(filter);
                   searchExercises(exSearch, filter);
                 }}
                 style={[
                   styles.filterChip,
                   {
-                    backgroundColor: (exMuscleFilter === null && group === 'All') || exMuscleFilter === group
+                    backgroundColor: (exMuscleFilter === null && group === 'All') || exMuscleFilter === group.toLowerCase().replace(' ', '_')
                       ? theme.accentBg
                       : theme.card,
-                    borderColor: (exMuscleFilter === null && group === 'All') || exMuscleFilter === group
+                    borderColor: (exMuscleFilter === null && group === 'All') || exMuscleFilter === group.toLowerCase().replace(' ', '_')
                       ? theme.accent
                       : theme.border,
                   }
@@ -322,14 +322,14 @@ export default function ProgramDetailScreen({ route, navigation }) {
                 <Text style={[
                   styles.filterChipText,
                   {
-                    color: (exMuscleFilter === null && group === 'All') || exMuscleFilter === group
+                    color: (exMuscleFilter === null && group === 'All') || exMuscleFilter === group.toLowerCase().replace(' ', '_')
                       ? theme.accent
-                      : theme.text,
+                      : theme.textSecondary,
                   }
                 ]}>{group}</Text>
               </TouchableOpacity>
             ))}
-          </ScrollView>
+          </View>
           {exLoading ? (
             <ActivityIndicator color={theme.accent} style={{ marginTop: spacing[8] }} />
           ) : (
@@ -415,8 +415,8 @@ const styles = StyleSheet.create({
   textInput: { borderRadius: radius.md, borderWidth: 1, paddingHorizontal: spacing[3], paddingVertical: spacing[3], fontSize: typography.sizes.base },
   searchBar: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginHorizontal: spacing[4], marginBottom: spacing[2], borderRadius: radius.md, borderWidth: 1, paddingHorizontal: spacing[3], paddingVertical: spacing[2] },
   searchInput: { flex: 1, fontSize: typography.sizes.base },
-  filterRow: { paddingHorizontal: spacing[4], marginBottom: spacing[3] },
-  filterChip: { paddingHorizontal: spacing[3], paddingVertical: spacing[2], borderRadius: radius.full, borderWidth: 1, marginRight: spacing[2] },
+  filterRow: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: spacing[4], gap: spacing[2], marginBottom: spacing[3] },
+  filterChip: { paddingHorizontal: spacing[3], paddingVertical: spacing[2], borderRadius: radius.full, borderWidth: 1 },
   filterChipText: { fontSize: typography.sizes.sm, fontWeight: '600' },
   exListItem: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing[5], paddingVertical: spacing[3], borderBottomWidth: 1 },
   exListName: { fontSize: typography.sizes.base, fontWeight: '500' },
