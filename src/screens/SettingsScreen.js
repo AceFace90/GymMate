@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { useTheme } from '../hooks/useTheme';
+import { useUnits } from '../hooks/useUnits';
 import { spacing, typography, radius } from '../theme';
 import Card from '../components/Card';
 import { confirmAction } from '../utils/confirm';
@@ -35,6 +36,7 @@ function Row({ label, value, theme }) {
 
 export default function SettingsScreen() {
   const { theme, preference, setTheme } = useTheme();
+  const { units, setUnits } = useUnits();
   const [geminiKey, setGeminiKey] = useState('');
   const [keySaved, setKeySaved] = useState(false);
   const [keyVisible, setKeyVisible] = useState(false);
@@ -92,6 +94,36 @@ export default function SettingsScreen() {
                 <Ionicons name={opt.icon} size={20} color={preference === opt.key ? theme.accent : theme.textMuted} />
                 <Text style={[styles.themeLabel, { color: preference === opt.key ? theme.accent : theme.textSecondary }]}>
                   {opt.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </Card>
+
+        {/* Units */}
+        <Text style={[styles.sectionHeader, { color: theme.textMuted }]}>Units</Text>
+        <Card noPad>
+          <View style={styles.themeSelector}>
+            {[
+              { key: 'metric', label: 'Metric', desc: 'kg, cm' },
+              { key: 'imperial', label: 'Imperial', desc: 'lbs, ft/in' },
+            ].map((opt) => (
+              <TouchableOpacity
+                key={opt.key}
+                onPress={() => setUnits(opt.key)}
+                style={[
+                  styles.themeOption,
+                  {
+                    backgroundColor: units === opt.key ? theme.accentBg : 'transparent',
+                    borderColor: units === opt.key ? theme.accentBorder : 'transparent',
+                  },
+                ]}
+              >
+                <Text style={[styles.themeLabel, { color: units === opt.key ? theme.accent : theme.textSecondary, marginTop: 0 }]}>
+                  {opt.label}
+                </Text>
+                <Text style={[styles.unitsDesc, { color: units === opt.key ? theme.accent : theme.textMuted }]}>
+                  {opt.desc}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -195,6 +227,7 @@ const styles = StyleSheet.create({
   themeSelector: { flexDirection: 'row', padding: spacing[2], gap: spacing[2] },
   themeOption: { flex: 1, alignItems: 'center', paddingVertical: spacing[3], borderRadius: radius.md, borderWidth: 1 },
   themeLabel: { fontSize: typography.sizes.xs, fontWeight: '600', marginTop: spacing[1] },
+  unitsDesc: { fontSize: typography.sizes.xs, marginTop: 2 },
   row: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: spacing[4], paddingVertical: spacing[3],

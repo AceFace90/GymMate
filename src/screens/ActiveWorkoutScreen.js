@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '../hooks/useTheme';
+import { useUnits } from '../hooks/useUnits';
 import { spacing, typography, radius } from '../theme';
 import * as db from '../services/database';
 import * as auth from '../services/auth';
@@ -34,6 +35,7 @@ function formatTime(secs) {
 export default function ActiveWorkoutScreen({ route, navigation }) {
   const { sessionId, programDay, programId, dayName } = route.params;
   const { theme } = useTheme();
+  const { weightUnit, displayWeight, parseWeight } = useUnits();
 
   const [elapsed, setElapsed] = useState(0);
   const [restTime, setRestTime] = useState(0);
@@ -301,7 +303,7 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
               {/* Column headers */}
               <View style={styles.setHeaderRow}>
                 <Text style={[styles.setHeaderCell, { color: theme.textMuted, width: 30 }]}>#</Text>
-                <Text style={[styles.setHeaderCell, { color: theme.textMuted, flex: 1 }]}>kg</Text>
+                <Text style={[styles.setHeaderCell, { color: theme.textMuted, flex: 1 }]}>{weightUnit}</Text>
                 <Text style={[styles.setHeaderCell, { color: theme.textMuted, flex: 1 }]}>reps</Text>
                 <View style={{ width: 44 }} />
               </View>

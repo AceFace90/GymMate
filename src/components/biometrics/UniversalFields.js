@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { useTheme } from '../../hooks/useTheme';
+import { useUnits } from '../../hooks/useUnits';
 import { spacing, typography, radius } from '../../theme';
 import { ACTIVITY_LABELS, GOAL_LABELS } from '../../utils/biometrics';
 
@@ -78,6 +79,7 @@ function Field({ label, optional, children, theme, style }) {
 
 export default function UniversalFields({ form, onChange, theme: themeProp }) {
   const { theme: ctxTheme } = useTheme();
+  const { weightUnit, heightUnit } = useUnits();
   const theme = themeProp || ctxTheme;
   const input = [styles.input, { backgroundColor: theme.input, color: theme.text, borderColor: theme.border }];
 
@@ -119,11 +121,11 @@ export default function UniversalFields({ form, onChange, theme: themeProp }) {
       <Text style={[styles.sectionTitle, { color: theme.text, marginTop: spacing[5] }]}>Body Metrics</Text>
 
       <View style={styles.row}>
-        <Field label="Height (cm)" theme={theme}>
-          <TextInput style={input} value={String(form.heightCm || '')} onChangeText={(v) => onChange('heightCm', v)} placeholder="cm" placeholderTextColor={theme.textMuted} keyboardType="numeric" />
+        <Field label={`Height (${heightUnit})`} theme={theme}>
+          <TextInput style={input} value={String(form.heightCm || '')} onChangeText={(v) => onChange('heightCm', v)} placeholder={heightUnit} placeholderTextColor={theme.textMuted} keyboardType="numeric" />
         </Field>
-        <Field label="Weight (kg)" theme={theme}>
-          <TextInput style={input} value={String(form.weightKg || '')} onChangeText={(v) => onChange('weightKg', v)} placeholder="kg" placeholderTextColor={theme.textMuted} keyboardType="numeric" />
+        <Field label={`Weight (${weightUnit})`} theme={theme}>
+          <TextInput style={input} value={String(form.weightKg || '')} onChangeText={(v) => onChange('weightKg', v)} placeholder={weightUnit} placeholderTextColor={theme.textMuted} keyboardType="numeric" />
         </Field>
         <Field label="Body Fat %" optional theme={theme}>
           <TextInput style={input} value={String(form.bodyFatPct || '')} onChangeText={(v) => onChange('bodyFatPct', v)} placeholder="%" placeholderTextColor={theme.textMuted} keyboardType="numeric" />

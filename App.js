@@ -4,6 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StyleSheet, View, Text } from 'react-native';
 
 import { ThemeProvider } from './src/hooks/useTheme';
+import { UnitsProvider } from './src/hooks/useUnits';
 import AppNavigator from './src/navigation/AppNavigator';
 import LoginScreen from './src/screens/LoginScreen';
 import * as db from './src/services/database';
@@ -70,7 +71,9 @@ export default function App() {
       <GestureHandlerRootView style={styles.root}>
         <SafeAreaProvider>
           <ThemeProvider>
-            <AppContent />
+            <UnitsProvider>
+              <AppContent />
+            </UnitsProvider>
           </ThemeProvider>
         </SafeAreaProvider>
       </GestureHandlerRootView>
