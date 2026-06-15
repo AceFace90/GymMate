@@ -104,6 +104,12 @@ export async function getTemplateAssignments(templateId) {
   return snapshot.docs.map(doc => ({ assignmentId: doc.id, ...doc.data() }));
 }
 
+// Remove/unassign a program from a client
+export async function removeAssignment(assignmentId) {
+  const assignmentRef = doc(firestore, 'program_assignments', assignmentId);
+  await deleteDoc(assignmentRef);
+}
+
 // Sync assigned programs to client's local database
 export async function syncAssignedPrograms(clientId, currentUserId) {
   const assignments = await getClientAssignments(clientId);

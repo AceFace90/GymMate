@@ -1,18 +1,76 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../hooks/useTheme';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
 import ConnectionStatusBadge from '../../components/ConnectionStatusBadge';
 import { spacing, typography } from '../../theme';
 import * as trainerClient from '../../services/trainerClient';
+import * as programTemplates from '../../services/programTemplates';
+import * as db from '../../services/database';
 
 export default function ClientDetailScreen({ route, navigation }) {
   const { theme } = useTheme();
   const { client } = route.params;
   const [loading, setLoading] = useState(false);
+  const [assignments, setAssignments] = useState([]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      loadAssignments();
+    }, [client.clientId])
+  );
+
+  async function loadAssignments() {
+    try {
+      // Get all assignments, then filter for this client
+      const allAssignments = await programTemplates.getClientAssignments(client.clientId);
+      console.log('[ClientDetailScreen] Assignments for client:', allAssignments);
+      setAssignments(allAssignments);
+    } catch (error) {
+      console.error('[ClientDetailScreen] Failed to load assignments:', error);
+    }
+  }
+
+  async function handleRemoveAssignment(assignment) {
+    const confirmed = Platform.OS === 'web'
+      ? window.confirm(`Remove "${assignment.programData?.name || 'this program'}" from ${client.clientName}?`)
+      : await new Promise((resolve) => {
+          Alert.alert(
+            'Remove Assignment',
+            `Remove "${assignment.programData?.name || 'this program'}" from ${client.clientName}?`,
+            [
+              { text: 'Cancel', onPress: () => resolve(false) },
+              { text: 'Remove', style: 'destructive', onPress: () => resolve(true) },
+            ]
+          );
+        });
+
+    if (!confirmed) return;
+
+    try {
+      setLoading(true);
+      await programTemplates.removeAssignment(assignment.assignmentId);
+
+      if (Platform.OS === 'web') {
+        alert('Program unassigned successfully');
+      }
+
+      await loadAssignments(); // Reload
+    } catch (error) {
+      console.error('[ClientDetailScreen] Failed to remove assignment:', error);
+      if (Platform.OS === 'web') {
+        alert(`Error: Failed to remove assignment\n\n${error.message}`);
+      } else {
+        Alert.alert('Error', 'Failed to remove assignment');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function handleRevokeConnection() {
     Alert.alert(
@@ -74,6 +132,39 @@ export default function ClientDetailScreen({ route, navigation }) {
             style={{ flex: 1 }}
           />
         </View>
+
+        {/* Assigned Programs */}
+        <Text style={[styles.sectionTitle, { color: theme.text, marginTop: spacing[4], marginBottom: spacing[3] }]}>
+          Assigned Programs
+        </Text>
+        {assignments.length === 0 ? (
+          <Card>
+            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+              No programs assigned yet
+            </Text>
+          </Card>
+        ) : (
+          assignments.map((assignment) => (
+            <Card key={assignment.assignmentId} style={styles.assignmentCard}>
+              <View style={styles.assignmentRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.assignmentName, { color: theme.text }]}>
+                    {assignment.programData?.name || 'Unnamed Program'}
+                  </Text>
+                  <Text style={[styles.assignmentMeta, { color: theme.textSecondary }]}>
+                    {assignment.assignmentType === 'linked' ? '🔗 Linked' : '📄 Custom'} • Assigned {formatDate(assignment.assignedAt)}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => handleRemoveAssignment(assignment)}
+                  style={styles.removeBtn}
+                >
+                  <Ionicons name="close-circle" size={24} color="#ef4444" />
+                </TouchableOpacity>
+              </View>
+            </Card>
+          ))
+        )}
 
         {/* Stats Placeholder */}
         <Card style={styles.statsCard}>
@@ -199,5 +290,29 @@ const styles = StyleSheet.create({
   },
   dangerText: {
     fontSize: typography.sizes.sm,
+  },
+  assignmentCard: {
+    marginBottom: spacing[2],
+  },
+  assignmentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[3],
+  },
+  assignmentName: {
+    fontSize: typography.sizes.base,
+    fontWeight: typography.weights.semibold,
+    marginBottom: spacing[1],
+  },
+  assignmentMeta: {
+    fontSize: typography.sizes.sm,
+  },
+  removeBtn: {
+    padding: spacing[2],
+  },
+  emptyText: {
+    fontSize: typography.sizes.sm,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 });

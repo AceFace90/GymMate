@@ -75,11 +75,14 @@ export default function ProgramsScreen({ navigation }) {
 
       // Get existing programs once
       const existingPrograms = await db.getPrograms();
+      console.log('[ProgramsScreen] Existing programs:', existingPrograms.map(p => ({ id: p.id, name: p.name, linked_template_id: p.linked_template_id })));
 
       // Sync each assignment to local DB
       for (const assignment of assignments) {
         // Check if we already have this program locally (use assignment ID as linked_template_id for now)
         const existing = existingPrograms.find(p => p.linked_template_id === assignment.assignmentId);
+
+        console.log('[ProgramsScreen] Checking assignment:', assignment.assignmentId, 'existing?', !!existing);
 
         if (existing) {
           console.log('[ProgramsScreen] Program already synced:', existing.id, existing.name);
