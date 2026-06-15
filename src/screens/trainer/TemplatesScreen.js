@@ -191,8 +191,17 @@ export default function TemplatesScreen({ navigation }) {
   }
 
   function handleEditTemplate(template) {
+    console.log('[TemplatesScreen] Edit template:', template);
+    if (!template.programId) {
+      if (Platform.OS === 'web') {
+        alert('Error: Template is missing programId. Please recreate this template.');
+      } else {
+        Alert.alert('Error', 'Template is missing programId. Please recreate this template.');
+      }
+      return;
+    }
     navigation.navigate('ProgramDetail', {
-      programId: template.templateId,
+      programId: template.programId,
       isTemplate: true
     });
   }
@@ -202,26 +211,43 @@ export default function TemplatesScreen({ navigation }) {
   }
 
   async function handleDeleteTemplate(template) {
-    Alert.alert(
-      'Delete Template',
-      `Are you sure you want to delete "${template.name}"? This won't affect programs already assigned to clients.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await programTemplates.deleteTemplate(template.templateId);
-              await loadTemplates();
-            } catch (error) {
-              console.error('Failed to delete template:', error);
-              Alert.alert('Error', 'Failed to delete template');
-            }
-          },
-        },
-      ]
-    );
+    const confirmed = Platform.OS === 'web'
+      ? window.confirm(`Delete "${template.name}"?\n\nThis won't affect programs already assigned to clients.`)
+      : await new Promise((resolve) => {
+          Alert.alert(
+            'Delete Template',
+            `Are you sure you want to delete "${template.name}"? This won't affect programs already assigned to clients.`,
+            [
+              { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+              { text: 'Delete', style: 'destructive', onPress: () => resolve(true) },
+            ]
+          );
+        });
+
+    if (!confirmed) return;
+
+    try {
+      // Delete from Firestore
+      await programTemplates.deleteTemplate(template.templateId);
+
+      // Delete from local DB if programId exists
+      if (template.programId) {
+        await db.deleteProgram(template.programId);
+      }
+
+      await loadTemplates();
+
+      if (Platform.OS === 'web') {
+        alert('Template deleted successfully');
+      }
+    } catch (error) {
+      console.error('Failed to delete template:', error);
+      if (Platform.OS === 'web') {
+        alert(`Failed to delete template: ${error.message}`);
+      } else {
+        Alert.alert('Error', 'Failed to delete template');
+      }
+    }
   }
 
   if (loading) {

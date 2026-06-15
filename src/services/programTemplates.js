@@ -9,6 +9,7 @@ export async function createTemplate(trainerId, programData) {
 
   await setDoc(templateRef, {
     trainerId,
+    programId: programData.programId, // Store the local DB program ID
     name: programData.name,
     description: programData.description || '',
     daysPerWeek: programData.days_per_week || programData.daysPerWeek || 3,
