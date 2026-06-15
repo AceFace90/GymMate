@@ -70,6 +70,10 @@ export default function ProgramsScreen({ navigation }) {
 
       // Get assignments from Firestore
       const assignments = await programTemplates.getClientAssignments(currentUser.id);
+      console.log('[ProgramsScreen] Found assignments from Firestore:', assignments.length);
+      assignments.forEach(a => {
+        console.log(' - Assignment:', a.assignmentId, '→', a.programData?.name);
+      });
       let newCount = 0;
 
       // Get existing programs once
