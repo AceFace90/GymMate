@@ -67,22 +67,29 @@ export default function ProgressScreen() {
   const [weeklyGoal, setWeeklyGoal] = useState(3);
 
   const loadData = async () => {
+    console.log('[ProgressScreen] loadData called, current tab:', tab);
     setLoading(true);
-    const [wv, mv, sessions, prs, daily, active] = await Promise.all([
-      db.getWeeklyVolume(12),
-      db.getMuscleGroupVolume(30),
-      db.getRecentSessions(20),
-      db.getPersonalRecords(),
-      db.getDailyActivity(14),
-      db.getActiveProgram(),
-    ]);
-    setWeeklyVolume(wv);
-    setMuscleVolume(mv);
-    setRecentSessions(sessions);
-    setPersonalRecords(prs);
-    setDailyActivity(daily);
-    setWeeklyGoal(active?.days_per_week || 3);
-    setLoading(false);
+    try {
+      const [wv, mv, sessions, prs, daily, active] = await Promise.all([
+        db.getWeeklyVolume(12),
+        db.getMuscleGroupVolume(30),
+        db.getRecentSessions(20),
+        db.getPersonalRecords(),
+        db.getDailyActivity(14),
+        db.getActiveProgram(),
+      ]);
+      console.log('[ProgressScreen] Personal records loaded:', prs?.length || 0);
+      setWeeklyVolume(wv);
+      setMuscleVolume(mv);
+      setRecentSessions(sessions);
+      setPersonalRecords(prs);
+      setDailyActivity(daily);
+      setWeeklyGoal(active?.days_per_week || 3);
+    } catch (error) {
+      console.error('[ProgressScreen] Error loading data:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useFocusEffect(useCallback(() => { loadData(); }, []));
