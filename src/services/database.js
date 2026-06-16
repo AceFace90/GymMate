@@ -457,14 +457,29 @@ export async function getPersonalRecords() {
        e.id,
        e.name,
        e.muscle_group,
-       MAX(ss.weight_kg) as best_weight,
-       ss.reps as reps_at_best,
-       ws.started_at as achieved_at
-     FROM session_sets ss
-     JOIN exercises e ON e.id = ss.exercise_id
-     JOIN workout_sessions ws ON ws.id = ss.session_id
-     WHERE ss.completed = 1 AND ss.weight_kg IS NOT NULL
-     GROUP BY e.id
+       pr.best_weight,
+       pr.reps_at_best,
+       pr.achieved_at
+     FROM exercises e
+     INNER JOIN (
+       SELECT
+         ss.exercise_id,
+         ss.weight_kg as best_weight,
+         ss.reps as reps_at_best,
+         ws.started_at as achieved_at
+       FROM session_sets ss
+       JOIN workout_sessions ws ON ws.id = ss.session_id
+       WHERE ss.completed = 1
+         AND ss.weight_kg IS NOT NULL
+         AND ss.weight_kg = (
+           SELECT MAX(ss2.weight_kg)
+           FROM session_sets ss2
+           WHERE ss2.exercise_id = ss.exercise_id
+             AND ss2.completed = 1
+             AND ss2.weight_kg IS NOT NULL
+         )
+       GROUP BY ss.exercise_id
+     ) pr ON pr.exercise_id = e.id
      ORDER BY e.name ASC`
   );
 }

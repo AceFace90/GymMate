@@ -164,6 +164,10 @@ export default function ProfileScreen({ navigation, onLogout }) {
   const tdee = calcTDEE(form.weightKg, form.heightCm, form.age, form.sex, form.activityLevel);
   const isFemale = form.sex === 'female';
 
+  // Only show metrics if they're valid numbers
+  const validBMI = bmi && !isNaN(bmi) && isFinite(bmi);
+  const validTDEE = tdee && !isNaN(tdee) && isFinite(tdee);
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -180,17 +184,17 @@ export default function ProfileScreen({ navigation, onLogout }) {
         </Card>
 
         {/* Live metrics */}
-        {(bmi || tdee) && (
+        {(validBMI || validTDEE) && (
           <Card>
             <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>Calculated Metrics</Text>
             <View style={styles.metricsRow}>
-              {bmi && (
+              {validBMI && (
                 <View style={[styles.metricChip, { backgroundColor: theme.accentBg, borderColor: theme.accentBorder }]}>
                   <Text style={[styles.metricValue, { color: theme.accent }]}>{bmi}</Text>
                   <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>BMI — {bmiCategory(bmi)}</Text>
                 </View>
               )}
-              {tdee && (
+              {validTDEE && (
                 <View style={[styles.metricChip, { backgroundColor: theme.accentBg, borderColor: theme.accentBorder }]}>
                   <Text style={[styles.metricValue, { color: theme.accent }]}>{tdee.toLocaleString()} kcal</Text>
                   <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>

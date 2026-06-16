@@ -85,7 +85,7 @@ export default function UniversalFields({ form, onChange, theme: themeProp }) {
 
   // Convert stored kg/cm to display units
   const displayWeight = form.weightKg && units === 'imperial'
-    ? kgToLbs(parseFloat(form.weightKg)).toFixed(1)
+    ? String(Math.round(kgToLbs(parseFloat(form.weightKg)) * 10) / 10)
     : form.weightKg;
 
   const displayHeight = form.heightCm && units === 'imperial'
@@ -97,14 +97,16 @@ export default function UniversalFields({ form, onChange, theme: themeProp }) {
 
   // Parse user input back to kg/cm
   const handleWeightChange = (value) => {
-    if (!value) {
+    if (!value || value === '') {
       onChange('weightKg', '');
       return;
     }
+    // Allow partial input like "7" or "70." while typing
     const num = parseFloat(value);
     if (isNaN(num)) return;
     const kg = units === 'imperial' ? lbsToKg(num) : num;
-    onChange('weightKg', kg.toFixed(1));
+    // Store as string to preserve user's input precision (don't force .toFixed(1))
+    onChange('weightKg', String(kg));
   };
 
   const handleHeightChange = (value) => {
@@ -200,11 +202,11 @@ export default function UniversalFields({ form, onChange, theme: themeProp }) {
       <Text style={[styles.sectionTitle, { color: theme.text, marginTop: spacing[5] }]}>Training Profile</Text>
 
       <View style={styles.fieldGroup}>
-        <Field label="Activity Level" theme={theme}>
+        <Field label="Activity Level" theme={theme} style={{ marginBottom: spacing[4] }}>
           <ChipPicker options={ACTIVITY_LABELS} value={form.activityLevel} onChange={(v) => onChange('activityLevel', v)} theme={theme} />
         </Field>
 
-        <Field label="Primary Goal" theme={theme} style={{ marginTop: spacing[5] }}>
+        <Field label="Primary Goal" theme={theme} style={{ marginTop: spacing[4] }}>
           <ChipPicker options={GOAL_LABELS} value={form.primaryGoal} onChange={(v) => onChange('primaryGoal', v)} theme={theme} />
         </Field>
       </View>
