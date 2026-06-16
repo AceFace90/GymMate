@@ -3,6 +3,7 @@ import { View, Text, TextInput, StyleSheet } from 'react-native';
 import { useTheme } from '../../hooks/useTheme';
 import { spacing, typography, radius } from '../../theme';
 import { getCurrentPhase, daysUntilNextPeriod, PHASES } from '../../utils/cyclePhase';
+import DatePicker from '../DatePicker';
 
 export default function CycleTracker({ form, onChange }) {
   const { theme } = useTheme();
@@ -18,13 +19,11 @@ export default function CycleTracker({ form, onChange }) {
 
       <View style={styles.row}>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.label, { color: theme.textSecondary }]}>First day of last period</Text>
-          <TextInput
-            style={[styles.input, { backgroundColor: theme.input, color: theme.text, borderColor: theme.border }]}
+          <DatePicker
+            label="First day of last period"
             value={form.cycleLastPeriodDate || ''}
-            onChangeText={(v) => onChange('cycleLastPeriodDate', v)}
+            onChange={(v) => onChange('cycleLastPeriodDate', v)}
             placeholder="YYYY-MM-DD"
-            placeholderTextColor={theme.textMuted}
           />
         </View>
         <View style={{ flex: 1 }}>

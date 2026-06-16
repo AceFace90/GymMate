@@ -24,6 +24,12 @@ Sister project to MacroMate (nutrition tracker). Same owner, same design system,
 
 ---
 
+## Documentation
+
+- **[DATA_SYNC_ARCHITECTURE.md](docs/DATA_SYNC_ARCHITECTURE.md)** - Comprehensive guide to data sync, cloud backup, feature matrix (Google vs local), data flow diagrams
+
+---
+
 ## Repository Layout
 
 ```
