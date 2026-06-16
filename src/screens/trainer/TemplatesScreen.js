@@ -315,7 +315,10 @@ export default function TemplatesScreen({ navigation }) {
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={[styles.title, { color: theme.text }]}>Program Templates</Text>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={24} color={theme.accent} />
+          </TouchableOpacity>
+          <Text style={[styles.title, { color: theme.accent }]}>Program Templates</Text>
           <TouchableOpacity onPress={handleCreateTemplate}>
             <Ionicons name="add-circle" size={28} color={theme.accent} />
           </TouchableOpacity>

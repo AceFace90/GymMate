@@ -131,9 +131,9 @@ export default function ConnectTrainerScreen({ navigation }) {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color={theme.text} />
+            <Ionicons name="arrow-back" size={24} color={theme.accent} />
           </TouchableOpacity>
-          <Text style={[styles.title, { color: theme.text }]}>Connect with Trainer</Text>
+          <Text style={[styles.title, { color: theme.accent }]}>Connect with Trainer</Text>
           <View style={{ width: 24 }} />
         </View>
 
