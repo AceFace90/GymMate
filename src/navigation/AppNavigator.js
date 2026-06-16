@@ -119,7 +119,7 @@ function ProfileStackNav({ onLogout }) {
               style={{ marginRight: spacing[4] }}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Ionicons name="settings-outline" size={22} color={theme.textSecondary} />
+              <Ionicons name="settings-outline" size={24} color={theme.accent} />
             </TouchableOpacity>
           ),
         })}
