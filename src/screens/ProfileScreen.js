@@ -169,7 +169,9 @@ export default function ProfileScreen({ navigation, onLogout }) {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
         <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-          Your data stays on this device. We use it to personalise your training guidance.
+          {currentUser?.google_id
+            ? 'Your workouts are backed up to the cloud and visible to your trainer (if connected).'
+            : 'Your data stays on this device. Sign in with Google to sync across devices and enable trainer features.'}
         </Text>
 
         {/* Main biometrics fields */}
