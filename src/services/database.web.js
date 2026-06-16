@@ -401,8 +401,10 @@ export async function getPersonalRecords() {
   // Best weight per exercise
   const best = {};
   for (const ss of sets) {
-    if (!best[ss.exercise_id] || ss.weight_kg > best[ss.exercise_id].weight_kg) {
-      best[ss.exercise_id] = ss;
+    // Convert exercise_id to number to match exercises table id type
+    const exerciseId = parseInt(ss.exercise_id, 10);
+    if (!best[exerciseId] || ss.weight_kg > best[exerciseId].weight_kg) {
+      best[exerciseId] = ss;
     }
   }
 
