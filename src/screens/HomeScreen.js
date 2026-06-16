@@ -13,6 +13,7 @@ import { nsKey } from '../services/activeUser';
 import { GOAL_LABELS } from '../utils/biometrics';
 import Card from '../components/Card';
 import Button from '../components/Button';
+import ProgressRings from '../components/ProgressRings';
 
 const PROFILE_KEY = 'gymmate_biometrics';
 
@@ -34,6 +35,7 @@ export default function HomeScreen({ navigation, user }) {
   const [activeProgram, setActiveProgram] = useState(null);
   const [thisWeek, setThisWeek] = useState({ sessions: 0, sets: 0 });
   const [lastSession, setLastSession] = useState(null);
+  const [streak, setStreak] = useState(0);
 
   const load = async () => {
     setLoading(true);
@@ -57,6 +59,23 @@ export default function HomeScreen({ navigation, user }) {
     }
     setThisWeek({ sessions, sets });
     setLastSession(recent[0] || null);
+
+    // Calculate streak (consecutive days with workouts)
+    let currentStreak = 0;
+    const today = isoDay(new Date());
+    for (let i = 0; i < 365; i++) { // Check up to a year back
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dayKey = isoDay(d);
+      const dayData = dayMap[dayKey];
+      if (dayData && dayData.sessions > 0) {
+        currentStreak++;
+      } else if (dayKey !== today) {
+        // Allow today to not have a workout yet, but break streak on any other day
+        break;
+      }
+    }
+    setStreak(currentStreak);
     setLoading(false);
   };
 
@@ -131,23 +150,20 @@ export default function HomeScreen({ navigation, user }) {
           </TouchableOpacity>
         </Card>
 
-        {/* This week snapshot */}
+        {/* Progress Rings */}
         <TouchableOpacity onPress={() => navigation.navigate('Progress')} activeOpacity={0.8}>
           <Card>
             <View style={styles.progressHeader}>
-              <Text style={[styles.heroLabel, { color: theme.textMuted }]}>THIS WEEK</Text>
+              <Text style={[styles.heroLabel, { color: theme.textMuted }]}>CLOSE YOUR RINGS</Text>
               <Text style={[styles.viewMore, { color: theme.accent }]}>View Full Progress →</Text>
             </View>
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: theme.accent }]}>{thisWeek.sessions}</Text>
-                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Workouts</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: theme.accent }]}>{thisWeek.sets}</Text>
-                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Sets</Text>
-              </View>
-            </View>
+            <ProgressRings
+              workouts={thisWeek.sessions}
+              workoutGoal={activeProgram?.days_per_week || 4}
+              sets={thisWeek.sets}
+              setGoal={60}
+              streak={streak}
+            />
           </Card>
         </TouchableOpacity>
 
@@ -166,27 +182,6 @@ export default function HomeScreen({ navigation, user }) {
           </TouchableOpacity>
         ) : null}
 
-        {/* Quick nav grid */}
-        <View style={styles.grid}>
-          {[
-            { emoji: '🏋️', title: 'Programs', sub: 'Build & start routines', to: 'Programs' },
-            { emoji: '📚', title: 'Exercises', sub: 'Browse the library', to: 'Exercises' },
-            { emoji: '👤', title: 'Profile', sub: 'Biometrics & goals', to: 'Profile' },
-          ].map((item) => (
-            <TouchableOpacity
-              key={item.to}
-              style={styles.gridItem}
-              activeOpacity={0.8}
-              onPress={() => navigation.navigate(item.to)}
-            >
-              <Card style={styles.gridCard}>
-                <Text style={{ fontSize: 26 }}>{item.emoji}</Text>
-                <Text style={[styles.gridTitle, { color: theme.text }]}>{item.title}</Text>
-                <Text style={[styles.gridSub, { color: theme.textSecondary }]}>{item.sub}</Text>
-              </Card>
-            </TouchableOpacity>
-          ))}
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
