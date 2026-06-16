@@ -19,6 +19,7 @@ import { deleteDoc, doc } from 'firebase/firestore';
 import { db as firestore } from '../services/firebase';
 import * as auth from '../services/auth';
 import * as trainerClient from '../services/trainerClient';
+import * as cloudSync from '../services/cloudSync';
 
 const PROFILE_KEY = 'gymmate_biometrics';
 
@@ -110,6 +111,17 @@ export default function ProfileScreen({ navigation, onLogout }) {
 
   async function handleSave() {
     await AsyncStorage.setItem(nsKey(PROFILE_KEY), JSON.stringify(form));
+
+    // Backup to cloud if user is signed in
+    const uid = fbAuth.currentUser?.uid;
+    if (uid) {
+      try {
+        await cloudSync.backupToCloud(uid);
+      } catch (e) {
+        console.error('Cloud backup failed:', e);
+      }
+    }
+
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   }

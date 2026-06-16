@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform, NativeModules } from 'react-native';
 import { nsKey } from '../services/activeUser';
+import { auth as fbAuth } from '../services/firebase';
+import * as cloudSync from '../services/cloudSync';
 
 const UNITS_KEY = 'gymmate_units';
 
@@ -60,6 +62,16 @@ export function UnitsProvider({ children }) {
   const setUnitsPreference = async (newUnits) => {
     setUnits(newUnits);
     await AsyncStorage.setItem(nsKey(UNITS_KEY), newUnits);
+
+    // Backup to cloud if user is signed in
+    const uid = fbAuth.currentUser?.uid;
+    if (uid) {
+      try {
+        await cloudSync.backupToCloud(uid);
+      } catch (e) {
+        console.error('Cloud backup failed:', e);
+      }
+    }
   };
 
   // Helper functions for common conversions
