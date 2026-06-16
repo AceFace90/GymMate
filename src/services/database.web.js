@@ -385,10 +385,18 @@ export async function getExerciseHistory(exerciseId, limit = 30) {
 }
 
 export async function getPersonalRecords() {
-  const sets = getTable('sessionSets').filter((ss) => ss.completed && ss.weight_kg);
+  const allSets = getTable('sessionSets');
+  // Check for completed === 1 (stored as number) or completed === true
+  const sets = allSets.filter((ss) => (ss.completed === 1 || ss.completed === true) && ss.weight_kg);
   const exercises = getTable('exercises');
   const sessions = getTable('sessions');
   const sessionMap = Object.fromEntries(sessions.map((s) => [s.id, s]));
+
+  console.log('[getPersonalRecords] Total sets:', allSets.length);
+  console.log('[getPersonalRecords] Completed sets with weight:', sets.length);
+  console.log('[getPersonalRecords] Total exercises:', exercises.length);
+  console.log('[getPersonalRecords] Sample all sets:', allSets.slice(0, 3));
+  console.log('[getPersonalRecords] Sample completed sets:', sets.slice(0, 3));
 
   // Best weight per exercise
   const best = {};
@@ -398,7 +406,7 @@ export async function getPersonalRecords() {
     }
   }
 
-  return exercises
+  const records = exercises
     .filter((e) => best[e.id])
     .map((e) => ({
       id:          e.id,
@@ -409,6 +417,9 @@ export async function getPersonalRecords() {
       achieved_at: sessionMap[best[e.id].session_id]?.started_at || null,
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
+
+  console.log('[getPersonalRecords] Records found:', records.length);
+  return records;
 }
 
 export async function getWeeklyVolume(weeksBack = 12) {
