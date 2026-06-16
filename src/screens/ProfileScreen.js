@@ -177,8 +177,8 @@ export default function ProfileScreen({ navigation, onLogout }) {
   const isFemale = form.sex === 'female';
 
   // Only show metrics if they're valid numbers
-  const validBMI = bmi && !isNaN(bmi) && isFinite(bmi);
-  const validTDEE = tdee && !isNaN(tdee) && isFinite(tdee);
+  const validBMI = bmi && !isNaN(bmi) && isFinite(bmi) && bmi > 0;
+  const validTDEE = tdee && !isNaN(tdee) && isFinite(tdee) && tdee > 0;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]} edges={['top']}>

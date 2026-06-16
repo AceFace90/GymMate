@@ -27,7 +27,7 @@ export default function ActivityRings({ rings, size = 180, stroke = 14, gap = 6 
                   cx={center}
                   cy={center}
                   r={radius}
-                  stroke={theme.isDark ? '#2a2a2a' : '#e5e7eb'}
+                  stroke={theme.isDark ? '#404040' : '#e5e7eb'}
                   strokeWidth={stroke}
                   fill="none"
                 />
