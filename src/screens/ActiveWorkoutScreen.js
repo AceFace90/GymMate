@@ -320,7 +320,9 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
     }
     setFinishing(false);
     setShowFinish(false);
-    navigation.goBack();
+
+    // Replace instead of goBack to ensure clean exit
+    navigation.replace('ProgramsList');
   };
 
   const handleDiscard = () => {

@@ -35,6 +35,8 @@ export default function LoginScreen({ onLogin }) {
   const [name, setName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [loggingIn, setLoggingIn] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
   const [managing, setManaging] = useState(false);
 
   useEffect(() => { loadUsers(); }, []);
@@ -67,8 +69,8 @@ export default function LoginScreen({ onLogin }) {
   }
 
   async function handleGoogleSignIn() {
-    if (loggingIn) return;
-    setLoggingIn(true);
+    if (googleLoading) return;
+    setGoogleLoading(true);
     try {
       const user = await auth.signInWithGoogle();
       await onLogin(user);
@@ -78,7 +80,7 @@ export default function LoginScreen({ onLogin }) {
       if (code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') {
         alert('Google sign-in failed: ' + (e.message || code));
       }
-      setLoggingIn(false);
+      setGoogleLoading(false);
     }
   }
 
@@ -98,7 +100,7 @@ export default function LoginScreen({ onLogin }) {
   }
 
   async function handleDemoLogin() {
-    setLoggingIn(true);
+    setDemoLoading(true);
     try {
       // Seed into the demo's own namespace: scope first, ensure the exercise
       // library exists there, then lay down the demo program/sessions.
@@ -108,7 +110,7 @@ export default function LoginScreen({ onLogin }) {
       await onLogin(DEMO_USER);
     } catch (e) {
       alert('Demo failed: ' + e.message);
-      setLoggingIn(false);
+      setDemoLoading(false);
     }
   }
 
@@ -171,9 +173,20 @@ export default function LoginScreen({ onLogin }) {
                   <Text style={s.primaryBtnText}>Quick Start</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={s.googleBtn} onPress={handleGoogleSignIn} activeOpacity={0.85}>
-                  <Text style={s.googleG}>G</Text>
-                  <Text style={s.googleBtnText}>Sign in with Google</Text>
+                <TouchableOpacity
+                  style={[s.googleBtn, googleLoading && s.disabled]}
+                  onPress={handleGoogleSignIn}
+                  activeOpacity={0.85}
+                  disabled={googleLoading}
+                >
+                  {googleLoading ? (
+                    <ActivityIndicator color={theme.text} size="small" />
+                  ) : (
+                    <>
+                      <Text style={s.googleG}>G</Text>
+                      <Text style={s.googleBtnText}>Sign in with Google</Text>
+                    </>
+                  )}
                 </TouchableOpacity>
 
                 <Text style={s.syncNote}>Sync across devices · Secure cloud backup</Text>
@@ -194,9 +207,20 @@ export default function LoginScreen({ onLogin }) {
                   </Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={s.googleBtn} onPress={handleGoogleSignIn} activeOpacity={0.85}>
-                  <Text style={s.googleG}>G</Text>
-                  <Text style={s.googleBtnText}>Sign in with Google</Text>
+                <TouchableOpacity
+                  style={[s.googleBtn, googleLoading && s.disabled]}
+                  onPress={handleGoogleSignIn}
+                  activeOpacity={0.85}
+                  disabled={googleLoading}
+                >
+                  {googleLoading ? (
+                    <ActivityIndicator color={theme.text} size="small" />
+                  ) : (
+                    <>
+                      <Text style={s.googleG}>G</Text>
+                      <Text style={s.googleBtnText}>Sign in with Google</Text>
+                    </>
+                  )}
                 </TouchableOpacity>
 
                 <Text style={s.syncNote}>Sync across devices · Secure cloud backup</Text>
@@ -212,11 +236,11 @@ export default function LoginScreen({ onLogin }) {
               style={[s.demoBtn, { borderColor: theme.border }]}
               onPress={handleDemoLogin}
               activeOpacity={0.8}
-              disabled={loggingIn}
+              disabled={demoLoading}
             >
               <Text style={s.demoIcon}>⚡</Text>
               <Text style={[s.demoBtnText, { color: theme.textSecondary }]}>
-                {loggingIn ? 'Loading demo…' : 'Try demo as Super Woman'}
+                {demoLoading ? 'Loading demo…' : 'Try demo as Super Woman'}
               </Text>
             </TouchableOpacity>
 

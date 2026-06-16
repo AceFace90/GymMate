@@ -13,6 +13,7 @@ import HomeScreen from '../screens/HomeScreen';
 import ProgramsScreen from '../screens/ProgramsScreen';
 import ProgramDetailScreen from '../screens/ProgramDetailScreen';
 import ActiveWorkoutScreen from '../screens/ActiveWorkoutScreen';
+import WorkoutDetailScreen from '../screens/WorkoutDetailScreen';
 import ProgressScreen from '../screens/ProgressScreen';
 import ExercisesScreen from '../screens/ExercisesScreen';
 import ExerciseDetailScreen from '../screens/ExerciseDetailScreen';
@@ -33,7 +34,6 @@ import ConnectTrainerScreen from '../screens/client/ConnectTrainerScreen';
 const Tab = createBottomTabNavigator();
 const HomeStack = createStackNavigator();
 const ProgramsStack = createStackNavigator();
-const ProgressStack = createStackNavigator();
 const ExercisesStack = createStackNavigator();
 const ProfileStack = createStackNavigator();
 const ClientsStack = createStackNavigator();
@@ -55,6 +55,7 @@ function HomeStackNav({ user }) {
         {(props) => <HomeScreen {...props} user={user} />}
       </HomeStack.Screen>
       <HomeStack.Screen name="Progress" component={ProgressScreen} options={{ title: 'Progress' }} />
+      <HomeStack.Screen name="WorkoutDetail" component={WorkoutDetailScreen} options={{ title: 'Workout' }} />
     </HomeStack.Navigator>
   );
 }
@@ -79,23 +80,6 @@ function ProgramsStackNav() {
         options={{ title: 'Workout', headerBackVisible: false }}
       />
     </ProgramsStack.Navigator>
-  );
-}
-
-function ProgressStackNav() {
-  const { theme } = useTheme();
-  return (
-    <ProgressStack.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: theme.bg },
-        headerTintColor: theme.accent,
-        headerShadowVisible: false,
-        contentStyle: { backgroundColor: theme.bg },
-        headerTitleStyle: { color: theme.accent, fontWeight: '700' },
-      }}
-    >
-      <ProgressStack.Screen name="ProgressMain" component={ProgressScreen} options={{ title: 'Progress' }} />
-    </ProgressStack.Navigator>
   );
 }
 
@@ -197,8 +181,13 @@ export default function AppNavigator({ user, onLogout }) {
   const { theme } = useTheme();
   const isTrainer = user?.role === 'trainer';
 
+  // Disable linking to prevent URL changes
+  const linking = {
+    enabled: false,
+  };
+
   return (
-    <NavigationContainer>
+    <NavigationContainer linking={linking}>
       <Tab.Navigator
         screenOptions={({ route }) => ({
           headerShown: false,

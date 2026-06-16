@@ -51,11 +51,7 @@ export default function HomeScreen({ navigation, user }) {
       db.getDailyActivity(14), // Get 14 days for this week vs last week comparison
       db.getRecentSessions(5),
     ]);
-    console.log('[HomeScreen] Profile key:', nsKey(PROFILE_KEY));
-    console.log('[HomeScreen] Raw profile data:', raw);
     const parsedProfile = raw ? JSON.parse(raw) : null;
-    console.log('[HomeScreen] Parsed profile:', parsedProfile);
-    console.log('[HomeScreen] User prop:', user);
     setProfile(parsedProfile);
     setActiveProgram(active);
     setDailyActivity(daily);
@@ -294,7 +290,7 @@ export default function HomeScreen({ navigation, user }) {
 
         {/* Last session */}
         {lastSession ? (
-          <TouchableOpacity onPress={() => navigation.navigate('Progress')} activeOpacity={0.8}>
+          <TouchableOpacity onPress={() => navigation.navigate('WorkoutDetail', { sessionId: lastSession.id })} activeOpacity={0.8}>
             <Card>
               <Text style={[styles.heroLabel, { color: theme.textMuted }]}>LAST SESSION</Text>
               <View style={styles.lastRow}>

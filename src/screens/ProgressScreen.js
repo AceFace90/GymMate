@@ -53,7 +53,7 @@ function SimpleBarChart({ data, color, height = 80 }) {
 
 const TABS = ['Overview', 'History', 'Records'];
 
-export default function ProgressScreen() {
+export default function ProgressScreen({ navigation }) {
   const { theme } = useTheme();
   const { weightUnit, kgToLbs, units, formatWeight } = useUnits();
   const [tab, setTab] = useState('Overview');
@@ -67,7 +67,6 @@ export default function ProgressScreen() {
   const [weeklyGoal, setWeeklyGoal] = useState(3);
 
   const loadData = async () => {
-    console.log('[ProgressScreen] loadData called, current tab:', tab);
     setLoading(true);
     try {
       const [wv, mv, sessions, prs, daily, active] = await Promise.all([
@@ -78,7 +77,6 @@ export default function ProgressScreen() {
         db.getDailyActivity(14),
         db.getActiveProgram(),
       ]);
-      console.log('[ProgressScreen] Personal records loaded:', prs?.length || 0);
       setWeeklyVolume(wv);
       setMuscleVolume(mv);
       setRecentSessions(sessions);
@@ -341,30 +339,41 @@ export default function ProgressScreen() {
                 </View>
               ) : (
                 recentSessions.map((session) => (
-                  <Card key={session.id} style={styles.sessionCard}>
-                    <View style={styles.sessionHeader}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={[styles.sessionDay, { color: theme.text }]}>{session.day_name || 'Workout'}</Text>
-                        <Text style={[styles.sessionDate, { color: theme.textSecondary }]}>{formatDate(session.started_at)}</Text>
-                      </View>
-                      <View style={styles.sessionStats}>
-                        <View style={[styles.sessionBadge, { backgroundColor: theme.accentBg, borderColor: theme.accentBorder }]}>
-                          <Text style={[styles.sessionBadgeText, { color: theme.accent }]}>{session.total_sets} sets</Text>
+                  <View key={session.id} style={{ position: 'relative' }}>
+                    <TouchableOpacity
+                      onPress={() => navigation.navigate('WorkoutDetail', { sessionId: session.id })}
+                      activeOpacity={0.7}
+                    >
+                      <Card style={styles.sessionCard}>
+                        <View style={styles.sessionHeader}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.sessionDay, { color: theme.text }]}>{session.day_name || 'Workout'}</Text>
+                            <Text style={[styles.sessionDate, { color: theme.textSecondary }]}>{formatDate(session.started_at)}</Text>
+                          </View>
+                          <View style={styles.sessionStats}>
+                            <View style={[styles.sessionBadge, { backgroundColor: theme.accentBg, borderColor: theme.accentBorder }]}>
+                              <Text style={[styles.sessionBadgeText, { color: theme.accent }]}>{session.total_sets} sets</Text>
+                            </View>
+                            <Text style={[styles.sessionDuration, { color: theme.textMuted }]}>{formatDuration(session.duration_seconds)}</Text>
+                          </View>
+                          <View style={{ width: 32 }} />
                         </View>
-                        <Text style={[styles.sessionDuration, { color: theme.textMuted }]}>{formatDuration(session.duration_seconds)}</Text>
-                      </View>
-                      <TouchableOpacity
-                        onPress={() => handleDeleteSession(session)}
-                        style={styles.deleteBtn}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <Ionicons name="trash-outline" size={18} color="#ef4444" />
-                      </TouchableOpacity>
-                    </View>
-                    {session.notes ? (
-                      <Text style={[styles.sessionNotes, { color: theme.textSecondary }]} numberOfLines={2}>{session.notes}</Text>
-                    ) : null}
-                  </Card>
+                        {session.notes ? (
+                          <Text style={[styles.sessionNotes, { color: theme.textSecondary }]} numberOfLines={2}>{session.notes}</Text>
+                        ) : null}
+                      </Card>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={(e) => {
+                        e?.stopPropagation?.();
+                        handleDeleteSession(session);
+                      }}
+                      style={{ position: 'absolute', top: spacing[4] + 4, right: spacing[4] + 4, zIndex: 10 }}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons name="trash-outline" size={18} color="#ef4444" />
+                    </TouchableOpacity>
+                  </View>
                 ))
               )}
             </>
