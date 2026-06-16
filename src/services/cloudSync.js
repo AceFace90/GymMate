@@ -111,30 +111,40 @@ export async function restoreFromCloud(uid) {
 //         durable source of truth; avoids clobbering other devices)
 // Returns { action } describing what happened, so the UI can message the user.
 export async function syncOnSignIn(uid) {
+  console.log('[cloudSync] syncOnSignIn called with uid:', uid);
   if (!uid) return { action: 'none' };
 
   const snap = await getDoc(userDoc(uid));
   const remote = snap.exists() ? snap.data() : null;
   const cloudHasData = hasContent(remote?.payload);
+  console.log('[cloudSync] Cloud has data:', cloudHasData);
+  console.log('[cloudSync] Remote asyncStorage keys:', remote?.payload?.asyncStorage ? Object.keys(remote.payload.asyncStorage) : 'none');
 
   const local = await db.exportAllData();
   const localHasData = hasContent(local);
+  console.log('[cloudSync] Local has data:', localHasData);
 
   if (!cloudHasData) {
     if (localHasData) {
+      console.log('[cloudSync] Action: PUSH (cloud empty, local has data)');
       await backupToCloud(uid);
       return { action: 'pushed' };
     }
+    console.log('[cloudSync] Action: NONE (both empty)');
     return { action: 'none' };
   }
 
   if (!localHasData) {
+    console.log('[cloudSync] Action: PULL (local empty, cloud has data)');
     await db.importAllData(remote.payload);
     // Restore AsyncStorage data too
     if (remote.payload.asyncStorage) {
+      console.log('[cloudSync] Restoring AsyncStorage data...');
       for (const [key, value] of Object.entries(remote.payload.asyncStorage)) {
         try {
-          await AsyncStorage.setItem(nsKey(key), value);
+          const namespacedKey = nsKey(key);
+          console.log('[cloudSync] Restoring:', key, '→', namespacedKey);
+          await AsyncStorage.setItem(namespacedKey, value);
         } catch (e) {
           console.error(`Failed to restore AsyncStorage key ${key}:`, e);
         }
@@ -146,20 +156,26 @@ export async function syncOnSignIn(uid) {
 
   // Both sides have data — decide with the per-device sync marker.
   const lastSync = await getLastSync();
+  console.log('[cloudSync] Both have data. lastSync:', lastSync, 'remote.updatedAt:', remote.updatedAt);
   if (lastSync && remote.updatedAt && lastSync === remote.updatedAt) {
     // Cloud hasn't moved since we last synced → our local holds that baseline
     // (and maybe newer local edits). Push so we don't lose recent local work.
+    console.log('[cloudSync] Action: PUSH (cloud unchanged since last sync)');
     await backupToCloud(uid);
     return { action: 'pushed' };
   }
 
   // Cloud changed elsewhere (or we have no baseline) → trust the durable cloud.
+  console.log('[cloudSync] Action: PULL (cloud changed or no baseline)');
   await db.importAllData(remote.payload);
   // Restore AsyncStorage data too
   if (remote.payload.asyncStorage) {
+    console.log('[cloudSync] Restoring AsyncStorage data...');
     for (const [key, value] of Object.entries(remote.payload.asyncStorage)) {
       try {
-        await AsyncStorage.setItem(nsKey(key), value);
+        const namespacedKey = nsKey(key);
+        console.log('[cloudSync] Restoring:', key, '→', namespacedKey);
+        await AsyncStorage.setItem(namespacedKey, value);
       } catch (e) {
         console.error(`Failed to restore AsyncStorage key ${key}:`, e);
       }
