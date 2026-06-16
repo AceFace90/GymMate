@@ -25,13 +25,24 @@ export async function getGeminiKey() {
   return AsyncStorage.getItem(GEMINI_KEY_STORAGE);
 }
 
-function Row({ label, value, theme }) {
-  return (
+function Row({ label, value, theme, onPress }) {
+  const content = (
     <View style={[styles.row, { borderBottomColor: theme.border }]}>
       <Text style={[styles.rowLabel, { color: theme.text }]}>{label}</Text>
-      {value ? <Text style={[styles.rowValue, { color: theme.textSecondary }]}>{value}</Text> : null}
+      {value ? <Text style={[styles.rowValue, { color: onPress ? theme.accent : theme.textSecondary }]}>{value}</Text> : null}
+      {onPress && <Ionicons name="open-outline" size={16} color={theme.textMuted} style={{ marginLeft: 4 }} />}
     </View>
   );
+
+  if (onPress) {
+    return (
+      <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+        {content}
+      </TouchableOpacity>
+    );
+  }
+
+  return content;
 }
 
 export default function SettingsScreen() {
@@ -192,9 +203,14 @@ export default function SettingsScreen() {
         {/* About */}
         <Text style={[styles.sectionHeader, { color: theme.textMuted }]}>About</Text>
         <Card noPad>
-          <Row label="Version" value="1.0.0" theme={theme} />
-          <Row label="Exercises" value="80+ built-in" theme={theme} />
-          <Row label="Companion App" value="MacroMate" theme={theme} />
+          <Row label="Version" value="1.2.0" theme={theme} />
+          <Row label="Exercises" value="150+ built-in" theme={theme} />
+          <Row
+            label="Companion App"
+            value="MacroMate"
+            theme={theme}
+            onPress={() => Linking.openURL('https://aceface90.github.io/macromate')}
+          />
         </Card>
 
         {/* Credits */}
