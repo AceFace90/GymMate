@@ -5,17 +5,21 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '../hooks/useTheme';
-import { spacing, typography, radius } from '../theme';
+import { spacing, typography, radius, colors } from '../theme';
 import * as db from '../services/database';
 import { nsKey } from '../services/activeUser';
 import { GOAL_LABELS } from '../utils/biometrics';
 import Card from '../components/Card';
 import Button from '../components/Button';
-import ProgressRings from '../components/ProgressRings';
+import ActivityRings from '../components/ActivityRings';
 
 const PROFILE_KEY = 'gymmate_biometrics';
+
+// Ring colours — neon green leads (brand), then blue + amber accents
+const RING_COLORS = { workouts: '#39ff14', sets: '#38bdf8', minutes: '#fbbf24' };
 
 function isoDay(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -36,17 +40,21 @@ export default function HomeScreen({ navigation, user }) {
   const [thisWeek, setThisWeek] = useState({ sessions: 0, sets: 0 });
   const [lastSession, setLastSession] = useState(null);
   const [streak, setStreak] = useState(0);
+  const [dailyActivity, setDailyActivity] = useState([]);
+  const [recentSessions, setRecentSessions] = useState([]);
 
   const load = async () => {
     setLoading(true);
     const [raw, active, daily, recent] = await Promise.all([
       AsyncStorage.getItem(nsKey(PROFILE_KEY)),
       db.getActiveProgram(),
-      db.getDailyActivity(7),
-      db.getRecentSessions(1),
+      db.getDailyActivity(14), // Get 14 days for this week vs last week comparison
+      db.getRecentSessions(5),
     ]);
     setProfile(raw ? JSON.parse(raw) : null);
     setActiveProgram(active);
+    setDailyActivity(daily);
+    setRecentSessions(recent);
 
     // Sum the last 7 days
     const dayMap = Object.fromEntries(daily.map((d) => [d.date, d]));
@@ -83,6 +91,59 @@ export default function HomeScreen({ navigation, user }) {
 
   const firstName = (profile?.name || user?.name || 'there').split(' ')[0];
   const goalLabel = profile?.primaryGoal ? GOAL_LABELS[profile.primaryGoal] : null;
+
+  // ── This-week dashboard data ────────────────────────────────────────────
+  const dayMap = Object.fromEntries(dailyActivity.map((d) => [d.date, d]));
+
+  // Build the last 7 days, oldest → newest, with zero-fill
+  const last7 = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = isoDay(d);
+    const entry = dayMap[key] || { sessions: 0, total_sets: 0, total_volume: 0 };
+    last7.push({
+      key,
+      label: d.toLocaleDateString(undefined, { weekday: 'narrow' }),
+      sessions: entry.sessions || 0,
+      sets: entry.total_sets || 0,
+      volume: entry.total_volume || 0,
+    });
+  }
+
+  // Sum a window of N days ending `offset` days ago (offset 0 = current 7 days)
+  const sumWindow = (startDaysAgo, endDaysAgo) => {
+    let sessions = 0, sets = 0, volume = 0, minutes = 0;
+    for (let i = startDaysAgo - 1; i >= endDaysAgo; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const e = dayMap[isoDay(d)];
+      if (e) { sessions += e.sessions || 0; sets += e.total_sets || 0; volume += e.total_volume || 0; }
+    }
+    // training minutes from sessions in window
+    recentSessions.forEach((s) => {
+      if (!s.duration_seconds) return;
+      const diffDays = Math.floor((Date.now() - new Date(s.started_at).getTime()) / 86400000);
+      if (diffDays >= endDaysAgo && diffDays < startDaysAgo) minutes += s.duration_seconds / 60;
+    });
+    return { sessions, sets, volume, minutes: Math.round(minutes) };
+  };
+
+  const thisWeekCalc = sumWindow(7, 0);
+  const lastWeek = sumWindow(14, 7);
+
+  // % change vs last week; null when there's no prior baseline
+  const delta = (cur, prev) => (prev > 0 ? Math.round(((cur - prev) / prev) * 100) : null);
+
+  const weeklyGoal = activeProgram?.days_per_week || 3;
+
+  const rings = [
+    { label: 'Workouts', value: thisWeekCalc.sessions, goal: weeklyGoal, color: RING_COLORS.workouts, unit: '' },
+    { label: 'Sets', value: thisWeekCalc.sets, goal: Math.max(weeklyGoal * 18, 1), color: RING_COLORS.sets, unit: '' },
+    { label: 'Minutes', value: thisWeekCalc.minutes, goal: Math.max(weeklyGoal * 45, 1), color: RING_COLORS.minutes, unit: 'min' },
+  ];
+
+  const maxDaySets = Math.max(...last7.map((d) => d.sets), 1);
 
   const startActive = async () => {
     if (!activeProgram?.id) return;
@@ -150,20 +211,77 @@ export default function HomeScreen({ navigation, user }) {
           </TouchableOpacity>
         </Card>
 
-        {/* Progress Rings */}
+        {/* This Week — Activity Rings */}
+        <Card>
+          <View style={styles.cardHead}>
+            <Text style={[styles.heroLabel, { color: theme.textMuted }]}>THIS WEEK</Text>
+            <Text style={[styles.cardSub, { color: theme.textSecondary }]}>
+              {thisWeekCalc.sessions} of {weeklyGoal} workouts
+            </Text>
+          </View>
+          <ActivityRings rings={rings} />
+        </Card>
+
+        {/* Delta stat cards — this week vs last */}
+        <View style={styles.statsRow}>
+          {[
+            { label: 'Workouts', value: thisWeekCalc.sessions, d: delta(thisWeekCalc.sessions, lastWeek.sessions) },
+            { label: 'Sets', value: thisWeekCalc.sets, d: delta(thisWeekCalc.sets, lastWeek.sets) },
+            { label: 'Volume', value: thisWeekCalc.volume >= 1000 ? `${(thisWeekCalc.volume / 1000).toFixed(1)}t` : `${Math.round(thisWeekCalc.volume)}`, d: delta(thisWeekCalc.volume, lastWeek.volume) },
+          ].map((stat) => {
+            const up = stat.d != null && stat.d >= 0;
+            return (
+              <Card key={stat.label} style={styles.statCard}>
+                <Text style={[styles.statValue, { color: theme.accent }]}>{stat.value}</Text>
+                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{stat.label}</Text>
+                {stat.d != null ? (
+                  <View style={styles.deltaRow}>
+                    <Ionicons
+                      name={up ? 'arrow-up' : 'arrow-down'}
+                      size={11}
+                      color={up ? theme.accent : colors.red}
+                    />
+                    <Text style={[styles.deltaText, { color: up ? theme.accent : colors.red }]}>
+                      {Math.abs(stat.d)}%
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={[styles.deltaText, { color: theme.textMuted, marginTop: 2 }]}>—</Text>
+                )}
+              </Card>
+            );
+          })}
+        </View>
+
+        {/* 7-day intensity heatmap */}
         <TouchableOpacity onPress={() => navigation.navigate('Progress')} activeOpacity={0.8}>
           <Card>
-            <View style={styles.progressHeader}>
-              <Text style={[styles.heroLabel, { color: theme.textMuted }]}>CLOSE YOUR RINGS</Text>
+            <View style={styles.cardHead}>
+              <Text style={[styles.heroLabel, { color: theme.textMuted }]}>LAST 7 DAYS</Text>
               <Text style={[styles.viewMore, { color: theme.accent }]}>View Full Progress →</Text>
             </View>
-            <ProgressRings
-              workouts={thisWeek.sessions}
-              workoutGoal={activeProgram?.days_per_week || 4}
-              sets={thisWeek.sets}
-              setGoal={60}
-              streak={streak}
-            />
+            <View style={styles.heat}>
+              {last7.map((d) => {
+                const intensity = d.sets / maxDaySets;
+                const cellColor =
+                  d.sets === 0 ? theme.border :
+                  intensity >= 0.8 ? theme.accent :
+                  intensity >= 0.5 ? (theme.isDark ? 'rgba(57,255,20,0.6)' : 'rgba(22,163,74,0.6)') :
+                  (theme.isDark ? 'rgba(57,255,20,0.3)' : 'rgba(22,163,74,0.3)');
+                return (
+                  <View key={d.key} style={styles.heatCol}>
+                    <View style={[styles.heatCell, { backgroundColor: cellColor }]}>
+                      {d.sets > 0 ? (
+                        <Text style={[styles.heatVal, { color: intensity >= 0.8 && theme.isDark ? '#1a1a1a' : theme.text }]}>
+                          {d.sets}
+                        </Text>
+                      ) : null}
+                    </View>
+                    <Text style={[styles.heatDay, { color: theme.textMuted }]}>{d.label}</Text>
+                  </View>
+                );
+              })}
+            </View>
           </Card>
         </TouchableOpacity>
 
@@ -199,19 +317,22 @@ const styles = StyleSheet.create({
   heroSub: { fontSize: typography.sizes.sm, marginTop: 2 },
   quickLink: { marginTop: spacing[3], alignItems: 'center' },
   quickLinkText: { fontSize: typography.sizes.sm, fontWeight: '600' },
-  progressHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing[3] },
+  cardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing[4] },
+  cardSub: { fontSize: typography.sizes.xs },
   viewMore: { fontSize: typography.sizes.xs, fontWeight: '600' },
-  statsRow: { flexDirection: 'row', gap: spacing[4], justifyContent: 'space-around' },
-  statItem: { alignItems: 'center' },
-  statValue: { fontSize: typography.sizes['3xl'], fontWeight: '800' },
-  statLabel: { fontSize: typography.sizes.xs, marginTop: 2, textAlign: 'center' },
+  statsRow: { flexDirection: 'row', gap: spacing[3] },
+  statCard: { flex: 1, alignItems: 'center' },
+  statValue: { fontSize: typography.sizes['2xl'], fontWeight: '700' },
+  statLabel: { fontSize: typography.sizes.xs, marginTop: 2 },
+  deltaRow: { flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: spacing[1] },
+  deltaText: { fontSize: typography.sizes.xs, fontWeight: '600' },
+  heat: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing[2] },
+  heatCol: { flex: 1, alignItems: 'center', gap: spacing[2] },
+  heatCell: { width: '100%', height: 52, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
+  heatVal: { fontSize: typography.sizes.sm, fontWeight: '700' },
+  heatDay: { fontSize: typography.sizes.xs },
   lastRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing[2] },
   lastName: { fontSize: typography.sizes.base, fontWeight: '700' },
   badge: { borderRadius: radius.full, borderWidth: 1, paddingHorizontal: spacing[2], paddingVertical: 2 },
   badgeText: { fontSize: typography.sizes.xs, fontWeight: '700' },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[3] },
-  gridItem: { width: '47.5%', flexGrow: 1 },
-  gridCard: { gap: 2, minHeight: 110, justifyContent: 'center' },
-  gridTitle: { fontSize: typography.sizes.base, fontWeight: '700', marginTop: spacing[1] },
-  gridSub: { fontSize: typography.sizes.xs },
 });
