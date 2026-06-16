@@ -22,6 +22,7 @@ import SettingsScreen from '../screens/SettingsScreen';
 // Trainer Screens
 import TrainerDashboardScreen from '../screens/trainer/TrainerDashboardScreen';
 import ClientDetailScreen from '../screens/trainer/ClientDetailScreen';
+import ClientWorkoutDetailScreen from '../screens/trainer/ClientWorkoutDetailScreen';
 import ConnectionScreen from '../screens/trainer/ConnectionScreen';
 import TemplatesScreen from '../screens/trainer/TemplatesScreen';
 import AssignProgramScreen from '../screens/trainer/AssignProgramScreen';
@@ -126,6 +127,7 @@ function ClientsStackNav() {
     >
       <ClientsStack.Screen name="ClientsList" component={TrainerDashboardScreen} options={{ headerShown: false }} />
       <ClientsStack.Screen name="ClientDetail" component={ClientDetailScreen} options={{ headerShown: false }} />
+      <ClientsStack.Screen name="ClientWorkoutDetail" component={ClientWorkoutDetailScreen} options={{ headerShown: false }} />
       <ClientsStack.Screen name="Connection" component={ConnectionScreen} options={{ headerShown: false }} />
       <ClientsStack.Screen name="AssignProgram" component={AssignProgramScreen} options={{ headerShown: false }} />
     </ClientsStack.Navigator>

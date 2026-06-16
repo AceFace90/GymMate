@@ -18,6 +18,7 @@ import { useUnits } from '../hooks/useUnits';
 import { spacing, typography, radius } from '../theme';
 import * as db from '../services/database';
 import * as auth from '../services/auth';
+import * as workoutSync from '../services/workoutSync';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import MuscleTag from '../components/MuscleTag';
@@ -45,6 +46,7 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
   // sets[exerciseId] = [{ weight, reps, completed, isPR }]
   const [sets, setSets] = useState({});
   const [lastSets, setLastSets] = useState({});
+  const [exerciseStats, setExerciseStats] = useState({}); // { exerciseId: { max_weight, best_volume, total_sessions } }
 
   const [notes, setNotes] = useState('');
   const [showFinish, setShowFinish] = useState(false);
@@ -104,6 +106,10 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
           if (last) {
             setLastSets((prev) => ({ ...prev, [ex.exercise_id]: last }));
           }
+          const stats = await db.getExerciseStats(ex.exercise_id);
+          if (stats) {
+            setExerciseStats((prev) => ({ ...prev, [ex.exercise_id]: stats }));
+          }
         }
         setSets(initialSets);
       };
@@ -112,10 +118,20 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
   }, [programDay]);
 
   const addSet = (exerciseId) => {
-    setSets((prev) => ({
-      ...prev,
-      [exerciseId]: [...(prev[exerciseId] || []), { weight: '', reps: '', completed: false, id: null }],
-    }));
+    setSets((prev) => {
+      const existingSets = prev[exerciseId] || [];
+      const lastSet = existingSets[existingSets.length - 1];
+
+      // Prefill with last set's data if available
+      const newSet = lastSet && (lastSet.weight || lastSet.reps)
+        ? { weight: lastSet.weight, reps: lastSet.reps, completed: false, id: null }
+        : { weight: '', reps: '', completed: false, id: null };
+
+      return {
+        ...prev,
+        [exerciseId]: [...existingSets, newSet],
+      };
+    });
   };
 
   const searchExercises = async (query) => {
@@ -155,15 +171,42 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
     }));
     const last = await db.getLastSetForExercise(ex.id);
     if (last) setLastSets((prev) => ({ ...prev, [ex.id]: last }));
+    const stats = await db.getExerciseStats(ex.id);
+    if (stats) setExerciseStats((prev) => ({ ...prev, [ex.id]: stats }));
     setShowAddExercise(false);
   };
 
-  const updateSet = (exerciseId, setIndex, field, value) => {
+  const updateSet = async (exerciseId, setIndex, field, value, exercise) => {
     setSets((prev) => {
       const updated = [...(prev[exerciseId] || [])];
-      updated[setIndex] = { ...updated[setIndex], [field]: value };
+      const currentSet = updated[setIndex];
+
+      // If set is completed and user is editing, uncomplete it first
+      if (currentSet.completed) {
+        // We'll uncomplete it synchronously below
+        updated[setIndex] = { ...currentSet, [field]: value, completed: false, isPR: false, dbId: null };
+      } else {
+        const updatedSet = { ...currentSet, [field]: value };
+        updated[setIndex] = updatedSet;
+
+        // Auto-complete if both fields have values and not already completed
+        const hasWeight = updatedSet.weight && updatedSet.weight.trim() !== '';
+        const hasReps = updatedSet.reps && updatedSet.reps.trim() !== '';
+
+        if (hasWeight && hasReps) {
+          // Trigger auto-complete after state settles
+          setTimeout(() => completeSet(exercise, setIndex), 100);
+        }
+      }
+
       return { ...prev, [exerciseId]: updated };
     });
+
+    // If set was completed, delete from database
+    const currentSet = sets[exerciseId]?.[setIndex];
+    if (currentSet?.completed && currentSet?.dbId) {
+      await db.deleteSet(currentSet.dbId);
+    }
   };
 
   const completeSet = async (exercise, setIndex) => {
@@ -188,6 +231,21 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
     const restSeconds = exercise.rest_seconds || 90;
     setRestTime(restSeconds);
     setIsResting(true);
+  };
+
+  const uncompleteSet = async (exerciseId, setIndex) => {
+    const setData = sets[exerciseId]?.[setIndex];
+    if (!setData?.dbId) return;
+
+    // Delete from database
+    await db.deleteSet(setData.dbId);
+
+    // Update state
+    setSets((prev) => {
+      const updated = [...(prev[exerciseId] || [])];
+      updated[setIndex] = { ...updated[setIndex], completed: false, isPR: false, dbId: null };
+      return { ...prev, [exerciseId]: updated };
+    });
   };
 
   const handleFinish = async () => {
@@ -220,6 +278,38 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
       ? parseInt(manualMinutes) * 60
       : elapsed;
     await db.completeSession(sessionId, { durationSeconds: duration, notes });
+
+    // Upload to cloud for trainer viewing (if user has a trainer)
+    try {
+      // Get Firebase auth user (for cloud upload)
+      const firebaseUser = auth.getFirebaseUser();
+      const localUser = await auth.getCurrentUser();
+
+      console.log('[ActiveWorkout] Firebase user:', firebaseUser?.uid || 'Not signed in');
+      console.log('[ActiveWorkout] Local user:', localUser?.id || 'None');
+
+      if (firebaseUser?.uid) {
+        const session = await db.getSessionById(sessionId);
+        console.log('[ActiveWorkout] Session to upload:', {
+          id: session?.id,
+          setsCount: session?.sets?.length || 0,
+          dayName: session?.day_name,
+        });
+
+        if (session) {
+          await workoutSync.uploadWorkoutSession(firebaseUser.uid, session, session.sets || []);
+          console.log('[ActiveWorkout] ✅ Workout uploaded to cloud for trainer viewing');
+        } else {
+          console.log('[ActiveWorkout] ⚠️ Session not found, cannot upload');
+        }
+      } else {
+        console.log('[ActiveWorkout] ⚠️ User not signed in with Google, skipping cloud upload');
+      }
+    } catch (e) {
+      console.error('[ActiveWorkout] ❌ Failed to upload workout to cloud:', e);
+      // Non-blocking - workout is still saved locally
+    }
+
     // Back up immediately so the session survives closing the tab without an
     // explicit sign-out (no-op for demo / local-only users). Best-effort; never
     // block the finish flow even if backup fails.
@@ -279,6 +369,7 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
         {exercises.map((exercise) => {
           const exSets = sets[exercise.exercise_id] || [];
           const last = lastSets[exercise.exercise_id];
+          const stats = exerciseStats[exercise.exercise_id];
           return (
             <Card key={exercise.id} style={styles.exerciseCard}>
               <View style={styles.exHeader}>
@@ -292,6 +383,21 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
                       </Text>
                     )}
                   </View>
+                  {/* Exercise History Stats */}
+                  {stats && (stats.max_weight > 0 || stats.best_volume > 0) && (
+                    <View style={styles.statsRow}>
+                      {stats.max_weight > 0 && (
+                        <Text style={[styles.statBadge, { color: theme.accent, backgroundColor: theme.accentBg }]}>
+                          Max: {displayWeight(stats.max_weight)}
+                        </Text>
+                      )}
+                      {stats.best_volume > 0 && (
+                        <Text style={[styles.statBadge, { color: theme.accent, backgroundColor: theme.accentBg }]}>
+                          Best Vol: {Math.round(stats.best_volume)}{weightUnit === 'lbs' ? 'lb' : 'kg'}
+                        </Text>
+                      )}
+                    </View>
+                  )}
                 </View>
                 {exercise.sets && exercise.reps ? (
                   <Text style={[styles.exTarget, { color: theme.textSecondary }]}>
@@ -313,24 +419,24 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
                   <Text style={[styles.setNum, { color: theme.textMuted }]}>{i + 1}</Text>
                   <TextInput
                     value={set.weight}
-                    onChangeText={(v) => updateSet(exercise.exercise_id, i, 'weight', v)}
+                    onChangeText={(v) => updateSet(exercise.exercise_id, i, 'weight', v, exercise)}
                     placeholder={last?.weight_kg ? displayWeight(last.weight_kg) : '—'}
                     placeholderTextColor={theme.textMuted}
                     keyboardType="decimal-pad"
-                    editable={!set.completed}
+                    editable={true}
                     style={[styles.setInput, { backgroundColor: theme.input, borderColor: theme.border, color: theme.text }]}
                   />
                   <TextInput
                     value={set.reps}
-                    onChangeText={(v) => updateSet(exercise.exercise_id, i, 'reps', v)}
+                    onChangeText={(v) => updateSet(exercise.exercise_id, i, 'reps', v, exercise)}
                     placeholder={last?.reps ? String(last.reps) : '—'}
                     placeholderTextColor={theme.textMuted}
                     keyboardType="number-pad"
-                    editable={!set.completed}
+                    editable={true}
                     style={[styles.setInput, { backgroundColor: theme.input, borderColor: theme.border, color: theme.text }]}
                   />
                   <TouchableOpacity
-                    onPress={() => !set.completed && completeSet(exercise, i)}
+                    onPress={() => set.completed ? uncompleteSet(exercise.exercise_id, i) : completeSet(exercise, i)}
                     style={[
                       styles.checkBtn,
                       set.completed
@@ -541,6 +647,8 @@ const styles = StyleSheet.create({
   exName: { fontSize: typography.sizes.base, fontWeight: '700' },
   exMeta: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: 2 },
   lastSet: { fontSize: typography.sizes.xs },
+  statsRow: { flexDirection: 'row', gap: spacing[2], marginTop: spacing[2], flexWrap: 'wrap' },
+  statBadge: { fontSize: typography.sizes.xs, fontWeight: '600', paddingHorizontal: spacing[2], paddingVertical: spacing[1], borderRadius: radius.sm },
   exTarget: { fontSize: typography.sizes.sm, fontWeight: '500' },
   setHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing[1] },
   setHeaderCell: { fontSize: typography.sizes.xs, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },

@@ -17,6 +17,10 @@ export async function getCurrentUser() {
   return raw ? JSON.parse(raw) : null;
 }
 
+export function getFirebaseUser() {
+  return fbAuth.currentUser;
+}
+
 export async function getUserById(userId) {
   const users = await getAllUsers();
   return users.find((u) => u.id === userId) || null;

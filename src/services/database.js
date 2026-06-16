@@ -537,3 +537,17 @@ export async function getLastSetForExercise(exerciseId) {
     [exerciseId]
   );
 }
+
+export async function getExerciseStats(exerciseId) {
+  const database = await getDb();
+  return database.getFirstAsync(
+    `SELECT
+       MAX(ss.weight_kg) as max_weight,
+       MAX(ss.reps * COALESCE(ss.weight_kg, 0)) as best_volume,
+       COUNT(DISTINCT ws.id) as total_sessions
+     FROM session_sets ss
+     JOIN workout_sessions ws ON ws.id = ss.session_id
+     WHERE ss.exercise_id = ? AND ss.completed = 1 AND ws.completed_at IS NOT NULL`,
+    [exerciseId]
+  );
+}

@@ -10,6 +10,7 @@ import ConnectionStatusBadge from '../../components/ConnectionStatusBadge';
 import { spacing, typography } from '../../theme';
 import * as trainerClient from '../../services/trainerClient';
 import * as programTemplates from '../../services/programTemplates';
+import * as workoutSync from '../../services/workoutSync';
 import * as db from '../../services/database';
 
 export default function ClientDetailScreen({ route, navigation }) {
@@ -17,10 +18,13 @@ export default function ClientDetailScreen({ route, navigation }) {
   const { client } = route.params;
   const [loading, setLoading] = useState(false);
   const [assignments, setAssignments] = useState([]);
+  const [workouts, setWorkouts] = useState([]);
+  const [workoutStats, setWorkoutStats] = useState(null);
 
   useFocusEffect(
     React.useCallback(() => {
       loadAssignments();
+      loadWorkouts();
     }, [client.clientId])
   );
 
@@ -32,6 +36,38 @@ export default function ClientDetailScreen({ route, navigation }) {
       setAssignments(allAssignments);
     } catch (error) {
       console.error('[ClientDetailScreen] Failed to load assignments:', error);
+    }
+  }
+
+  async function loadWorkouts() {
+    try {
+      console.log('[ClientDetailScreen] Querying workouts for clientId:', client.clientId);
+
+      // Strip google- prefix if present (workout uploads use Firebase UID without prefix)
+      const firebaseUid = client.clientId?.replace('google-', '');
+      console.log('[ClientDetailScreen] Using Firebase UID:', firebaseUid);
+
+      // Get recent workouts for this client
+      const recentWorkouts = await workoutSync.getClientWorkouts(firebaseUid, 10);
+      console.log('[ClientDetailScreen] Workouts for client:', recentWorkouts);
+      setWorkouts(recentWorkouts);
+
+      // Get workout stats
+      const stats = await workoutSync.getClientWorkoutStats(firebaseUid);
+      console.log('[ClientDetailScreen] Workout stats:', stats);
+      setWorkoutStats(stats);
+    } catch (error) {
+      console.error('[ClientDetailScreen] Failed to load workouts:', error);
+
+      // Check if it's an index error
+      if (error.message?.includes('index')) {
+        console.log('[ClientDetailScreen] Firestore index is still building. This can take 2-5 minutes after deployment.');
+        console.log('[ClientDetailScreen] Check status at: https://console.firebase.google.com/project/gymmate-ef56f/firestore/indexes');
+      }
+
+      // Set empty data so UI doesn't break
+      setWorkouts([]);
+      setWorkoutStats({ totalWorkouts: 0, totalSets: 0, totalPRs: 0, avgDuration: 0, lastWorkout: null });
     }
   }
 
@@ -73,30 +109,42 @@ export default function ClientDetailScreen({ route, navigation }) {
   }
 
   async function handleRevokeConnection() {
-    Alert.alert(
-      'Disconnect Client',
-      `Are you sure you want to disconnect from ${client.clientName}? They will no longer be able to see programs you assign, and you won't see their progress.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Disconnect',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setLoading(true);
-              await trainerClient.revokeConnection(client.relationshipId, client.trainerId);
-              Alert.alert('Disconnected', 'Client has been disconnected');
-              navigation.goBack();
-            } catch (error) {
-              console.error('Failed to revoke connection:', error);
-              Alert.alert('Error', 'Failed to disconnect client');
-            } finally {
-              setLoading(false);
-            }
-          },
-        },
-      ]
-    );
+    const confirmed = Platform.OS === 'web'
+      ? window.confirm(`Disconnect from ${client.clientName}?\n\nThey will no longer be able to see programs you assign, and you won't see their progress.`)
+      : await new Promise((resolve) => {
+          Alert.alert(
+            'Disconnect Client',
+            `Are you sure you want to disconnect from ${client.clientName}? They will no longer be able to see programs you assign, and you won't see their progress.`,
+            [
+              { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+              { text: 'Disconnect', style: 'destructive', onPress: () => resolve(true) },
+            ]
+          );
+        });
+
+    if (!confirmed) return;
+
+    try {
+      setLoading(true);
+      await trainerClient.revokeConnection(client.relationshipId, client.trainerId);
+
+      if (Platform.OS === 'web') {
+        alert('Client disconnected successfully');
+      } else {
+        Alert.alert('Disconnected', 'Client has been disconnected');
+      }
+
+      navigation.goBack();
+    } catch (error) {
+      console.error('Failed to revoke connection:', error);
+      if (Platform.OS === 'web') {
+        alert(`Error: Failed to disconnect client\n\n${error.message}`);
+      } else {
+        Alert.alert('Error', 'Failed to disconnect client');
+      }
+    } finally {
+      setLoading(false);
+    }
   }
 
   function handleAssignProgram() {
@@ -171,15 +219,15 @@ export default function ClientDetailScreen({ route, navigation }) {
           ))
         )}
 
-        {/* Stats Placeholder */}
+        {/* Workout Stats */}
+        <Text style={[styles.sectionTitle, { color: theme.text, marginTop: spacing[4], marginBottom: spacing[3] }]}>
+          Progress
+        </Text>
         <Card style={styles.statsCard}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>
-            This Week
-          </Text>
           <View style={styles.statsGrid}>
             <View style={styles.statItem}>
               <Text style={[styles.statValue, { color: theme.accent }]}>
-                {client.weeklyWorkouts || 0}
+                {workoutStats?.totalWorkouts || 0}
               </Text>
               <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
                 Workouts
@@ -187,7 +235,7 @@ export default function ClientDetailScreen({ route, navigation }) {
             </View>
             <View style={styles.statItem}>
               <Text style={[styles.statValue, { color: theme.accent }]}>
-                --
+                {workoutStats?.totalSets || 0}
               </Text>
               <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
                 Total Sets
@@ -195,14 +243,57 @@ export default function ClientDetailScreen({ route, navigation }) {
             </View>
             <View style={styles.statItem}>
               <Text style={[styles.statValue, { color: theme.accent }]}>
-                --
+                {workoutStats?.totalPRs || 0}
               </Text>
               <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
-                Volume (kg)
+                PRs
               </Text>
             </View>
           </View>
+          {workoutStats?.lastWorkout && (
+            <Text style={[styles.lastWorkout, { color: theme.textMuted }]}>
+              Last workout: {formatDate(workoutStats.lastWorkout)}
+            </Text>
+          )}
         </Card>
+
+        {/* Recent Workouts */}
+        <Text style={[styles.sectionTitle, { color: theme.text, marginTop: spacing[4], marginBottom: spacing[3] }]}>
+          Recent Workouts
+        </Text>
+        {workouts.length === 0 ? (
+          <Card>
+            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+              No workouts yet
+            </Text>
+          </Card>
+        ) : (
+          workouts.map((workout) => (
+            <TouchableOpacity
+              key={workout.sessionId}
+              onPress={() => navigation.navigate('ClientWorkoutDetail', { workout, client })}
+            >
+              <Card style={styles.workoutCard}>
+                <View style={styles.workoutRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.workoutName, { color: theme.text }]}>
+                      {workout.dayName}
+                    </Text>
+                    <Text style={[styles.workoutMeta, { color: theme.textSecondary }]}>
+                      {formatDate(workout.completedAt)} • {Math.round(workout.durationSeconds / 60)} min • {workout.completedSets} sets
+                    </Text>
+                    {workout.prCount > 0 && (
+                      <Text style={[styles.prBadge, { color: theme.accent }]}>
+                        🎉 {workout.prCount} PR{workout.prCount > 1 ? 's' : ''}
+                      </Text>
+                    )}
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+                </View>
+              </Card>
+            </TouchableOpacity>
+          ))
+        )}
 
         {/* Danger Zone */}
         <Card style={styles.dangerCard}>
@@ -331,5 +422,31 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.sm,
     textAlign: 'center',
     fontStyle: 'italic',
+  },
+  workoutCard: {
+    marginBottom: spacing[2],
+  },
+  workoutRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[3],
+  },
+  workoutName: {
+    fontSize: typography.sizes.base,
+    fontWeight: typography.weights.semibold,
+    marginBottom: spacing[1],
+  },
+  workoutMeta: {
+    fontSize: typography.sizes.sm,
+  },
+  prBadge: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
+    marginTop: spacing[1],
+  },
+  lastWorkout: {
+    fontSize: typography.sizes.xs,
+    textAlign: 'center',
+    marginTop: spacing[3],
   },
 });

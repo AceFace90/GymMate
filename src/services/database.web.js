@@ -509,6 +509,28 @@ export async function getLastSetForExercise(exerciseId) {
   return sorted[0] ? { weight_kg: sorted[0].weight_kg, reps: sorted[0].reps } : null;
 }
 
+export async function getExerciseStats(exerciseId) {
+  const sets = getTable('sessionSets').filter((ss) => ss.exercise_id === exerciseId && ss.completed);
+  const sessions = getTable('sessions').filter((s) => s.completed_at);
+  const sessionIds = new Set(sessions.map((s) => s.id));
+
+  const completedSets = sets.filter((ss) => sessionIds.has(ss.session_id));
+
+  if (completedSets.length === 0) {
+    return { max_weight: 0, best_volume: 0, total_sessions: 0 };
+  }
+
+  const maxWeight = Math.max(...completedSets.map((ss) => ss.weight_kg || 0));
+  const bestVolume = Math.max(...completedSets.map((ss) => (ss.reps || 0) * (ss.weight_kg || 0)));
+  const totalSessions = new Set(completedSets.map((ss) => ss.session_id)).size;
+
+  return {
+    max_weight: maxWeight,
+    best_volume: bestVolume,
+    total_sessions: totalSessions,
+  };
+}
+
 // Clear the is_pr flag on all sets for a given exercise (resets PR history without
 // deleting workout data). Used when a user wants to reset their PRs for an exercise.
 export async function resetPRsForExercise(exerciseId) {

@@ -10,6 +10,8 @@ import Button from '../../components/Button';
 import { spacing, typography } from '../../theme';
 import * as trainerClient from '../../services/trainerClient';
 import * as auth from '../../services/auth';
+import * as workoutSync from '../../services/workoutSync';
+import * as programTemplates from '../../services/programTemplates';
 
 export default function TrainerDashboardScreen({ navigation }) {
   const { theme } = useTheme();
@@ -36,13 +38,47 @@ export default function TrainerDashboardScreen({ navigation }) {
 
       const relationships = await trainerClient.getMyClients(user.id);
 
-      // TODO: Fetch client stats from Firestore (workouts, adherence)
-      // For now, just show the relationships
-      const clientsWithStats = relationships.map(rel => ({
-        ...rel,
-        weeklyWorkouts: 0, // TODO: fetch from client's cloud data
-        expectedWorkouts: 3, // TODO: fetch from client's active program
-        lastWorkoutDate: null, // TODO: fetch from client's cloud data
+      // Fetch real workout stats for each client
+      const clientsWithStats = await Promise.all(relationships.map(async (rel) => {
+        try {
+          // Strip google- prefix if present
+          const firebaseUid = rel.clientId?.replace('google-', '');
+
+          // Get this week's workouts
+          const startOfWeek = new Date();
+          startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay()); // Sunday
+          startOfWeek.setHours(0, 0, 0, 0);
+
+          const endOfWeek = new Date(startOfWeek);
+          endOfWeek.setDate(endOfWeek.getDate() + 7);
+
+          const weekWorkouts = await workoutSync.getClientWorkoutsInRange(firebaseUid, startOfWeek, endOfWeek);
+
+          // Get assigned programs to calculate expected workouts
+          const assignments = await programTemplates.getClientAssignmentsByTrainer(user.id, rel.clientId);
+          let expectedWorkouts = 0;
+          assignments.forEach(assignment => {
+            expectedWorkouts += assignment.programData?.daysPerWeek || 0;
+          });
+
+          // Get overall stats for last workout date
+          const stats = await workoutSync.getClientWorkoutStats(firebaseUid);
+
+          return {
+            ...rel,
+            weeklyWorkouts: weekWorkouts.length,
+            expectedWorkouts: expectedWorkouts || 3, // Default to 3 if no program assigned
+            lastWorkoutDate: stats.lastWorkout,
+          };
+        } catch (error) {
+          console.error(`Failed to load stats for client ${rel.clientId}:`, error);
+          return {
+            ...rel,
+            weeklyWorkouts: 0,
+            expectedWorkouts: 3,
+            lastWorkoutDate: null,
+          };
+        }
       }));
 
       setClients(clientsWithStats);
