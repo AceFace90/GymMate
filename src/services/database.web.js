@@ -406,6 +406,11 @@ export async function getPersonalRecords() {
     }
   }
 
+  console.log('[getPersonalRecords] Best object keys (exercise IDs from sets):', Object.keys(best).slice(0, 5));
+  console.log('[getPersonalRecords] Sample exercise IDs from exercises:', exercises.slice(0, 5).map(e => e.id));
+  console.log('[getPersonalRecords] Sample exercise_id type:', typeof Object.keys(best)[0]);
+  console.log('[getPersonalRecords] Sample exercise.id type:', typeof exercises[0]?.id);
+
   const records = exercises
     .filter((e) => best[e.id])
     .map((e) => ({
