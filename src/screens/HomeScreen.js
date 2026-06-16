@@ -219,7 +219,9 @@ export default function HomeScreen({ navigation, user }) {
               {thisWeekCalc.sessions} of {weeklyGoal} workouts
             </Text>
           </View>
-          <ActivityRings rings={rings} />
+          <View style={styles.ringsCenter}>
+            <ActivityRings rings={rings} />
+          </View>
         </Card>
 
         {/* Delta stat cards — this week vs last */}
@@ -319,6 +321,7 @@ const styles = StyleSheet.create({
   quickLinkText: { fontSize: typography.sizes.sm, fontWeight: '600' },
   cardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing[4] },
   cardSub: { fontSize: typography.sizes.xs },
+  ringsCenter: { alignItems: 'center', justifyContent: 'center' },
   viewMore: { fontSize: typography.sizes.xs, fontWeight: '600' },
   statsRow: { flexDirection: 'row', gap: spacing[3] },
   statCard: { flex: 1, alignItems: 'center' },
