@@ -132,16 +132,24 @@ export default function HomeScreen({ navigation, user }) {
         </Card>
 
         {/* This week snapshot */}
-        <View style={styles.statsRow}>
-          <Card style={styles.statCard}>
-            <Text style={[styles.statValue, { color: theme.accent }]}>{thisWeek.sessions}</Text>
-            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Workouts this week</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('Progress')} activeOpacity={0.8}>
+          <Card>
+            <View style={styles.progressHeader}>
+              <Text style={[styles.heroLabel, { color: theme.textMuted }]}>THIS WEEK</Text>
+              <Text style={[styles.viewMore, { color: theme.accent }]}>View Full Progress →</Text>
+            </View>
+            <View style={styles.statsRow}>
+              <View style={styles.statItem}>
+                <Text style={[styles.statValue, { color: theme.accent }]}>{thisWeek.sessions}</Text>
+                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Workouts</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text style={[styles.statValue, { color: theme.accent }]}>{thisWeek.sets}</Text>
+                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Sets</Text>
+              </View>
+            </View>
           </Card>
-          <Card style={styles.statCard}>
-            <Text style={[styles.statValue, { color: theme.accent }]}>{thisWeek.sets}</Text>
-            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Sets this week</Text>
-          </Card>
-        </View>
+        </TouchableOpacity>
 
         {/* Last session */}
         {lastSession ? (
@@ -162,7 +170,6 @@ export default function HomeScreen({ navigation, user }) {
         <View style={styles.grid}>
           {[
             { emoji: '🏋️', title: 'Programs', sub: 'Build & start routines', to: 'Programs' },
-            { emoji: '📈', title: 'Progress', sub: 'Trends, history & PRs', to: 'Progress' },
             { emoji: '📚', title: 'Exercises', sub: 'Browse the library', to: 'Exercises' },
             { emoji: '👤', title: 'Profile', sub: 'Biometrics & goals', to: 'Profile' },
           ].map((item) => (
@@ -197,8 +204,10 @@ const styles = StyleSheet.create({
   heroSub: { fontSize: typography.sizes.sm, marginTop: 2 },
   quickLink: { marginTop: spacing[3], alignItems: 'center' },
   quickLinkText: { fontSize: typography.sizes.sm, fontWeight: '600' },
-  statsRow: { flexDirection: 'row', gap: spacing[3] },
-  statCard: { flex: 1, alignItems: 'center' },
+  progressHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing[3] },
+  viewMore: { fontSize: typography.sizes.xs, fontWeight: '600' },
+  statsRow: { flexDirection: 'row', gap: spacing[4], justifyContent: 'space-around' },
+  statItem: { alignItems: 'center' },
   statValue: { fontSize: typography.sizes['3xl'], fontWeight: '800' },
   statLabel: { fontSize: typography.sizes.xs, marginTop: 2, textAlign: 'center' },
   lastRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing[2] },

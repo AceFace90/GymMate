@@ -31,12 +31,31 @@ import AssignProgramScreen from '../screens/trainer/AssignProgramScreen';
 import ConnectTrainerScreen from '../screens/client/ConnectTrainerScreen';
 
 const Tab = createBottomTabNavigator();
+const HomeStack = createStackNavigator();
 const ProgramsStack = createStackNavigator();
 const ProgressStack = createStackNavigator();
 const ExercisesStack = createStackNavigator();
 const ProfileStack = createStackNavigator();
 const ClientsStack = createStackNavigator();
 const TemplatesStack = createStackNavigator();
+
+function HomeStackNav() {
+  const { theme } = useTheme();
+  return (
+    <HomeStack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: theme.bg },
+        headerTintColor: theme.accent,
+        headerShadowVisible: false,
+        contentStyle: { backgroundColor: theme.bg },
+        headerTitleStyle: { color: theme.accent, fontWeight: '700' },
+      }}
+    >
+      <HomeStack.Screen name="HomeScreen" component={HomeScreen} options={{ headerShown: false }} />
+      <HomeStack.Screen name="Progress" component={ProgressScreen} options={{ title: 'Progress' }} />
+    </HomeStack.Navigator>
+  );
+}
 
 function ProgramsStackNav() {
   const { theme } = useTheme();
@@ -198,11 +217,9 @@ export default function AppNavigator({ user, onLogout }) {
             const emoji = {
               Home: '🏠',
               Programs: '🏋️',
-              Progress: '📈',
               Exercises: '📚',
               Profile: '👤',
               Clients: '👥',
-              Templates: '📋',
             };
             return (
               <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.5 }}>
@@ -212,11 +229,8 @@ export default function AppNavigator({ user, onLogout }) {
           },
         })}
       >
-        <Tab.Screen name="Home">
-          {(props) => <HomeScreen {...props} user={user} />}
-        </Tab.Screen>
+        <Tab.Screen name="Home" component={HomeStackNav} />
         <Tab.Screen name="Programs" component={ProgramsStackNav} />
-        <Tab.Screen name="Progress" component={ProgressStackNav} />
         <Tab.Screen name="Exercises" component={ExercisesStackNav} />
 
         {/* Trainer-only tabs */}
