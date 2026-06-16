@@ -129,6 +129,7 @@ function ClientsStackNav() {
       <ClientsStack.Screen name="ClientDetail" component={ClientDetailScreen} options={{ headerShown: false }} />
       <ClientsStack.Screen name="ClientWorkoutDetail" component={ClientWorkoutDetailScreen} options={{ headerShown: false }} />
       <ClientsStack.Screen name="Connection" component={ConnectionScreen} options={{ headerShown: false }} />
+      <ClientsStack.Screen name="Templates" component={TemplatesScreen} options={{ headerShown: false }} />
       <ClientsStack.Screen name="AssignProgram" component={AssignProgramScreen} options={{ headerShown: false }} />
     </ClientsStack.Navigator>
   );
@@ -220,10 +221,7 @@ export default function AppNavigator({ user, onLogout }) {
 
         {/* Trainer-only tabs */}
         {isTrainer && (
-          <>
-            <Tab.Screen name="Clients" component={ClientsStackNav} />
-            <Tab.Screen name="Templates" component={TemplatesStackNav} />
-          </>
+          <Tab.Screen name="Clients" component={ClientsStackNav} />
         )}
 
         <Tab.Screen
