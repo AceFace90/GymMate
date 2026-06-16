@@ -39,7 +39,7 @@ const ProfileStack = createStackNavigator();
 const ClientsStack = createStackNavigator();
 const TemplatesStack = createStackNavigator();
 
-function HomeStackNav() {
+function HomeStackNav({ user }) {
   const { theme } = useTheme();
   return (
     <HomeStack.Navigator
@@ -51,7 +51,9 @@ function HomeStackNav() {
         headerTitleStyle: { color: theme.accent, fontWeight: '700' },
       }}
     >
-      <HomeStack.Screen name="HomeScreen" component={HomeScreen} options={{ headerShown: false }} />
+      <HomeStack.Screen name="HomeScreen" options={{ headerShown: false }}>
+        {(props) => <HomeScreen {...props} user={user} />}
+      </HomeStack.Screen>
       <HomeStack.Screen name="Progress" component={ProgressScreen} options={{ title: 'Progress' }} />
     </HomeStack.Navigator>
   );
@@ -229,7 +231,9 @@ export default function AppNavigator({ user, onLogout }) {
           },
         })}
       >
-        <Tab.Screen name="Home" component={HomeStackNav} />
+        <Tab.Screen name="Home">
+          {(props) => <HomeStackNav {...props} user={user} />}
+        </Tab.Screen>
         <Tab.Screen name="Programs" component={ProgramsStackNav} />
         <Tab.Screen name="Exercises" component={ExercisesStackNav} />
 

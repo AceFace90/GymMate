@@ -53,6 +53,7 @@ function hasContent(payload) {
 
 // Push the current local dataset up to the cloud (overwrites the cloud copy).
 export async function backupToCloud(uid) {
+  console.log('[cloudSync] backupToCloud called with uid:', uid);
   if (!uid) return;
   const payload = await db.exportAllData();
 
@@ -60,17 +61,21 @@ export async function backupToCloud(uid) {
   const asyncStorage = {};
   for (const key of ASYNC_STORAGE_KEYS) {
     try {
-      const value = await AsyncStorage.getItem(nsKey(key));
+      const namespacedKey = nsKey(key);
+      const value = await AsyncStorage.getItem(namespacedKey);
+      console.log('[cloudSync] Backing up:', key, '→', namespacedKey, 'value:', value ? 'exists' : 'null');
       if (value) asyncStorage[key] = value;
     } catch (e) {
       console.error(`Failed to backup AsyncStorage key ${key}:`, e);
     }
   }
+  console.log('[cloudSync] AsyncStorage keys backed up:', Object.keys(asyncStorage));
   payload.asyncStorage = asyncStorage;
 
   const updatedAt = new Date().toISOString();
   await setDoc(userDoc(uid), { payload, updatedAt });
-  // We are now in sync with the copy we just wrote.
+  console.log('[cloudSync] Backup complete. Updated at:', updatedAt);
+  // We are now in sync with the copy we just written.
   await setLastSync(updatedAt);
 }
 
