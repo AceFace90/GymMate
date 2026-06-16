@@ -14,19 +14,22 @@ Sister project to MacroMate (nutrition tracker). Same owner, same design system,
 | Layer | Technology |
 |---|---|
 | UI framework | React Native (Expo ~51), rendered to web via `react-native-web` |
-| Navigation | `@react-navigation` — bottom tabs + stack navigators |
-| Local storage | `expo-sqlite` (SQLite in-browser via WASM on web) |
+| Navigation | `@react-navigation` — bottom tabs + per-tab stack navigators |
+| Local storage | `expo-sqlite` (native) / `localStorage`-backed store (web) |
+| Cloud sync | Firebase (Auth + Firestore) — per-user backup & cross-device sync |
 | Icons | `@expo/vector-icons` (Ionicons) |
 | Deployment | GitHub Pages via GitHub Actions (`AceFace90/gymmate`) |
-| AI (planned) | Google Gemini (gemini-1.5-flash) — user provides API key |
-| Auth (planned) | Google OAuth via GCP — same pattern as MacroMate |
-| Backend (planned) | Express.js server for OAuth + AI proxy + cloud sync |
+| AI | Google Gemini — photo → exercise ID, program generation |
+| Auth | Google OAuth via Firebase; demo + local profiles also supported |
 
 ---
 
 ## Documentation
 
-- **[DATA_SYNC_ARCHITECTURE.md](docs/DATA_SYNC_ARCHITECTURE.md)** - Comprehensive guide to data sync, cloud backup, feature matrix (Google vs local), data flow diagrams
+- **[DATA_SYNC_ARCHITECTURE.md](docs/DATA_SYNC_ARCHITECTURE.md)** — Data sync, cloud backup, feature matrix (Google vs local), data flow diagrams
+- **[workout-progress-sync-implementation.md](docs/workout-progress-sync-implementation.md)** — Workout/progress sync internals
+- **[pt-client-sync-handoff.md](docs/pt-client-sync-handoff.md)** / **[future-pt-feature-unlock.md](docs/future-pt-feature-unlock.md)** — Trainer↔client feature
+- Session handoffs and UX-fix notes live in `docs/` (dated files)
 
 ---
 
@@ -37,29 +40,55 @@ GymMate/
 ├── App.js                      # Root — ErrorBoundary, ThemeProvider, AppNavigator
 ├── src/
 │   ├── navigation/
-│   │   └── AppNavigator.js     # Bottom tabs: Programs | Progress | Exercises | Profile
+│   │   └── AppNavigator.js     # Bottom tabs: Home | Programs | Exercises | (Clients) | Profile
+│   │                           #   Each tab is its own stack; Progress + WorkoutDetail nest under Home.
+│   │                           #   Clients tab shows only for trainer-role users.
 │   ├── screens/
+│   │   ├── HomeScreen.js           # Dashboard: this-week activity rings, last session, quick start
 │   │   ├── ProgramsScreen.js       # List + create programs
 │   │   ├── ProgramDetailScreen.js  # View/edit days and exercises in a program
 │   │   ├── ActiveWorkoutScreen.js  # Live workout: timer, sets/reps input, rest timer
-│   │   ├── ProgressScreen.js       # Charts: weekly volume, PRs, muscle group breakdown
+│   │   ├── ProgressScreen.js       # Tabs: Overview (charts/rings), History, Records (PRs)
+│   │   ├── WorkoutDetailScreen.js  # Read-only past-session view: summary + per-exercise set tables
 │   │   ├── ExercisesScreen.js      # Browse/search exercise library
 │   │   ├── ExerciseDetailScreen.js # Exercise info + history chart
-│   │   └── ProfileScreen.js        # User settings, theme toggle
+│   │   ├── BiometricsScreen.js     # Body metrics / measurements log
+│   │   ├── LoginScreen.js          # Google sign-in, demo login, local profiles
+│   │   ├── ProfileScreen.js        # User settings, theme toggle
+│   │   ├── SettingsScreen.js       # Units, preferences, account actions
+│   │   ├── trainer/                # Trainer-role screens (dashboard, clients, templates, assign)
+│   │   └── client/                 # Client-role screens (ConnectTrainerScreen)
 │   ├── components/
 │   │   ├── Card.js             # Themed container card
 │   │   ├── Button.js           # Primary/secondary/ghost variants
 │   │   ├── Input.js            # Themed text input
-│   │   └── MuscleTag.js        # Coloured chip for muscle group labels
+│   │   ├── MuscleTag.js        # Coloured chip for muscle group labels
+│   │   ├── ActivityRings.js    # Apple-Watch-style progress rings (Home/Progress)
+│   │   ├── ProgressRings.js    # Earlier ring variant
+│   │   ├── DatePicker.js       # Cross-platform date picker
+│   │   ├── ExerciseScannerModal.js # Photo → exercise identification (Gemini)
+│   │   ├── ConnectionStatusBadge.js / InviteCodeInput.js # Trainer↔client linking UI
 │   ├── hooks/
-│   │   └── useTheme.js         # ThemeProvider + useTheme() hook
+│   │   ├── useTheme.js         # ThemeProvider + useTheme() hook
+│   │   └── useUnits.js         # Unit system (kg/lb), formatWeight, conversions
 │   ├── theme/
 │   │   └── index.js            # Color tokens, typography, spacing, radius
 │   ├── services/
 │   │   ├── database.js         # All SQLite calls (native)
-│   │   └── database.web.js     # Web stub / WASM override if needed
+│   │   ├── database.web.js     # Web implementation (localStorage-backed)
+│   │   ├── auth.js / firebase.js     # Google OAuth + Firebase
+│   │   ├── cloudSync.js / workoutSync.js # Firestore cloud backup + sync
+│   │   ├── activeUser.js       # Per-user data namespacing
+│   │   ├── trainerClient.js    # Trainer↔client connection + assignment logic
+│   │   ├── gemini.js           # Gemini API (photo → exercise, program generation)
+│   │   └── programTemplates.js # Built-in program templates
+│   ├── utils/
+│   │   ├── confirm.js          # Cross-platform confirm dialog
+│   │   ├── biometrics.js / cyclePhase.js / matchExercise.js
 │   └── data/
-│       └── exercises.js        # BUILT_IN_EXERCISES seed data array
+│       ├── exercises.js        # BUILT_IN_EXERCISES seed data array
+│       ├── exercise-videos.js  # Exercise → video URL mapping
+│       └── demoSeed.js         # Demo-account seed data
 ├── web/
 │   └── index.html              # Web entry point (add PWA meta here)
 ├── .github/workflows/
@@ -154,6 +183,8 @@ Add a new SQL string to the `MIGRATIONS` array in `database.js`. The migration r
 1. Create `src/screens/YourScreen.js` using the skeleton above.
 2. Add it to `AppNavigator.js` — either as a new tab (rare) or pushed onto an existing stack.
 3. Add a tab icon name from [Ionicons](https://ionic.io/ionicons) to the `icons` map in `AppNavigator.js`.
+
+> ⚠️ **`navigation` prop gotcha (web).** A screen that calls `navigation.navigate(...)` must declare `navigation` in its props: `export default function YourScreen({ navigation }) { … }`. If you omit it, the name silently resolves to the browser's global `window.navigation` on web — calling `.navigate()` triggers a real URL change and full page reload instead of a stack push. Screens registered with `component={Screen}` get the prop automatically; screens rendered via a render-prop child (`{(props) => <Screen {...props} />}`) must forward it.
 
 ---
 
