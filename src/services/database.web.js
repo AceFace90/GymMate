@@ -173,10 +173,20 @@ export async function getProgramById(id) {
   return program;
 }
 
-export async function createProgram({ name, description, daysPerWeek }) {
+export async function createProgram({ name, description, daysPerWeek, isActive, createdByUserId, isTemplate, linkedTemplateId }) {
   const rows = getTable('programs');
   const id = nextId('programs');
-  rows.push({ id, name, description: description || null, days_per_week: daysPerWeek || 3, is_active: 0, created_at: now() });
+  rows.push({
+    id,
+    name,
+    description: description || null,
+    days_per_week: daysPerWeek || 3,
+    is_active: isActive ? 1 : 0,
+    created_at: now(),
+    created_by_user_id: createdByUserId || null,
+    is_template: isTemplate ? 1 : 0,
+    linked_template_id: linkedTemplateId || null,
+  });
   setTable('programs', rows);
   return id;
 }
@@ -497,6 +507,28 @@ export async function getLastSetForExercise(exerciseId) {
     });
 
   return sorted[0] ? { weight_kg: sorted[0].weight_kg, reps: sorted[0].reps } : null;
+}
+
+export async function getExerciseStats(exerciseId) {
+  const sets = getTable('sessionSets').filter((ss) => ss.exercise_id === exerciseId && ss.completed);
+  const sessions = getTable('sessions').filter((s) => s.completed_at);
+  const sessionIds = new Set(sessions.map((s) => s.id));
+
+  const completedSets = sets.filter((ss) => sessionIds.has(ss.session_id));
+
+  if (completedSets.length === 0) {
+    return { max_weight: 0, best_volume: 0, total_sessions: 0 };
+  }
+
+  const maxWeight = Math.max(...completedSets.map((ss) => ss.weight_kg || 0));
+  const bestVolume = Math.max(...completedSets.map((ss) => (ss.reps || 0) * (ss.weight_kg || 0)));
+  const totalSessions = new Set(completedSets.map((ss) => ss.session_id)).size;
+
+  return {
+    max_weight: maxWeight,
+    best_volume: bestVolume,
+    total_sessions: totalSessions,
+  };
 }
 
 // Clear the is_pr flag on all sets for a given exercise (resets PR history without

@@ -1,65 +1,119 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
 
-Mobility
-Cat Cow (mobility)
-Bird Dog (core/stability)
-Torso Mobility (from the floor)
-Banded Crab Walk knee height
-Best World Stretching
-Shoulder external rotation (front)
-Upper back mobility with broomstick
-Ankle dorsi flexion (with band)
-7 views
+    // Helper function to check if user is authenticated
+    function isSignedIn() {
+      return request.auth != null;
+    }
 
+    // Helper function to check if user owns the resource
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
 
-Ankle dorsi flexion
-41 views
+    // Helper function to match user ID with or without 'google-' prefix
+    function isUserMatch(userId) {
+      return isSignedIn() && (
+        request.auth.uid == userId ||
+        'google-' + request.auth.uid == userId
+      );
+    }
 
+    // User data (existing rule)
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+    }
 
-Shin box (hard version)
-2 views
+    // Trainer-Client Relationships
+    match /trainer_clients/{relationshipId} {
+      // Anyone authenticated can read pending invites (clientId is null) to verify codes
+      // Trainer/client can read their own accepted relationships
+      allow read: if isSignedIn() && (
+        resource.data.clientId == null ||
+        isUserMatch(resource.data.trainerId) ||
+        isUserMatch(resource.data.clientId)
+      );
 
+      // Trainer can create invite (relationship)
+      allow create: if isSignedIn() && isUserMatch(request.resource.data.trainerId);
 
-Hip mobility complex
-12 views
+      // Either party can update (for accepting or revoking)
+      // Also allow any authenticated user to accept a pending invite (sets clientId)
+      allow update: if isSignedIn() && (
+        isUserMatch(resource.data.trainerId) ||
+        isUserMatch(resource.data.clientId) ||
+        (resource.data.clientId == null && request.resource.data.clientId != null)
+      );
 
+      // Only trainer can delete
+      allow delete: if isSignedIn() && isUserMatch(resource.data.trainerId);
+    }
 
-Shin box (easy version)
-34 views
+    // Program Templates
+    match /program_templates/{templateId} {
+      // Trainer can read their own templates
+      allow read: if isSignedIn() && isUserMatch(resource.data.trainerId);
 
+      // Trainer can create templates they own
+      allow create: if isSignedIn() && isUserMatch(request.resource.data.trainerId);
 
-Fire Hydrant (hip mobility)
-20 views
+      // Trainer can update/delete their own templates
+      allow update, delete: if isSignedIn() && isUserMatch(resource.data.trainerId);
+    }
 
+    // Program Assignments
+    match /program_assignments/{assignmentId} {
+      // Trainer can read/write assignments they created
+      // Client can read assignments assigned to them
+      allow read: if isSignedIn() && (
+        isUserMatch(resource.data.trainerId) ||
+        isUserMatch(resource.data.clientId)
+      );
 
-Shoulders external rotation (with band)2
-4 views
+      // Only trainer can create/delete assignments
+      allow create: if isSignedIn() && isUserMatch(request.resource.data.trainerId);
+      allow delete: if isSignedIn() && isUserMatch(resource.data.trainerId);
 
+      // Trainer can update their assignments (for sync)
+      // Client can update lastSyncedAt field only
+      allow update: if isSignedIn() && (
+        isUserMatch(resource.data.trainerId) ||
+        (isUserMatch(resource.data.clientId) &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastSyncedAt']))
+      );
+    }
 
-Toe touch
-24 views
+    // Workout Feedback
+    match /workout_feedback_cloud/{feedbackId} {
+      // Trainer can read/write feedback they created
+      // Client can read feedback for their workouts
+      allow read: if isSignedIn() && (
+        isUserMatch(resource.data.trainerId) ||
+        isUserMatch(resource.data.clientId)
+      );
 
+      // Only trainer can create feedback
+      allow create: if isSignedIn() && isUserMatch(request.resource.data.trainerId);
 
-Shoulder dislocation (with band)
-138 views
+      // Only trainer who created it can update/delete
+      allow update, delete: if isSignedIn() && isUserMatch(resource.data.trainerId);
+    }
 
+    // Workout Sessions (for trainer viewing of client progress)
+    match /workout_sessions_cloud/{sessionId} {
+      // Client can read/write their own sessions
+      allow read: if isSignedIn() && isUserMatch(resource.data.clientId);
 
-Farmer Carry
-63 views
+      // Trainer can read sessions for any client they have an active connection with
+      // (We'll query with where('clientId', '==', clientId) so we check the connection in app code)
+      allow read: if isSignedIn();
 
+      // Only client can create their own workout sessions
+      allow create: if isSignedIn() && isUserMatch(request.resource.data.clientId);
 
-Band gluteus bridge
-9 views
-
-
-Air Squat
-38 views
-
-
-
-
-
-
-Core 
-Curl Up (core/stability)
-5 views
-
+      // Only client can update/delete their own sessions
+      allow update, delete: if isSignedIn() && isUserMatch(resource.data.clientId);
+    }
+  }
+}

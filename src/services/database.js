@@ -85,6 +85,23 @@ const MIGRATIONS = [
 
   INSERT OR IGNORE INTO schema_version (version) VALUES (1);
   `,
+
+  // v2 — PT-client collaboration
+  `
+  ALTER TABLE programs ADD COLUMN created_by_user_id TEXT;
+  ALTER TABLE programs ADD COLUMN is_template INTEGER DEFAULT 0;
+  ALTER TABLE programs ADD COLUMN linked_template_id TEXT;
+
+  CREATE TABLE IF NOT EXISTS workout_feedback (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id      INTEGER NOT NULL REFERENCES workout_sessions(id) ON DELETE CASCADE,
+    trainer_user_id TEXT    NOT NULL,
+    feedback_text   TEXT    NOT NULL,
+    created_at      TEXT    DEFAULT (datetime('now'))
+  );
+
+  INSERT OR IGNORE INTO schema_version (version) VALUES (2);
+  `,
 ];
 
 export async function initDatabase(builtinExercises) {
@@ -214,11 +231,20 @@ export async function getProgramById(id) {
   return program;
 }
 
-export async function createProgram({ name, description, daysPerWeek }) {
+export async function createProgram({ name, description, daysPerWeek, isActive, createdByUserId, isTemplate, linkedTemplateId }) {
   const database = await getDb();
   const result = await database.runAsync(
-    'INSERT INTO programs (name, description, days_per_week) VALUES (?, ?, ?)',
-    [name, description || null, daysPerWeek || 3]
+    `INSERT INTO programs (name, description, days_per_week, is_active, created_by_user_id, is_template, linked_template_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [
+      name,
+      description || null,
+      daysPerWeek || 3,
+      isActive ? 1 : 0,
+      createdByUserId || null,
+      isTemplate ? 1 : 0,
+      linkedTemplateId || null,
+    ]
   );
   return result.lastInsertRowId;
 }
@@ -508,6 +534,20 @@ export async function getLastSetForExercise(exerciseId) {
      WHERE ss.exercise_id = ? AND ss.completed = 1
      ORDER BY ws.started_at DESC, ss.set_number DESC
      LIMIT 1`,
+    [exerciseId]
+  );
+}
+
+export async function getExerciseStats(exerciseId) {
+  const database = await getDb();
+  return database.getFirstAsync(
+    `SELECT
+       MAX(ss.weight_kg) as max_weight,
+       MAX(ss.reps * COALESCE(ss.weight_kg, 0)) as best_volume,
+       COUNT(DISTINCT ws.id) as total_sessions
+     FROM session_sets ss
+     JOIN workout_sessions ws ON ws.id = ss.session_id
+     WHERE ss.exercise_id = ? AND ss.completed = 1 AND ws.completed_at IS NOT NULL`,
     [exerciseId]
   );
 }

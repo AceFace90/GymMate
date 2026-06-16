@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../hooks/useTheme';
 import { spacing, typography, radius, colors } from '../theme';
 import * as db from '../services/database';
+import * as auth from '../services/auth';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import MuscleTag from '../components/MuscleTag';
@@ -21,6 +22,7 @@ export default function ProgramDetailScreen({ route, navigation }) {
 
   const [program, setProgram] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [trainerName, setTrainerName] = useState(null);
 
   // Add day modal
   const [showAddDay, setShowAddDay] = useState(false);
@@ -31,6 +33,7 @@ export default function ProgramDetailScreen({ route, navigation }) {
   const [activeDayId, setActiveDayId] = useState(null);
   const [exercises, setExercises] = useState([]);
   const [exSearch, setExSearch] = useState('');
+  const [exMuscleFilter, setExMuscleFilter] = useState(null);
   const [exLoading, setExLoading] = useState(false);
 
   // Select day to start workout
@@ -39,7 +42,15 @@ export default function ProgramDetailScreen({ route, navigation }) {
   const loadProgram = async () => {
     setLoading(true);
     const data = await db.getProgramById(programId);
+    console.log('[ProgramDetail] Loaded program:', data?.name, 'Days:', data?.days?.length || 0, 'is_template:', data?.is_template);
     setProgram(data);
+
+    // If this is an assigned program, fetch the trainer's name
+    if (data?.created_by_user_id) {
+      const trainer = await auth.getUserById(data.created_by_user_id);
+      setTrainerName(trainer?.name || null);
+    }
+
     setLoading(false);
   };
 
@@ -49,9 +60,12 @@ export default function ProgramDetailScreen({ route, navigation }) {
     if (startWorkout && program) setShowPickDay(true);
   }, [startWorkout, program]);
 
-  const searchExercises = async (query) => {
+  const searchExercises = async (query, muscleGroup) => {
     setExLoading(true);
-    const results = await db.getExercises({ search: query || undefined });
+    const results = await db.getExercises({
+      search: query || undefined,
+      muscleGroup: muscleGroup || undefined
+    });
     setExercises(results);
     setExLoading(false);
   };
@@ -59,7 +73,8 @@ export default function ProgramDetailScreen({ route, navigation }) {
   const openAddExercise = (dayId) => {
     setActiveDayId(dayId);
     setExSearch('');
-    searchExercises('');
+    setExMuscleFilter(null);
+    searchExercises('', null);
     setShowAddExercise(true);
   };
 
@@ -128,6 +143,9 @@ export default function ProgramDetailScreen({ route, navigation }) {
 
   if (!program) return null;
 
+  // Check if this is an assigned (read-only) program
+  const isAssigned = Boolean(program.linked_template_id);
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -147,6 +165,14 @@ export default function ProgramDetailScreen({ route, navigation }) {
               </View>
             ) : null}
           </View>
+          {isAssigned && (
+            <View style={[styles.assignedBanner, { backgroundColor: colors.blue + '20', borderColor: colors.blue + '40' }]}>
+              <Ionicons name="lock-closed" size={14} color={colors.blue} />
+              <Text style={[styles.assignedText, { color: colors.blue }]}>
+                {trainerName ? `Assigned by ${trainerName}` : 'Assigned by your trainer'} • Read-only
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Start workout CTA */}
@@ -159,31 +185,35 @@ export default function ProgramDetailScreen({ route, navigation }) {
           <Card key={day.id} style={styles.dayCard}>
             <View style={styles.dayHeader}>
               <Text style={[styles.dayName, { color: theme.text }]}>{day.name}</Text>
-              <TouchableOpacity onPress={() => handleDeleteDay(day)}>
-                <Ionicons name="trash-outline" size={16} color="#ef4444" />
-              </TouchableOpacity>
+              {!isAssigned && (
+                <TouchableOpacity onPress={() => handleDeleteDay(day)}>
+                  <Ionicons name="trash-outline" size={16} color="#ef4444" />
+                </TouchableOpacity>
+              )}
             </View>
 
             {(day.exercises || []).map((ex, i) => (
               <View key={ex.id} style={[styles.exerciseRow, { borderTopColor: theme.border }]}>
-                <View style={styles.reorderCol}>
-                  <TouchableOpacity
-                    onPress={() => moveExercise(day, i, -1)}
-                    disabled={i === 0}
-                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                    style={i === 0 && { opacity: 0.25 }}
-                  >
-                    <Ionicons name="chevron-up" size={18} color={theme.textSecondary} />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => moveExercise(day, i, 1)}
-                    disabled={i === day.exercises.length - 1}
-                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                    style={i === day.exercises.length - 1 && { opacity: 0.25 }}
-                  >
-                    <Ionicons name="chevron-down" size={18} color={theme.textSecondary} />
-                  </TouchableOpacity>
-                </View>
+                {!isAssigned && (
+                  <View style={styles.reorderCol}>
+                    <TouchableOpacity
+                      onPress={() => moveExercise(day, i, -1)}
+                      disabled={i === 0}
+                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                      style={i === 0 && { opacity: 0.25 }}
+                    >
+                      <Ionicons name="chevron-up" size={18} color={theme.textSecondary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => moveExercise(day, i, 1)}
+                      disabled={i === day.exercises.length - 1}
+                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                      style={i === day.exercises.length - 1 && { opacity: 0.25 }}
+                    >
+                      <Ionicons name="chevron-down" size={18} color={theme.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
+                )}
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.exName, { color: theme.text }]}>{ex.exercise_name}</Text>
                   <View style={styles.exMeta}>
@@ -191,30 +221,36 @@ export default function ProgramDetailScreen({ route, navigation }) {
                     <Text style={[styles.exSets, { color: theme.textSecondary }]}> {ex.sets} × {ex.reps}</Text>
                   </View>
                 </View>
-                <TouchableOpacity onPress={() => handleRemoveExercise(ex.id, ex.exercise_name)}>
-                  <Ionicons name="close-circle-outline" size={20} color={theme.textMuted} />
-                </TouchableOpacity>
+                {!isAssigned && (
+                  <TouchableOpacity onPress={() => handleRemoveExercise(ex.id, ex.exercise_name)}>
+                    <Ionicons name="close-circle-outline" size={20} color={theme.textMuted} />
+                  </TouchableOpacity>
+                )}
               </View>
             ))}
 
-            <TouchableOpacity
-              onPress={() => openAddExercise(day.id)}
-              style={[styles.addExerciseBtn, { borderColor: theme.border }]}
-            >
-              <Ionicons name="add-circle-outline" size={18} color={theme.accent} />
-              <Text style={[styles.addExerciseText, { color: theme.accent }]}>Add Exercise</Text>
-            </TouchableOpacity>
+            {!isAssigned && (
+              <TouchableOpacity
+                onPress={() => openAddExercise(day.id)}
+                style={[styles.addExerciseBtn, { borderColor: theme.border }]}
+              >
+                <Ionicons name="add-circle-outline" size={18} color={theme.accent} />
+                <Text style={[styles.addExerciseText, { color: theme.accent }]}>Add Exercise</Text>
+              </TouchableOpacity>
+            )}
           </Card>
         ))}
 
         {/* Add Day button */}
-        <TouchableOpacity
-          onPress={() => setShowAddDay(true)}
-          style={[styles.addDayBtn, { borderColor: theme.accentBorder, backgroundColor: theme.accentBg }]}
-        >
-          <Ionicons name="add" size={20} color={theme.accent} />
-          <Text style={[styles.addDayText, { color: theme.accent }]}>Add Training Day</Text>
-        </TouchableOpacity>
+        {!isAssigned && (
+          <TouchableOpacity
+            onPress={() => setShowAddDay(true)}
+            style={[styles.addDayBtn, { borderColor: theme.accentBorder, backgroundColor: theme.accentBg }]}
+          >
+            <Ionicons name="add" size={20} color={theme.accent} />
+            <Text style={[styles.addDayText, { color: theme.accent }]}>Add Training Day</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
 
       {/* Add Day Modal */}
@@ -254,12 +290,45 @@ export default function ProgramDetailScreen({ route, navigation }) {
             <Ionicons name="search" size={16} color={theme.textMuted} />
             <TextInput
               value={exSearch}
-              onChangeText={(v) => { setExSearch(v); searchExercises(v); }}
+              onChangeText={(v) => { setExSearch(v); searchExercises(v, exMuscleFilter); }}
               placeholder="Search exercises…"
               placeholderTextColor={theme.textMuted}
               style={[styles.searchInput, { color: theme.text }]}
               autoFocus
             />
+          </View>
+          {/* Muscle group filters */}
+          <View style={styles.filterRow}>
+            {['All', 'Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core', 'Cardio', 'Mobility', 'Full Body'].map((group) => (
+              <TouchableOpacity
+                key={group}
+                onPress={() => {
+                  const filter = group === 'All' ? null : group.toLowerCase().replace(' ', '_');
+                  setExMuscleFilter(filter);
+                  searchExercises(exSearch, filter);
+                }}
+                style={[
+                  styles.filterChip,
+                  {
+                    backgroundColor: (exMuscleFilter === null && group === 'All') || exMuscleFilter === group.toLowerCase().replace(' ', '_')
+                      ? theme.accentBg
+                      : theme.card,
+                    borderColor: (exMuscleFilter === null && group === 'All') || exMuscleFilter === group.toLowerCase().replace(' ', '_')
+                      ? theme.accent
+                      : theme.border,
+                  }
+                ]}
+              >
+                <Text style={[
+                  styles.filterChipText,
+                  {
+                    color: (exMuscleFilter === null && group === 'All') || exMuscleFilter === group.toLowerCase().replace(' ', '_')
+                      ? theme.accent
+                      : theme.textSecondary,
+                  }
+                ]}>{group}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
           {exLoading ? (
             <ActivityIndicator color={theme.accent} style={{ marginTop: spacing[8] }} />
@@ -324,6 +393,8 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: 'row', gap: spacing[2], marginTop: spacing[2] },
   metaBadge: { borderRadius: radius.full, borderWidth: 1, paddingHorizontal: spacing[2], paddingVertical: 2 },
   metaBadgeText: { fontSize: typography.sizes.xs, fontWeight: '600' },
+  assignedBanner: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[3], padding: spacing[3], borderRadius: radius.md, borderWidth: 1 },
+  assignedText: { fontSize: typography.sizes.sm, fontWeight: '500' },
   dayCard: {},
   dayHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing[3] },
   dayName: { fontSize: typography.sizes.lg, fontWeight: '700' },
@@ -344,6 +415,9 @@ const styles = StyleSheet.create({
   textInput: { borderRadius: radius.md, borderWidth: 1, paddingHorizontal: spacing[3], paddingVertical: spacing[3], fontSize: typography.sizes.base },
   searchBar: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginHorizontal: spacing[4], marginBottom: spacing[2], borderRadius: radius.md, borderWidth: 1, paddingHorizontal: spacing[3], paddingVertical: spacing[2] },
   searchInput: { flex: 1, fontSize: typography.sizes.base },
+  filterRow: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: spacing[4], gap: spacing[2], marginBottom: spacing[3] },
+  filterChip: { paddingHorizontal: spacing[3], paddingVertical: spacing[2], borderRadius: radius.full, borderWidth: 1 },
+  filterChipText: { fontSize: typography.sizes.sm, fontWeight: '600' },
   exListItem: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing[5], paddingVertical: spacing[3], borderBottomWidth: 1 },
   exListName: { fontSize: typography.sizes.base, fontWeight: '500' },
   exListCategory: { fontSize: typography.sizes.sm, textTransform: 'capitalize' },

@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '../hooks/useTheme';
-import { spacing, typography, radius } from '../theme';
+import { spacing, typography, radius, colors } from '../theme';
 import * as db from '../services/database';
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -16,6 +16,8 @@ import { generateProgram } from '../services/gemini';
 import { getGeminiKey } from './SettingsScreen';
 import { confirmAction } from '../utils/confirm';
 import { bestMatch } from '../utils/matchExercise';
+import * as programTemplates from '../services/programTemplates';
+import * as auth from '../services/auth';
 
 export default function ProgramsScreen({ navigation }) {
   const { theme } = useTheme();
@@ -30,6 +32,7 @@ export default function ProgramsScreen({ navigation }) {
   const [newDesc, setNewDesc] = useState('');
   const [newDays, setNewDays] = useState('3');
   const [creating, setCreating] = useState(false);
+  const [newAssignmentsCount, setNewAssignmentsCount] = useState(0);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -51,10 +54,153 @@ export default function ProgramsScreen({ navigation }) {
 
   const loadPrograms = async () => {
     setLoading(true);
+
+    // Sync assigned programs from Firestore
+    await syncAssignedPrograms();
+
     const data = await db.getPrograms();
+    console.log('[ProgramsScreen] Loaded programs:', data.map(p => ({
+      id: p.id,
+      name: p.name,
+      linked_template_id: p.linked_template_id
+    })));
     setPrograms(data);
     setLoading(false);
   };
+
+  async function syncAssignedPrograms() {
+    try {
+      const currentUser = await auth.getCurrentUser();
+      if (!currentUser) return;
+
+      // Get assignments from Firestore
+      const assignments = await programTemplates.getClientAssignments(currentUser.id);
+      console.log('[ProgramsScreen] Found assignments from Firestore:', assignments.length);
+      assignments.forEach(a => {
+        console.log(' - Assignment:', a.assignmentId, '→', a.programData?.name);
+      });
+      let newCount = 0;
+
+      // Get existing programs once
+      const existingPrograms = await db.getPrograms();
+
+      // Find assigned programs that exist locally
+      const assignedPrograms = existingPrograms.filter(p => p.linked_template_id);
+
+      // Delete local programs whose assignments no longer exist
+      const assignmentIds = assignments.map(a => a.assignmentId);
+      for (const program of assignedPrograms) {
+        if (!assignmentIds.includes(program.linked_template_id)) {
+          console.log('[ProgramsScreen] Removing unassigned program:', program.name);
+          await db.deleteProgram(program.id);
+        }
+      }
+
+      // Create or update assigned programs
+      for (const assignment of assignments) {
+        // Check if we already have this program locally
+        const existing = existingPrograms.find(p => p.linked_template_id === assignment.assignmentId);
+
+        // Use data from assignment (no need to fetch template - client can't access it)
+        // Assignment already contains programData with name, description, days, exercises
+        const programData = assignment.programData || {};
+        const programName = programData.name || 'Trainer Program';
+        const programDesc = programData.description || 'Assigned by your trainer';
+        const daysPerWeek = programData.daysPerWeek || programData.days_per_week || 3;
+
+        let programId;
+
+        if (existing) {
+          // Program exists - update it with fresh data
+          console.log('[ProgramsScreen] Updating existing program:', existing.name);
+          programId = existing.id;
+
+          // Update program metadata
+          await db.updateProgram(programId, {
+            name: `🔒 ${programName}`,
+            description: programDesc,
+            days_per_week: daysPerWeek,
+          });
+
+          // Delete all existing days (and their exercises cascade)
+          const existingProgram = await db.getProgramById(programId);
+          if (existingProgram?.days) {
+            for (const day of existingProgram.days) {
+              await db.deleteProgramDay(day.id);
+            }
+          }
+        } else {
+          // Create new local program (as read-only, linked to assignment)
+          programId = await db.createProgram({
+            name: `🔒 ${programName}`,
+            description: programDesc,
+            daysPerWeek: daysPerWeek,
+            isActive: false,
+            createdByUserId: assignment.trainerId,
+            isTemplate: false,
+            linkedTemplateId: assignment.assignmentId, // Store assignment ID here
+          });
+          newCount++; // Count new assignments
+        }
+
+        // Sync days and exercises from programData
+        if (programData.days && Array.isArray(programData.days)) {
+          for (const day of programData.days) {
+            const dayId = await db.addProgramDay(programId, {
+              name: day.name || `Day ${day.day_number || day.dayNumber || 1}`,
+              dayNumber: day.day_number || day.dayNumber || 1,
+              sortOrder: day.sort_order || day.sortOrder || 0,
+            });
+
+            // Sync exercises for this day
+            if (day.exercises && Array.isArray(day.exercises)) {
+              for (const exercise of day.exercises) {
+                // Match exercise by NAME instead of ID (IDs differ between users)
+                const exerciseName = exercise.exercise_name || exercise.exerciseName;
+                if (!exerciseName) {
+                  console.warn('[ProgramsScreen] Exercise missing name, skipping:', exercise);
+                  continue;
+                }
+
+                // Find the exercise in the client's local library by name
+                const allExercises = await db.getExercises({});
+                const matchedExercise = allExercises.find(e =>
+                  e.name.toLowerCase() === exerciseName.toLowerCase()
+                );
+
+                if (!matchedExercise) {
+                  console.warn('[ProgramsScreen] Exercise not found in client library:', exerciseName);
+                  continue;
+                }
+
+                await db.addExerciseToDay(dayId, {
+                  exerciseId: matchedExercise.id, // Use CLIENT's exercise ID
+                  sets: exercise.sets || 3,
+                  reps: exercise.reps || '8-12',
+                  restSeconds: exercise.rest_seconds || exercise.restSeconds || 90,
+                  notes: exercise.notes || null,
+                  sortOrder: exercise.sort_order || exercise.sortOrder || 0,
+                });
+              }
+            }
+          }
+        }
+
+        console.log('[ProgramsScreen] Synced program with days/exercises:', programName, '(' + (programData.days?.length || 0) + ' days)')
+
+        // Update assignment with last synced timestamp
+        try {
+          await programTemplates.updateAssignmentLastSync(assignment.assignmentId);
+        } catch (e) {
+          console.error('[ProgramsScreen] Failed to update lastSyncedAt:', e);
+        }
+      }
+
+      setNewAssignmentsCount(newCount);
+    } catch (error) {
+      console.error('[ProgramsScreen] Failed to sync assigned programs:', error);
+    }
+  }
 
   useFocusEffect(useCallback(() => { loadPrograms(); }, []));
 
@@ -156,6 +302,7 @@ export default function ProgramsScreen({ navigation }) {
 
   const renderProgram = ({ item }) => {
     const isActive = Boolean(item.is_active);
+    const isAssigned = Boolean(item.linked_template_id);
     return (
     <TouchableOpacity onPress={() => navigation.navigate('ProgramDetail', { programId: item.id })} activeOpacity={0.8}>
       <Card style={[styles.programCard, isActive && { borderColor: theme.accent }]}>
@@ -183,12 +330,14 @@ export default function ProgramsScreen({ navigation }) {
                 color={isActive ? theme.accent : theme.textMuted}
               />
             </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => handleDelete(item)}
-              style={[styles.actionBtn, { borderColor: theme.border }]}
-            >
-              <Ionicons name="trash-outline" size={18} color="#ef4444" />
-            </TouchableOpacity>
+            {!isAssigned && (
+              <TouchableOpacity
+                onPress={() => handleDelete(item)}
+                style={[styles.actionBtn, { borderColor: theme.border }]}
+              >
+                <Ionicons name="trash-outline" size={18} color="#ef4444" />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -206,6 +355,19 @@ export default function ProgramsScreen({ navigation }) {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]} edges={['top']}>
+      {/* New assignments notification */}
+      {newAssignmentsCount > 0 && (
+        <View style={[styles.notificationBanner, { backgroundColor: '#10b981' }]}>
+          <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
+          <Text style={[styles.notificationText, { color: '#ffffff', fontWeight: '600' }]}>
+            {newAssignmentsCount} new program{newAssignmentsCount !== 1 ? 's' : ''} assigned by your trainer!
+          </Text>
+          <TouchableOpacity onPress={() => setNewAssignmentsCount(0)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="close" size={20} color="#ffffff" />
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Quick / ad-hoc workout — no program needed */}
       <TouchableOpacity
         onPress={handleQuickWorkout}
@@ -326,6 +488,8 @@ export default function ProgramsScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  notificationBanner: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginHorizontal: spacing[4], marginTop: spacing[3], padding: spacing[3], borderRadius: radius.md, borderWidth: 1 },
+  notificationText: { flex: 1, fontSize: typography.sizes.sm, fontWeight: '600' },
   quickBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], marginHorizontal: spacing[4], marginTop: spacing[3], marginBottom: spacing[2], padding: spacing[4], borderRadius: radius.lg, borderWidth: 1 },
   quickTitle: { fontSize: typography.sizes.base, fontWeight: '700' },
   quickSub: { fontSize: typography.sizes.xs, marginTop: 1 },

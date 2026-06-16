@@ -17,6 +17,8 @@ import { nsKey } from '../services/activeUser';
 import { auth as fbAuth } from '../services/firebase';
 import { deleteDoc, doc } from 'firebase/firestore';
 import { db as firestore } from '../services/firebase';
+import * as auth from '../services/auth';
+import * as trainerClient from '../services/trainerClient';
 
 const PROFILE_KEY = 'gymmate_biometrics';
 
@@ -31,12 +33,75 @@ export default function ProfileScreen({ navigation, onLogout }) {
   const { theme } = useTheme();
   const [form, setForm] = useState(EMPTY_PROFILE);
   const [saved, setSaved] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [trainer, setTrainer] = useState(null);
+  const [loadingTrainer, setLoadingTrainer] = useState(true);
 
   useEffect(() => {
     AsyncStorage.getItem(nsKey(PROFILE_KEY)).then((raw) => {
       if (raw) setForm({ ...EMPTY_PROFILE, ...JSON.parse(raw) });
     });
+    loadTrainerConnection();
   }, []);
+
+  async function loadTrainerConnection() {
+    try {
+      const user = await auth.getCurrentUser();
+      setCurrentUser(user);
+
+      if (!user) {
+        setLoadingTrainer(false);
+        return;
+      }
+
+      const trainerConnection = await trainerClient.getMyTrainer(user.id);
+      setTrainer(trainerConnection);
+    } catch (error) {
+      console.error('Failed to load trainer:', error);
+    } finally {
+      setLoadingTrainer(false);
+    }
+  }
+
+  async function handleDisconnectTrainer() {
+    if (!trainer) return;
+
+    confirmAction({
+      title: 'Disconnect Trainer',
+      message: `Disconnect from ${trainer.trainerName}? They will no longer see your workouts or progress.`,
+      confirmText: 'Disconnect',
+      destructive: true,
+      onConfirm: async () => {
+        try {
+          await trainerClient.revokeConnection(trainer.relationshipId, currentUser.id);
+          setTrainer(null);
+          alert('Disconnected from trainer');
+        } catch (error) {
+          console.error('Failed to disconnect:', error);
+          alert('Failed to disconnect');
+        }
+      },
+    });
+  }
+
+  async function handleToggleTrainerRole() {
+    const newRole = currentUser?.role === 'trainer' ? null : 'trainer';
+    try {
+      await auth.updateUserRole(currentUser.id, newRole);
+      const updatedUser = await auth.getCurrentUser();
+      setCurrentUser(updatedUser);
+
+      // Force app to reload to update navigation tabs
+      alert(newRole === 'trainer'
+        ? 'Trainer mode enabled! Refreshing app...'
+        : 'Trainer mode disabled! Refreshing app...'
+      );
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to update role:', error);
+      alert('Failed to update trainer mode. Please try again.');
+    }
+  }
 
   function handleChange(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -184,6 +249,82 @@ export default function ProfileScreen({ navigation, onLogout }) {
           {saved ? '✓ Profile Saved!' : 'Save Profile'}
         </Button>
 
+        {/* Trainer Connection */}
+        <Text style={[styles.sectionHeader, { color: theme.textMuted }]}>Trainer Connection</Text>
+        <Card>
+          {!loadingTrainer && trainer ? (
+            <>
+              <View style={styles.trainerRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.trainerLabel, { color: theme.textSecondary }]}>
+                    Connected to:
+                  </Text>
+                  <Text style={[styles.trainerName, { color: theme.text }]}>
+                    {trainer.trainerName}
+                  </Text>
+                </View>
+                <Ionicons name="checkmark-circle" size={24} color={theme.accent} />
+              </View>
+              <Button
+                title="Disconnect"
+                variant="secondary"
+                onPress={handleDisconnectTrainer}
+                style={{ marginTop: spacing[3] }}
+              />
+            </>
+          ) : (
+            <>
+              <Text style={[styles.noTrainerText, { color: theme.textSecondary }]}>
+                Not connected to a trainer
+              </Text>
+              <Button
+                title="Connect with Trainer"
+                variant="secondary"
+                onPress={() => navigation.navigate('ConnectTrainer')}
+                style={{ marginTop: spacing[3] }}
+              />
+            </>
+          )}
+        </Card>
+
+        {/* Trainer Role Toggle */}
+        {currentUser && (
+          <>
+            <Text style={[styles.sectionHeader, { color: theme.textMuted }]}>Account Type</Text>
+            <Card>
+              <View style={styles.roleRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.roleLabel, { color: theme.text }]}>
+                    I am a trainer
+                  </Text>
+                  <Text style={[styles.roleDesc, { color: theme.textSecondary }]}>
+                    Enable trainer features to manage clients
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={handleToggleTrainerRole}
+                  style={[
+                    styles.switch,
+                    {
+                      backgroundColor: currentUser.role === 'trainer' ? theme.accent : theme.border,
+                    },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.switchThumb,
+                      {
+                        backgroundColor: theme.isDark ? '#000' : '#fff',
+                        transform: [{ translateX: currentUser.role === 'trainer' ? 20 : 0 }],
+                      },
+                    ]}
+                  />
+                </TouchableOpacity>
+              </View>
+            </Card>
+          </>
+        )}
+
         <Text style={[styles.sectionHeader, { color: theme.textMuted }]}>Tips</Text>
         <Card>
           {[
@@ -272,4 +413,23 @@ const styles = StyleSheet.create({
   footer: { alignItems: 'center', marginTop: spacing[4], marginBottom: spacing[2] },
   footerText: { fontSize: typography.sizes.sm, textAlign: 'center' },
   footerLink: { fontWeight: '600' },
+  trainerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing[2] },
+  trainerLabel: { fontSize: typography.sizes.xs, marginBottom: spacing[1] },
+  trainerName: { fontSize: typography.sizes.lg, fontWeight: '600' },
+  noTrainerText: { fontSize: typography.sizes.sm, marginBottom: spacing[2] },
+  roleRow: { flexDirection: 'row', alignItems: 'center' },
+  roleLabel: { fontSize: typography.sizes.base, fontWeight: '600', marginBottom: spacing[1] },
+  roleDesc: { fontSize: typography.sizes.sm },
+  switch: {
+    width: 44,
+    height: 24,
+    borderRadius: 12,
+    padding: 2,
+    justifyContent: 'center',
+  },
+  switchThumb: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+  },
 });

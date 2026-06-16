@@ -17,6 +17,15 @@ export async function getCurrentUser() {
   return raw ? JSON.parse(raw) : null;
 }
 
+export function getFirebaseUser() {
+  return fbAuth.currentUser;
+}
+
+export async function getUserById(userId) {
+  const users = await getAllUsers();
+  return users.find((u) => u.id === userId) || null;
+}
+
 export async function saveCurrentUser(user) {
   await AsyncStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
 }
@@ -34,6 +43,10 @@ export async function createLocalUser(name) {
     email: `${slug}@gymmate.app`,
     google_id: null,
     created_at: new Date().toISOString(),
+    role: null, // 'athlete' | 'trainer' | null
+    isPTVerified: false,
+    trainerBio: '',
+    specialties: [],
   };
   users.push(user);
   await AsyncStorage.setItem(USERS_KEY, JSON.stringify(users));
@@ -71,6 +84,10 @@ function fromFirebaseUser(fbUser) {
     email: fbUser.email || null,
     photo_url: fbUser.photoURL || null,
     created_at: new Date().toISOString(),
+    role: null, // 'athlete' | 'trainer' | null
+    isPTVerified: false,
+    trainerBio: '',
+    specialties: [],
   };
 }
 
@@ -132,4 +149,47 @@ export async function handleGoogleCallback(userData) {
   await AsyncStorage.setItem(USERS_KEY, JSON.stringify(users));
   await saveCurrentUser(userData);
   return userData;
+}
+
+// Update user role (trainer/athlete)
+export async function updateUserRole(userId, role) {
+  const users = await getAllUsers();
+  const userIndex = users.findIndex((u) => u.id === userId);
+
+  if (userIndex >= 0) {
+    users[userIndex].role = role;
+    await AsyncStorage.setItem(USERS_KEY, JSON.stringify(users));
+
+    // Update current user if it's the same
+    const current = await getCurrentUser();
+    if (current?.id === userId) {
+      await saveCurrentUser(users[userIndex]);
+    }
+
+    return users[userIndex];
+  }
+
+  throw new Error('User not found');
+}
+
+// Update trainer profile
+export async function updateTrainerProfile(userId, bio, specialties) {
+  const users = await getAllUsers();
+  const userIndex = users.findIndex((u) => u.id === userId);
+
+  if (userIndex >= 0) {
+    users[userIndex].trainerBio = bio;
+    users[userIndex].specialties = specialties;
+    await AsyncStorage.setItem(USERS_KEY, JSON.stringify(users));
+
+    // Update current user if it's the same
+    const current = await getCurrentUser();
+    if (current?.id === userId) {
+      await saveCurrentUser(users[userIndex]);
+    }
+
+    return users[userIndex];
+  }
+
+  throw new Error('User not found');
 }
