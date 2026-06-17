@@ -39,18 +39,27 @@ const ProfileStack = createStackNavigator();
 const ClientsStack = createStackNavigator();
 const TemplatesStack = createStackNavigator();
 
+// Shared stack header styling. Renders the back arrow as an Ionicons glyph
+// instead of React Navigation's default PNG — the PNG asset 404s under the
+// GitHub Pages /gymmate/ subpath, whereas the Ionicons font is loaded via the
+// @font-face injected in deploy.yml.
+function stackScreenOptions(theme) {
+  return {
+    headerStyle: { backgroundColor: theme.bg },
+    headerTintColor: theme.accent,
+    headerShadowVisible: false,
+    contentStyle: { backgroundColor: theme.bg },
+    headerTitleStyle: { color: theme.accent, fontWeight: '700' },
+    headerBackImage: ({ tintColor }) => (
+      <Ionicons name="chevron-back" size={28} color={tintColor} style={{ marginLeft: spacing[2] }} />
+    ),
+  };
+}
+
 function HomeStackNav({ user }) {
   const { theme } = useTheme();
   return (
-    <HomeStack.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: theme.bg },
-        headerTintColor: theme.accent,
-        headerShadowVisible: false,
-        contentStyle: { backgroundColor: theme.bg },
-        headerTitleStyle: { color: theme.accent, fontWeight: '700' },
-      }}
-    >
+    <HomeStack.Navigator screenOptions={stackScreenOptions(theme)}>
       <HomeStack.Screen name="HomeScreen" options={{ headerShown: false }}>
         {(props) => <HomeScreen {...props} user={user} />}
       </HomeStack.Screen>
@@ -63,15 +72,7 @@ function HomeStackNav({ user }) {
 function ProgramsStackNav() {
   const { theme } = useTheme();
   return (
-    <ProgramsStack.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: theme.bg },
-        headerTintColor: theme.accent,
-        headerShadowVisible: false,
-        contentStyle: { backgroundColor: theme.bg },
-        headerTitleStyle: { color: theme.accent, fontWeight: '700' },
-      }}
-    >
+    <ProgramsStack.Navigator screenOptions={stackScreenOptions(theme)}>
       <ProgramsStack.Screen name="ProgramsList" component={ProgramsScreen} options={{ title: 'Programs' }} />
       <ProgramsStack.Screen name="ProgramDetail" component={ProgramDetailScreen} options={{ title: 'Program' }} />
       <ProgramsStack.Screen
@@ -86,15 +87,7 @@ function ProgramsStackNav() {
 function ProfileStackNav({ onLogout }) {
   const { theme } = useTheme();
   return (
-    <ProfileStack.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: theme.bg },
-        headerTintColor: theme.accent,
-        headerShadowVisible: false,
-        contentStyle: { backgroundColor: theme.bg },
-        headerTitleStyle: { color: theme.accent, fontWeight: '700' },
-      }}
-    >
+    <ProfileStack.Navigator screenOptions={stackScreenOptions(theme)}>
       <ProfileStack.Screen
         name="ProfileMain"
         options={({ navigation }) => ({
@@ -121,15 +114,7 @@ function ProfileStackNav({ onLogout }) {
 function ClientsStackNav() {
   const { theme } = useTheme();
   return (
-    <ClientsStack.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: theme.bg },
-        headerTintColor: theme.accent,
-        headerShadowVisible: false,
-        contentStyle: { backgroundColor: theme.bg },
-        headerTitleStyle: { color: theme.accent, fontWeight: '700' },
-      }}
-    >
+    <ClientsStack.Navigator screenOptions={stackScreenOptions(theme)}>
       <ClientsStack.Screen name="ClientsList" component={TrainerDashboardScreen} options={{ headerShown: false }} />
       <ClientsStack.Screen name="ClientDetail" component={ClientDetailScreen} options={{ headerShown: false }} />
       <ClientsStack.Screen name="ClientWorkoutDetail" component={ClientWorkoutDetailScreen} options={{ headerShown: false }} />
@@ -143,15 +128,7 @@ function ClientsStackNav() {
 function TemplatesStackNav() {
   const { theme } = useTheme();
   return (
-    <TemplatesStack.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: theme.bg },
-        headerTintColor: theme.accent,
-        headerShadowVisible: false,
-        contentStyle: { backgroundColor: theme.bg },
-        headerTitleStyle: { color: theme.accent, fontWeight: '700' },
-      }}
-    >
+    <TemplatesStack.Navigator screenOptions={stackScreenOptions(theme)}>
       <TemplatesStack.Screen name="TemplatesList" component={TemplatesScreen} options={{ headerShown: false }} />
       <TemplatesStack.Screen name="ProgramDetail" component={ProgramDetailScreen} options={{ title: 'Program' }} />
       <TemplatesStack.Screen name="AssignProgram" component={AssignProgramScreen} options={{ headerShown: false }} />
@@ -162,15 +139,7 @@ function TemplatesStackNav() {
 function ExercisesStackNav() {
   const { theme } = useTheme();
   return (
-    <ExercisesStack.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: theme.bg },
-        headerTintColor: theme.accent,
-        headerShadowVisible: false,
-        contentStyle: { backgroundColor: theme.bg },
-        headerTitleStyle: { color: theme.accent, fontWeight: '700' },
-      }}
-    >
+    <ExercisesStack.Navigator screenOptions={stackScreenOptions(theme)}>
       <ExercisesStack.Screen name="ExercisesList" component={ExercisesScreen} options={{ title: 'Exercises' }} />
       <ExercisesStack.Screen name="ExerciseDetail" component={ExerciseDetailScreen} options={{ title: 'Exercise' }} />
     </ExercisesStack.Navigator>
