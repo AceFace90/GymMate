@@ -35,7 +35,37 @@ function saveTable(key, data) {
 }
 
 function getTable(key)      { return loadTable(KEYS[key]); }
-function setTable(key, arr) { saveTable(KEYS[key], arr); }
+function setTable(key, arr) { saveTable(KEYS[key], arr); scheduleBackup(); }
+
+// ─── Auto cloud backup ─────────────────────────────────────────────────────────
+// Every write goes through setTable(), so we trigger a debounced cloud backup
+// here — one place, so no screen can forget to sync its create/edit/delete.
+// The callback is injected (App registers auth.backupCurrentUser) to avoid a
+// circular import: cloudSync→database and auth→cloudSync already form a chain.
+let backupListener = null;
+let backupTimer = null;
+let backupSuspended = false;
+const BACKUP_DEBOUNCE_MS = 2000;
+
+export function setBackupListener(fn) { backupListener = fn; }
+
+function scheduleBackup() {
+  if (backupSuspended || !backupListener) return;
+  if (backupTimer) clearTimeout(backupTimer);
+  backupTimer = setTimeout(() => {
+    backupTimer = null;
+    try { backupListener(); } catch (e) { console.error('Auto-backup failed:', e); }
+  }, BACKUP_DEBOUNCE_MS);
+}
+
+// Flush a pending backup immediately (e.g. before the tab closes) so an edit
+// made inside the debounce window isn't lost.
+export function flushBackup() {
+  if (!backupTimer) return;
+  clearTimeout(backupTimer);
+  backupTimer = null;
+  if (backupListener) { try { backupListener(); } catch (e) { console.error('Auto-backup flush failed:', e); } }
+}
 
 // ─── Backup / restore ────────────────────────────────────────────────────────
 // Serialize the whole local dataset for cloud backup, and restore it wholesale.
@@ -56,13 +86,19 @@ export async function exportAllData() {
 
 export async function importAllData(payload) {
   if (!payload || !payload.data) return;
-  for (const key of Object.keys(KEYS)) {
-    if (payload.data[key] != null) {
-      localStorage.setItem(nsKey(KEYS[key]), JSON.stringify(payload.data[key]));
+  // Restoring FROM the cloud must not trigger a backup BACK to it.
+  backupSuspended = true;
+  try {
+    for (const key of Object.keys(KEYS)) {
+      if (payload.data[key] != null) {
+        localStorage.setItem(nsKey(KEYS[key]), JSON.stringify(payload.data[key]));
+      }
     }
-  }
-  if (payload.data.biometrics != null) {
-    localStorage.setItem(nsKey('gymmate_biometrics'), JSON.stringify(payload.data.biometrics));
+    if (payload.data.biometrics != null) {
+      localStorage.setItem(nsKey('gymmate_biometrics'), JSON.stringify(payload.data.biometrics));
+    }
+  } finally {
+    backupSuspended = false;
   }
 }
 
@@ -86,6 +122,17 @@ function dateStr(iso) {
 export async function initDatabase(builtinExercises) {
   if (!builtinExercises) return;
 
+  // Seeding the static built-in library + the one-time orphan repair run on
+  // every launch — neither should push a backup to the cloud.
+  backupSuspended = true;
+  try {
+    return initDatabaseInner(builtinExercises);
+  } finally {
+    backupSuspended = false;
+  }
+}
+
+function initDatabaseInner(builtinExercises) {
   const existing = getTable('exercises');
 
   // Seed by NAME, not by wiping-and-reinserting. Re-seeding with fresh nextId()

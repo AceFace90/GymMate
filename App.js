@@ -46,6 +46,23 @@ function AppContent() {
       setLoading(false);
     }
     init();
+
+    // Every local write (web) schedules a debounced cloud backup through this
+    // listener, so no screen has to remember to sync its create/edit/delete.
+    db.setBackupListener(() => { auth.backupCurrentUser(); });
+    // Flush a pending backup if the tab/app is closing inside the debounce window.
+    const flush = () => db.flushBackup();
+    if (typeof window !== 'undefined' && window.addEventListener) {
+      window.addEventListener('pagehide', flush);
+      window.addEventListener('beforeunload', flush);
+    }
+    return () => {
+      db.setBackupListener(null);
+      if (typeof window !== 'undefined' && window.removeEventListener) {
+        window.removeEventListener('pagehide', flush);
+        window.removeEventListener('beforeunload', flush);
+      }
+    };
   }, []);
 
   async function handleLogin(userData) {

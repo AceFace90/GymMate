@@ -104,6 +104,14 @@ const MIGRATIONS = [
   `,
 ];
 
+// Auto-backup hooks — implemented in the web build (database.web.js) where
+// every setTable() write schedules a debounced cloud backup. Native uses
+// SQLite and a different backup path; these are no-ops so the shared App
+// wiring (setBackupListener / flushBackup) works on both platforms. Wiring
+// native auto-backup is tracked separately (see task: port fixes to native).
+export function setBackupListener() {}
+export function flushBackup() {}
+
 export async function initDatabase(builtinExercises) {
   const database = await getDb();
 

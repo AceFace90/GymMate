@@ -15,6 +15,7 @@ import CycleTracker from '../components/biometrics/CycleTracker';
 import PregnancyProfile from '../components/biometrics/PregnancyProfile';
 import { calcBMI, bmiCategory, calcTDEE } from '../utils/biometrics';
 import { nsKey } from '../services/activeUser';
+import * as auth from '../services/auth';
 
 const PROFILE_KEY = 'gymmate_biometrics';
 
@@ -43,6 +44,9 @@ export default function BiometricsScreen({ navigation }) {
 
   async function handleSave() {
     await AsyncStorage.setItem(nsKey(PROFILE_KEY), JSON.stringify(form));
+    // Biometrics write AsyncStorage directly (not via setTable), so the
+    // centralized auto-backup doesn't see them — back up explicitly.
+    auth.backupCurrentUser();
     setSaved(true);
     setTimeout(() => { if (navigation?.canGoBack()) navigation.goBack(); }, 800);
   }
