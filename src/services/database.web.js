@@ -320,6 +320,46 @@ export async function completeSession(id, { durationSeconds, notes }) {
   const s = rows.find((s) => s.id === id);
   if (s) { s.completed_at = now(); s.duration_seconds = durationSeconds || null; s.notes = notes || null; }
   setTable('sessions', rows);
+
+  markSessionPRs(id);
+}
+
+// Award at most one PR per exercise in a session: its single heaviest set, and
+// only if that weight beats the exercise's best across all PRIOR sessions.
+// Runs at finish so a later set can't be missed and a warmup ramp can't trophy
+// every set (the old per-set bug that flagged everything on a first session).
+function markSessionPRs(sessionId) {
+  const sets = getTable('sessionSets');
+  const sessionSets = sets.filter((ss) => ss.session_id === sessionId && ss.completed && ss.weight_kg > 0);
+  if (sessionSets.length === 0) return;
+
+  // Prior all-time best weight per exercise, from other sessions only.
+  const priorBest = {};
+  for (const ss of sets) {
+    if (ss.session_id === sessionId || !ss.completed || !ss.weight_kg) continue;
+    const key = parseInt(ss.exercise_id, 10);
+    if (!priorBest[key] || ss.weight_kg > priorBest[key]) priorBest[key] = ss.weight_kg;
+  }
+
+  // Heaviest set this session per exercise (ties → earliest set_number).
+  const topSet = {};
+  for (const ss of sessionSets) {
+    const key = parseInt(ss.exercise_id, 10);
+    const cur = topSet[key];
+    if (!cur || ss.weight_kg > cur.weight_kg ||
+        (ss.weight_kg === cur.weight_kg && ss.set_number < cur.set_number)) {
+      topSet[key] = ss;
+    }
+  }
+
+  // Reset this session's flags, then flag the qualifying top set per exercise.
+  sessionSets.forEach((ss) => { ss.is_pr = 0; });
+  for (const key of Object.keys(topSet)) {
+    const best = topSet[key];
+    if (best.weight_kg > (priorBest[key] || 0)) best.is_pr = 1;
+  }
+
+  setTable('sessionSets', sets);
 }
 
 export async function getRecentSessions(limit = 20) {
@@ -352,18 +392,13 @@ export async function deleteSession(id) {
 // ─── Session Sets ─────────────────────────────────────────────────────────────
 
 export async function logSet({ sessionId, exerciseId, exerciseName, setNumber, weightKg, reps, rpe }) {
-  // Check for PR
+  // PR flags are computed once at completeSession (one per exercise per workout),
+  // not here — a later set in the same session may turn out to be the heaviest.
   const allSets = getTable('sessionSets');
-  const allSessions = getTable('sessions');
-  const prevBest = allSets
-    .filter((ss) => ss.exercise_id === exerciseId && ss.completed && ss.session_id !== sessionId)
-    .reduce((max, ss) => (ss.weight_kg && ss.weight_kg > max ? ss.weight_kg : max), 0);
-  const isPR = weightKg > 0 && weightKg > prevBest;
-
   const id = nextId('sessionSets');
-  allSets.push({ id, session_id: sessionId, exercise_id: exerciseId, exercise_name: exerciseName, set_number: setNumber, weight_kg: weightKg || null, reps: reps || null, rpe: rpe || null, completed: true, is_pr: isPR ? 1 : 0, logged_at: now() });
+  allSets.push({ id, session_id: sessionId, exercise_id: exerciseId, exercise_name: exerciseName, set_number: setNumber, weight_kg: weightKg || null, reps: reps || null, rpe: rpe || null, completed: true, is_pr: 0, logged_at: now() });
   setTable('sessionSets', allSets);
-  return { id, isPR };
+  return { id };
 }
 
 export async function updateSet(id, { weightKg, reps, rpe, completed }) {

@@ -224,7 +224,7 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
     });
     setSets((prev) => {
       const updated = [...(prev[exercise.exercise_id] || [])];
-      updated[setIndex] = { ...updated[setIndex], completed: true, isPR: result.isPR, dbId: result.id };
+      updated[setIndex] = { ...updated[setIndex], completed: true, dbId: result.id };
       return { ...prev, [exercise.exercise_id]: updated };
     });
     // Start rest timer
