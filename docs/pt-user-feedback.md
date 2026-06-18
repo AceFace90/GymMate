@@ -31,4 +31,18 @@ Multiple issues with trainer Templates:
 - **Root cause:** exercise-ID drift — sets reference old exercise ids that no longer match the re-seeded exercises table, so the records join returns nothing.
 - **Fix:** commit `79f3e43` (seed exercises by name to keep ids stable + `repairOrphanedSets` re-links orphaned sets via exercise_name). **Committed locally, not pushed** — tester is on the live site which still has the bug. Pushing + redeploy should heal his data on next load.
 - **Sub-item to investigate:** every set shows a PR trophy ("20 PRs") — PR detection in `logSet` may be over-flagging. Verify separately.
-- **Status:** Fix pending deploy; PR-over-flagging needs investigation.
+- **Status:** Records fix deployed. PR over-flagging confirmed + FIXED (see item 5).
+
+### 5. PR over-flagging — every set marked a PR — BUG (FIXED)
+- **Report:** WorkoutDetail showed a trophy on every set ("20 PRs" for ~20 sets).
+- **Root cause:** `logSet` computed `isPR` per-set against best-from-prior-sessions only; first-time exercise → prevBest=0 → every set with weight>0 was a PR.
+- **Fix:** PR computation moved to `completeSession` via `markSessionPRs` — at most one PR per exercise per session (heaviest set, only if it beats all-time prior best). `logSet` now stores `is_pr=0`.
+- **Note:** native `database.js` has the same bug (task #12), but tester is on web.
+- **Status:** Fixed (web).
+
+### 6. Programs not saving / changes need reinstall — BUG (sync, in progress)
+- **Report:** Programs the user creates don't save correctly; on iPhone, changes aren't applied unless the app is deleted and re-saved to home screen from the website.
+- **Root cause (verified):** program create/update/delete never call `auth.backupCurrentUser()`, so programs persist to localStorage but never push to Firestore. A new device / PWA reinstall pulls stale cloud state without them.
+- **Contributing factor:** iOS PWA installed-context localStorage is isolated from the browser's, so edits in one aren't seen in the other.
+- **Fix:** back up after program mutations. See task #11.
+- **Status:** In progress.

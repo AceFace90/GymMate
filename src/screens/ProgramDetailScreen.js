@@ -42,7 +42,6 @@ export default function ProgramDetailScreen({ route, navigation }) {
   const loadProgram = async () => {
     setLoading(true);
     const data = await db.getProgramById(programId);
-    console.log('[ProgramDetail] Loaded program:', data?.name, 'Days:', data?.days?.length || 0, 'is_template:', data?.is_template);
     setProgram(data);
 
     // If this is an assigned program, fetch the trainer's name
@@ -54,7 +53,13 @@ export default function ProgramDetailScreen({ route, navigation }) {
     setLoading(false);
   };
 
-  useFocusEffect(useCallback(() => { loadProgram(); }, [programId]));
+  // Reload on focus; on blur push any edits (add/remove day or exercise,
+  // reorder) to the cloud at a single point so they survive a device switch.
+  // Backing up here rather than in each mutation handler avoids missing one.
+  useFocusEffect(useCallback(() => {
+    loadProgram();
+    return () => { auth.backupCurrentUser(); };
+  }, [programId]));
 
   useEffect(() => {
     if (startWorkout && program) setShowPickDay(true);

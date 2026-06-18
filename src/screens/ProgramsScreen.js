@@ -288,6 +288,7 @@ export default function ProgramsScreen({ navigation }) {
   const handleSetActive = async (program) => {
     await db.updateProgram(program.id, { isActive: !program.is_active });
     loadPrograms();
+    auth.backupCurrentUser(); // push to cloud so the change survives device switch
   };
 
   const handleDelete = (program) => {
@@ -296,7 +297,7 @@ export default function ProgramsScreen({ navigation }) {
       message: `Delete "${program.name}"? This cannot be undone.`,
       confirmText: 'Delete',
       destructive: true,
-      onConfirm: async () => { await db.deleteProgram(program.id); loadPrograms(); },
+      onConfirm: async () => { await db.deleteProgram(program.id); loadPrograms(); auth.backupCurrentUser(); },
     });
   };
 
