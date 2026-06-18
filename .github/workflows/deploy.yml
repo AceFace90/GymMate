@@ -35,6 +35,10 @@ jobs:
 
       - name: Build web
         run: npx expo export --platform web
+        env:
+          # Baked into the bundle so the running app knows which build it is.
+          # Compared at runtime against the freshly-fetched dist/version.json.
+          EXPO_PUBLIC_APP_VERSION: ${{ github.sha }}
 
       - name: Show built index.html (debug)
         run: cat dist/index.html
@@ -55,6 +59,10 @@ jobs:
 
           # Copy to 404.html for SPA routing (back button, direct links)
           cp dist/index.html dist/404.html
+
+          # Version marker for the in-app update check. The running app fetches
+          # this (cache-busted) and compares to its baked EXPO_PUBLIC_APP_VERSION.
+          echo "{\"version\":\"${{ github.sha }}\"}" > dist/version.json
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4

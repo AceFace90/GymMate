@@ -7,6 +7,7 @@ import { ThemeProvider } from './src/hooks/useTheme';
 import { UnitsProvider } from './src/hooks/useUnits';
 import AppNavigator from './src/navigation/AppNavigator';
 import LoginScreen from './src/screens/LoginScreen';
+import UpdateBanner from './src/components/UpdateBanner';
 import * as db from './src/services/database';
 import * as auth from './src/services/auth';
 import { setActiveUserId } from './src/services/activeUser';
@@ -77,6 +78,7 @@ export default function App() {
           <ThemeProvider>
             <UnitsProvider>
               <AppContent />
+              <UpdateBanner />
             </UnitsProvider>
           </ThemeProvider>
         </SafeAreaProvider>
