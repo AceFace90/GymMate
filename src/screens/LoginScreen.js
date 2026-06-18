@@ -17,7 +17,7 @@ import { confirmAction } from '../utils/confirm';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://gymmate-api.onrender.com';
 // Legal pages are static HTML served by GitHub Pages alongside the app (public/).
-const LEGAL_URL = process.env.EXPO_PUBLIC_SITE_URL || 'https://aceface90.github.io/gymmate';
+const LEGAL_URL = process.env.EXPO_PUBLIC_SITE_URL || 'https://aceface90.github.io/GymMate';
 
 // Google "G" SVG — same as MacroMate
 function GoogleLogo() {

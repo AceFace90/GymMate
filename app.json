@@ -25,7 +25,7 @@
       "description": "Build programs. Log sessions. Track PRs.",
       "themeColor": "#1a1a1a",
       "backgroundColor": "#1a1a1a",
-      "baseUrl": "/gymmate"
+      "baseUrl": "/GymMate"
     },
     "plugins": [
       [
