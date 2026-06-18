@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -147,7 +147,7 @@ function ExercisesStackNav() {
 }
 
 export default function AppNavigator({ user, onLogout }) {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const isTrainer = user?.role === 'trainer';
 
   // Disable linking to prevent URL changes
@@ -155,8 +155,16 @@ export default function AppNavigator({ user, onLogout }) {
     enabled: false,
   };
 
+  // Theme the navigator itself so screen-transition backgrounds use our bg,
+  // not React Navigation's default white (which flashed during transitions).
+  const base = isDark ? DarkTheme : DefaultTheme;
+  const navTheme = {
+    ...base,
+    colors: { ...base.colors, background: theme.bg, card: theme.card, border: theme.border, primary: theme.accent },
+  };
+
   return (
-    <NavigationContainer linking={linking}>
+    <NavigationContainer linking={linking} theme={navTheme}>
       <Tab.Navigator
         screenOptions={({ route }) => ({
           headerShown: false,

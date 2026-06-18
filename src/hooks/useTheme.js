@@ -32,6 +32,15 @@ export function ThemeProvider({ children }) {
 
   const theme = getTheme(resolvedDark);
 
+  // On web, paint the html/body background to match the theme so the area
+  // behind the safe-area inset (dynamic island / notch) and any overscroll
+  // isn't browser-default white in dark mode.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    document.documentElement.style.backgroundColor = theme.bg;
+    document.body.style.backgroundColor = theme.bg;
+  }, [theme.bg]);
+
   const setTheme = async (pref) => {
     setPreference(pref);
     await AsyncStorage.setItem(THEME_KEY, pref).catch(() => {});
