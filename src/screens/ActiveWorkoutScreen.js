@@ -332,7 +332,7 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
       confirmText: 'Discard',
       cancelText: 'Keep Going',
       destructive: true,
-      onConfirm: async () => { await db.deleteSession(sessionId); navigation.goBack(); },
+      onConfirm: async () => { await db.deleteSession(sessionId); navigation.replace('ProgramsList'); },
     });
   };
 
@@ -413,7 +413,7 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
                 <Text style={[styles.setHeaderCell, { color: theme.textMuted, width: 30 }]}>#</Text>
                 <Text style={[styles.setHeaderCell, { color: theme.textMuted, flex: 1 }]}>{weightUnit}</Text>
                 <Text style={[styles.setHeaderCell, { color: theme.textMuted, flex: 1 }]}>reps</Text>
-                <View style={{ width: 44 }} />
+                <View style={{ width: 40 }} />
               </View>
 
               {exSets.map((set, i) => (
@@ -656,7 +656,7 @@ const styles = StyleSheet.create({
   setHeaderCell: { fontSize: typography.sizes.xs, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
   setRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginBottom: spacing[2] },
   setNum: { width: 30, fontSize: typography.sizes.sm, textAlign: 'center' },
-  setInput: { flex: 1, borderRadius: radius.sm, borderWidth: 1, paddingHorizontal: spacing[2], paddingVertical: spacing[2], fontSize: typography.sizes.base, textAlign: 'center' },
+  setInput: { flex: 1, minWidth: 0, borderRadius: radius.sm, borderWidth: 1, paddingHorizontal: spacing[2], paddingVertical: spacing[2], fontSize: typography.sizes.base, textAlign: 'center' },
   checkBtn: { width: 40, height: 40, borderRadius: radius.md, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   prBadge: { fontSize: 8, fontWeight: '700', textAlign: 'center' },
   addSetBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing[1], paddingVertical: spacing[2], borderTopWidth: 1, marginTop: spacing[1] },

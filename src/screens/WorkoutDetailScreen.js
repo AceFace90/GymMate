@@ -149,7 +149,6 @@ export default function WorkoutDetailScreen({ route }) {
                 <Text style={[styles.cellHeader, styles.setCol, { color: theme.textSecondary }]}>Set</Text>
                 <Text style={[styles.cellHeader, styles.dataCol, { color: theme.textSecondary }]}>Weight</Text>
                 <Text style={[styles.cellHeader, styles.dataCol, { color: theme.textSecondary }]}>Reps</Text>
-                <Text style={[styles.cellHeader, styles.dataCol, { color: theme.textSecondary }]}>RPE</Text>
               </View>
 
               {group.sets.map((set) => (
@@ -165,9 +164,6 @@ export default function WorkoutDetailScreen({ route }) {
                   </Text>
                   <Text style={[styles.cellText, styles.dataCol, { color: theme.text }]}>
                     {set.reps || '—'}
-                  </Text>
-                  <Text style={[styles.cellText, styles.dataCol, { color: theme.text }]}>
-                    {set.rpe || '—'}
                   </Text>
                 </View>
               ))}

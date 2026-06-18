@@ -84,18 +84,20 @@ function dateStr(iso) {
 // ─── Database init ────────────────────────────────────────────────────────────
 
 export async function initDatabase(builtinExercises) {
+  if (!builtinExercises) return;
+
   const existing = getTable('exercises');
-  const builtInCount = existing.filter((e) => !e.is_custom).length;
-  console.log('[DB] initDatabase: existing built-in exercises:', builtInCount, '/ expected:', builtinExercises?.length || 0);
 
-  // Seed if no exercises, OR if count doesn't match (missing exercises from updates)
-  if (builtinExercises && (builtInCount === 0 || builtInCount !== builtinExercises.length)) {
-    console.log('[DB] Seeding', builtinExercises.length, 'built-in exercises (preserving custom)');
-
-    // Keep custom exercises
-    const customExercises = existing.filter((e) => e.is_custom);
-
-    const seeded = builtinExercises.map((ex, i) => ({
+  // Seed by NAME, not by wiping-and-reinserting. Re-seeding with fresh nextId()
+  // values used to reassign every exercise a new id on each library update,
+  // orphaning all previously-logged sets (which reference the old ids) and
+  // silently breaking records/history. Here we keep existing rows (and their
+  // ids) untouched and only append exercises we don't already have by name.
+  const byName = new Map(existing.map((e) => [e.name, e]));
+  const added = [];
+  for (const ex of builtinExercises) {
+    if (byName.has(ex.name)) continue;
+    const row = {
       id: nextId('exercises'),
       name: ex.name,
       muscle_group: ex.muscleGroup,
@@ -103,12 +105,37 @@ export async function initDatabase(builtinExercises) {
       instructions: ex.instructions || null,
       is_custom: 0,
       created_at: now(),
-    }));
-
-    // Combine built-in + custom
-    setTable('exercises', [...seeded, ...customExercises]);
-    console.log('[DB] Seeded', seeded.length, 'built-in +', customExercises.length, 'custom exercises');
+    };
+    byName.set(row.name, row);
+    added.push(row);
   }
+
+  if (added.length > 0) {
+    setTable('exercises', [...existing, ...added]);
+  }
+
+  // One-time repair: re-link sets orphaned by the old re-seeding bug. A set is
+  // orphaned when its exercise_id no longer matches any exercise but its stored
+  // exercise_name does — point it back at the surviving exercise's id.
+  repairOrphanedSets(byName);
+}
+
+// Re-link sessionSets whose exercise_id points at a now-missing exercise back
+// to the current exercise that shares the same name. No-op once data is clean.
+function repairOrphanedSets(exercisesByName) {
+  const sets = getTable('sessionSets');
+  if (sets.length === 0) return;
+
+  const validIds = new Set([...exercisesByName.values()].map((e) => e.id));
+  let repaired = 0;
+  for (const ss of sets) {
+    const currentId = parseInt(ss.exercise_id, 10);
+    if (validIds.has(currentId)) continue; // already valid
+    const match = ss.exercise_name && exercisesByName.get(ss.exercise_name);
+    if (match) { ss.exercise_id = match.id; repaired++; }
+  }
+
+  if (repaired > 0) setTable('sessionSets', sets);
 }
 
 // ─── Exercises ────────────────────────────────────────────────────────────────
@@ -392,26 +419,15 @@ export async function getPersonalRecords() {
   const sessions = getTable('sessions');
   const sessionMap = Object.fromEntries(sessions.map((s) => [s.id, s]));
 
-  console.log('[getPersonalRecords] Total sets:', allSets.length);
-  console.log('[getPersonalRecords] Completed sets with weight:', sets.length);
-  console.log('[getPersonalRecords] Total exercises:', exercises.length);
-  console.log('[getPersonalRecords] Sample all sets:', allSets.slice(0, 3));
-  console.log('[getPersonalRecords] Sample completed sets:', sets.slice(0, 3));
-
-  // Best weight per exercise
+  // Best weight per exercise. exercise_id is stored as a string on sets but the
+  // exercises table keys by number, so coerce before indexing.
   const best = {};
   for (const ss of sets) {
-    // Convert exercise_id to number to match exercises table id type
     const exerciseId = parseInt(ss.exercise_id, 10);
     if (!best[exerciseId] || ss.weight_kg > best[exerciseId].weight_kg) {
       best[exerciseId] = ss;
     }
   }
-
-  console.log('[getPersonalRecords] Best object keys (exercise IDs from sets):', Object.keys(best).slice(0, 5));
-  console.log('[getPersonalRecords] Sample exercise IDs from exercises:', exercises.slice(0, 5).map(e => e.id));
-  console.log('[getPersonalRecords] Sample exercise_id type:', typeof Object.keys(best)[0]);
-  console.log('[getPersonalRecords] Sample exercise.id type:', typeof exercises[0]?.id);
 
   const records = exercises
     .filter((e) => best[e.id])
@@ -425,7 +441,6 @@ export async function getPersonalRecords() {
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  console.log('[getPersonalRecords] Records found:', records.length);
   return records;
 }
 
