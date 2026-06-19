@@ -1,4 +1,4 @@
-import { collection, doc, query, where, getDocs, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, query, where, getDocs, getDoc, setDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db as firestore } from './firebase';
 
 // Generate 6-character invite code (uppercase alphanumeric)
@@ -149,6 +149,16 @@ export async function revokeConnection(relationshipId, userId) {
   } else {
     throw new Error('Unauthorized to revoke this connection');
   }
+
+  // Clean up program assignments for this trainer-client pair
+  const q = query(
+    collection(firestore, 'program_assignments'),
+    where('trainerId', '==', data.trainerId),
+    where('clientId', '==', data.clientId)
+  );
+  const snapshot = await getDocs(q);
+  const deletes = snapshot.docs.map(d => deleteDoc(d.ref));
+  await Promise.all(deletes);
 }
 
 // Check if connection is still active

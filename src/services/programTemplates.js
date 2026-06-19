@@ -134,8 +134,12 @@ export async function updateTemplateAndSync(templateId, trainerId) {
   return assignments.length; // Return count of updated assignments
 }
 
-// Delete a template
+// Delete a template and all its assignments
 export async function deleteTemplate(templateId) {
+  const assignments = await getTemplateAssignments(templateId);
+  const deletes = assignments.map(a => deleteDoc(doc(firestore, 'program_assignments', a.assignmentId)));
+  await Promise.all(deletes);
+
   const templateRef = doc(firestore, 'program_templates', templateId);
   await deleteDoc(templateRef);
 }
