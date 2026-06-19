@@ -11,6 +11,8 @@ import { useTheme } from '../hooks/useTheme';
 import { useUnits } from '../hooks/useUnits';
 import { spacing, typography, radius, colors } from '../theme';
 import * as db from '../services/database';
+import * as auth from '../services/auth';
+import * as workoutSync from '../services/workoutSync';
 import Card from '../components/Card';
 import MuscleTag from '../components/MuscleTag';
 import ActivityRings from '../components/ActivityRings';
@@ -110,7 +112,12 @@ export default function ProgressScreen({ navigation }) {
       message: `Delete "${session.day_name || 'Workout'}" from ${formatDate(session.started_at)}? This cannot be undone.`,
       confirmText: 'Delete',
       destructive: true,
-      onConfirm: async () => { await db.deleteSession(session.id); loadData(); },
+      onConfirm: async () => {
+        await db.deleteSession(session.id);
+        const fbUser = auth.getFirebaseUser();
+        if (fbUser?.uid) workoutSync.deleteCloudSession(fbUser.uid, session.id).catch(() => {});
+        loadData();
+      },
     });
   };
 

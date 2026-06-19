@@ -296,11 +296,12 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
           dayName: session?.day_name,
         });
 
-        if (session) {
-          await workoutSync.uploadWorkoutSession(firebaseUser.uid, session, session.sets || []);
+        const completedSets = (session?.sets || []).filter(s => s.completed);
+        if (session && completedSets.length > 0) {
+          await workoutSync.uploadWorkoutSession(firebaseUser.uid, session, completedSets);
           console.log('[ActiveWorkout] ✅ Workout uploaded to cloud for trainer viewing');
         } else {
-          console.log('[ActiveWorkout] ⚠️ Session not found, cannot upload');
+          console.log('[ActiveWorkout] ⚠️ Skipping cloud upload (no completed sets)');
         }
       } else {
         console.log('[ActiveWorkout] ⚠️ User not signed in with Google, skipping cloud upload');
@@ -332,7 +333,12 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
       confirmText: 'Discard',
       cancelText: 'Keep Going',
       destructive: true,
-      onConfirm: async () => { await db.deleteSession(sessionId); navigation.replace('ProgramsList'); },
+      onConfirm: async () => {
+        await db.deleteSession(sessionId);
+        const fbUser = auth.getFirebaseUser();
+        if (fbUser?.uid) workoutSync.deleteCloudSession(fbUser.uid, sessionId).catch(() => {});
+        navigation.replace('ProgramsList');
+      },
     });
   };
 

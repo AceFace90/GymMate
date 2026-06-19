@@ -1,4 +1,4 @@
-import { collection, doc, query, where, orderBy, limit as firestoreLimit, getDocs, setDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { collection, doc, query, where, orderBy, limit as firestoreLimit, getDocs, setDoc, deleteDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db as firestore } from './firebase';
 
 /**
@@ -176,4 +176,22 @@ export async function getClientWorkoutStats(clientId) {
     lastWorkout: sessions[0]?.completedAt?.toDate(),
     exerciseFrequency,
   };
+}
+
+/**
+ * Delete cloud workout documents matching a local session ID.
+ * Called when a user deletes a session locally so the trainer view stays in sync.
+ */
+export async function deleteCloudSession(userId, localSessionId) {
+  if (!userId || !localSessionId) return;
+
+  const q = query(
+    collection(firestore, 'workout_sessions_cloud'),
+    where('clientId', '==', userId),
+    where('localSessionId', '==', localSessionId)
+  );
+
+  const snapshot = await getDocs(q);
+  const deletes = snapshot.docs.map(d => deleteDoc(d.ref));
+  await Promise.all(deletes);
 }

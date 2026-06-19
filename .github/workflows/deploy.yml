@@ -49,6 +49,9 @@ jobs:
           sed -i 's|"/_expo/|"/GymMate/_expo/|g' dist/index.html
           sed -i 's|src="/_expo/|src="/GymMate/_expo/|g' dist/index.html
 
+          # Fix font/asset paths in the JS bundle (httpServerLocation lacks baseUrl prefix)
+          find dist/_expo -name "*.js" -exec sed -i 's|httpServerLocation:"/assets/|httpServerLocation:"/GymMate/assets/|g' {} +
+
           # Inject @font-face for Ionicons so tab bar icons render on web
           IONICONS_FILE=$(find dist/assets -name "Ionicons.*.ttf" | head -1 | sed 's|dist/||')
           FONT_CSS="<style>@font-face{font-family:'Ionicons';src:url('/GymMate/${IONICONS_FILE}') format('truetype');font-weight:normal;font-style:normal;}</style>"
