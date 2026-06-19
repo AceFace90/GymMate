@@ -11,9 +11,9 @@
       #root { display: flex; height: 100%; flex: 1; }
       /* Pre-React background so first paint + safe-area inset aren't white.
          Matches system scheme; useTheme overrides once the app mounts. */
-      html, body { background-color: #ffffff; }
+      html, body { background-color: #ffffff; color-scheme: light; }
       @media (prefers-color-scheme: dark) {
-        html, body { background-color: #1a1a1a; }
+        html, body { background-color: #1a1a1a; color-scheme: dark; }
       }
     </style>
     <!-- Catch pre-React errors and display them visibly -->

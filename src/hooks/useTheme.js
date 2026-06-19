@@ -38,6 +38,7 @@ export function ThemeProvider({ children }) {
   useEffect(() => {
     if (typeof document === 'undefined') return;
     document.documentElement.style.backgroundColor = theme.bg;
+    document.documentElement.style.colorScheme = theme.isDark ? 'dark' : 'light';
     document.body.style.backgroundColor = theme.bg;
   }, [theme.bg]);
 

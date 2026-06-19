@@ -1,3 +1,14 @@
+export function getAge(birthday) {
+  if (!birthday) return null;
+  const birth = new Date(birthday);
+  if (isNaN(birth)) return null;
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) age--;
+  return age > 0 ? age : null;
+}
+
 export function calcBMI(weightKg, heightCm) {
   if (!weightKg || !heightCm) return null;
   const h = heightCm / 100;

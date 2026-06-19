@@ -12,7 +12,7 @@ import Button from '../components/Button';
 import UniversalFields from '../components/biometrics/UniversalFields';
 import CycleTracker from '../components/biometrics/CycleTracker';
 import PregnancyProfile from '../components/biometrics/PregnancyProfile';
-import { calcBMI, bmiCategory, calcTDEE } from '../utils/biometrics';
+import { calcBMI, bmiCategory, calcTDEE, getAge } from '../utils/biometrics';
 import { nsKey } from '../services/activeUser';
 import { auth as fbAuth } from '../services/firebase';
 import { deleteDoc, doc } from 'firebase/firestore';
@@ -24,7 +24,7 @@ import * as cloudSync from '../services/cloudSync';
 const PROFILE_KEY = 'gymmate_biometrics';
 
 const EMPTY_PROFILE = {
-  name: '', age: '', sex: '',
+  name: '', birthday: '', sex: '',
   heightCm: '', weightKg: '', bodyFatPct: '',
   activityLevel: '', primaryGoal: '',
   isPregnant: false, trimester: '', cycleLastPeriodDate: '', cycleLength: 28,
@@ -173,7 +173,8 @@ export default function ProfileScreen({ navigation, onLogout }) {
   }
 
   const bmi = calcBMI(form.weightKg, form.heightCm);
-  const tdee = calcTDEE(form.weightKg, form.heightCm, form.age, form.sex, form.activityLevel);
+  const age = getAge(form.birthday) || (form.age ? parseInt(form.age) : null);
+  const tdee = calcTDEE(form.weightKg, form.heightCm, age, form.sex, form.activityLevel);
   const isFemale = form.sex === 'female';
 
   // Only show metrics if they're valid numbers

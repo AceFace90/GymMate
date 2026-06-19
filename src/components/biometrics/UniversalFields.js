@@ -1,9 +1,9 @@
 import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Platform, StyleSheet } from 'react-native';
 import { useTheme } from '../../hooks/useTheme';
 import { useUnits } from '../../hooks/useUnits';
 import { spacing, typography, radius } from '../../theme';
-import { ACTIVITY_LABELS, GOAL_LABELS } from '../../utils/biometrics';
+import { ACTIVITY_LABELS, GOAL_LABELS, getAge } from '../../utils/biometrics';
 
 // Native picker substitute — simple segmented row for small option sets
 function SegmentedPicker({ options, value, onChange, theme }) {
@@ -82,6 +82,7 @@ export default function UniversalFields({ form, onChange, theme: themeProp }) {
   const { weightUnit, heightUnit, units, kgToLbs, lbsToKg, cmToFeet, feetToCm } = useUnits();
   const theme = themeProp || ctxTheme;
   const input = [styles.input, { backgroundColor: theme.input, color: theme.text, borderColor: theme.border }];
+  const age = getAge(form.birthday) || (form.age ? parseInt(form.age) : null);
 
   // Convert stored kg/cm to display units
   const displayWeight = form.weightKg && units === 'imperial'
@@ -140,27 +141,47 @@ export default function UniversalFields({ form, onChange, theme: themeProp }) {
     <View style={styles.container}>
       <Text style={[styles.sectionTitle, { color: theme.text }]}>About You</Text>
 
-      <View style={styles.row}>
-        <Field label="Name" theme={theme}>
+      <Field label="Name" theme={theme}>
+        <TextInput
+          style={input}
+          value={form.name || ''}
+          onChangeText={(v) => onChange('name', v)}
+          placeholder="Your name"
+          placeholderTextColor={theme.textMuted}
+        />
+      </Field>
+
+      <Field label={`Birthday${age ? ` (${age} yrs)` : ''}`} theme={theme}>
+        {Platform.OS === 'web' ? (
+          <input
+            type="date"
+            value={form.birthday || ''}
+            onChange={(e) => onChange('birthday', e.target.value)}
+            max={new Date().toISOString().split('T')[0]}
+            style={{
+              backgroundColor: theme.input,
+              color: theme.text,
+              borderColor: theme.border,
+              borderWidth: 1,
+              borderStyle: 'solid',
+              borderRadius: radius.md,
+              paddingInline: spacing[3],
+              paddingBlock: spacing[2],
+              fontSize: typography.sizes.base,
+              width: '100%',
+              boxSizing: 'border-box',
+            }}
+          />
+        ) : (
           <TextInput
             style={input}
-            value={form.name || ''}
-            onChangeText={(v) => onChange('name', v)}
-            placeholder="Your name"
+            value={form.birthday || ''}
+            onChangeText={(v) => onChange('birthday', v)}
+            placeholder="YYYY-MM-DD"
             placeholderTextColor={theme.textMuted}
           />
-        </Field>
-        <Field label="Age" theme={theme}>
-          <TextInput
-            style={input}
-            value={String(form.age || '')}
-            onChangeText={(v) => onChange('age', v)}
-            placeholder="Years"
-            placeholderTextColor={theme.textMuted}
-            keyboardType="numeric"
-          />
-        </Field>
-      </View>
+        )}
+      </Field>
 
       <Field label="Biological Sex" theme={theme}>
         <SegmentedPicker
