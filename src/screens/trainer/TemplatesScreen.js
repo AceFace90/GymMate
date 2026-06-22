@@ -278,7 +278,7 @@ export default function TemplatesScreen({ navigation }) {
 
     try {
       // Delete from Firestore
-      await programTemplates.deleteTemplate(template.templateId);
+      await programTemplates.deleteTemplate(template.templateId, currentUser.id);
 
       // Delete from local DB if programId exists
       if (template.programId) {

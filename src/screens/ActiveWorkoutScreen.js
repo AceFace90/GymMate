@@ -64,6 +64,7 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
 
   const timerRef = useRef(null);
   const restRef = useRef(null);
+  const addingExerciseIds = useRef(new Set());
 
   // Check for Gemini API key
   useEffect(() => {
@@ -151,10 +152,11 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
   // ({ id, name, muscle_group, category }); map it to the program-exercise
   // shape the rest of this screen renders against.
   const handleAddExercise = async (ex) => {
-    if (exercises.some((e) => e.exercise_id === ex.id)) {
+    if (exercises.some((e) => e.exercise_id === ex.id) || addingExerciseIds.current.has(ex.id)) {
       setShowAddExercise(false);
       return;
     }
+    addingExerciseIds.current.add(ex.id);
     const entry = {
       id: `adhoc-${ex.id}`,
       exercise_id: ex.id,
@@ -173,6 +175,7 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
     if (last) setLastSets((prev) => ({ ...prev, [ex.id]: last }));
     const stats = await db.getExerciseStats(ex.id);
     if (stats) setExerciseStats((prev) => ({ ...prev, [ex.id]: stats }));
+    addingExerciseIds.current.delete(ex.id);
     setShowAddExercise(false);
   };
 

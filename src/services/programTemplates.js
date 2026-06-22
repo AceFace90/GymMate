@@ -135,8 +135,8 @@ export async function updateTemplateAndSync(templateId, trainerId) {
 }
 
 // Delete a template and all its assignments
-export async function deleteTemplate(templateId) {
-  const assignments = await getTemplateAssignments(templateId);
+export async function deleteTemplate(templateId, trainerId) {
+  const assignments = await getTemplateAssignments(templateId, trainerId);
   const deletes = assignments.map(a => deleteDoc(doc(firestore, 'program_assignments', a.assignmentId)));
   await Promise.all(deletes);
 
@@ -190,11 +190,10 @@ export async function getClientAssignmentsByTrainer(trainerId, clientId) {
 }
 
 // Get assignments for a specific template
-export async function getTemplateAssignments(templateId) {
-  const q = query(
-    collection(firestore, 'program_assignments'),
-    where('templateId', '==', templateId)
-  );
+export async function getTemplateAssignments(templateId, trainerId) {
+  const filters = [where('templateId', '==', templateId)];
+  if (trainerId) filters.push(where('trainerId', '==', trainerId));
+  const q = query(collection(firestore, 'program_assignments'), ...filters);
 
   const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => ({ assignmentId: doc.id, ...doc.data() }));
