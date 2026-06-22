@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,7 +8,10 @@ import { useTheme } from '../hooks/useTheme';
 import { useUnits } from '../hooks/useUnits';
 import { spacing, typography, radius } from '../theme';
 import * as db from '../services/database';
+import * as auth from '../services/auth';
+import * as workoutSync from '../services/workoutSync';
 import Card from '../components/Card';
+import { confirmAction } from '../utils/confirm';
 
 function formatDuration(secs) {
   if (!secs) return '—';
@@ -31,6 +34,7 @@ export default function WorkoutDetailScreen({ route }) {
 
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -46,6 +50,31 @@ export default function WorkoutDetailScreen({ route }) {
       return () => { active = false; };
     }, [sessionId])
   );
+
+  const handleDeleteSet = (set) => {
+    confirmAction({
+      title: 'Delete Set',
+      message: `Remove set ${set.set_number} from ${set.exercise_name}?`,
+      confirmText: 'Delete',
+      destructive: true,
+      onConfirm: async () => {
+        setSaving(true);
+        try {
+          await db.deleteSet(set.id);
+          const updated = await db.getSessionById(sessionId);
+          setSession(updated);
+          const user = await auth.getCurrentUser();
+          if (user) {
+            await workoutSync.updateCloudSession(user.id, updated, updated.sets || []);
+          }
+        } catch (e) {
+          console.error('Failed to delete set:', e);
+        } finally {
+          setSaving(false);
+        }
+      },
+    });
+  };
 
   if (loading) {
     return (
@@ -149,6 +178,7 @@ export default function WorkoutDetailScreen({ route }) {
                 <Text style={[styles.cellHeader, styles.setCol, { color: theme.textSecondary }]}>Set</Text>
                 <Text style={[styles.cellHeader, styles.dataCol, { color: theme.textSecondary }]}>Weight</Text>
                 <Text style={[styles.cellHeader, styles.dataCol, { color: theme.textSecondary }]}>Reps</Text>
+                <View style={styles.actionCol} />
               </View>
 
               {group.sets.map((set) => (
@@ -165,6 +195,14 @@ export default function WorkoutDetailScreen({ route }) {
                   <Text style={[styles.cellText, styles.dataCol, { color: theme.text }]}>
                     {set.reps || '—'}
                   </Text>
+                  <TouchableOpacity
+                    onPress={() => handleDeleteSet(set)}
+                    style={styles.actionCol}
+                    disabled={saving}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons name="close-circle-outline" size={20} color={theme.textMuted} />
+                  </TouchableOpacity>
                 </View>
               ))}
             </Card>
@@ -196,6 +234,7 @@ const styles = StyleSheet.create({
   cellText: { fontSize: typography.sizes.sm },
   setCol: { width: 56 },
   dataCol: { flex: 1, textAlign: 'center' },
+  actionCol: { width: 28, alignItems: 'center' },
   setNumCell: { flexDirection: 'row', alignItems: 'center', gap: spacing[1] },
   emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: spacing[12] },
   emptyTitle: { fontSize: typography.sizes.xl, fontWeight: '700', marginTop: spacing[3] },

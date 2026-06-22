@@ -251,6 +251,17 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
     });
   };
 
+  const deleteSet = async (exerciseId, setIndex) => {
+    const setData = sets[exerciseId]?.[setIndex];
+    if (setData?.dbId) {
+      await db.deleteSet(setData.dbId);
+    }
+    setSets((prev) => {
+      const updated = (prev[exerciseId] || []).filter((_, i) => i !== setIndex);
+      return { ...prev, [exerciseId]: updated };
+    });
+  };
+
   const handleFinish = async () => {
     setFinishing(true);
 
@@ -422,7 +433,7 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
                 <Text style={[styles.setHeaderCell, { color: theme.textMuted, width: 30 }]}>#</Text>
                 <Text style={[styles.setHeaderCell, { color: theme.textMuted, flex: 1 }]}>{weightUnit}</Text>
                 <Text style={[styles.setHeaderCell, { color: theme.textMuted, flex: 1 }]}>reps</Text>
-                <View style={{ width: 40 }} />
+                <View style={{ width: 72 }} />
               </View>
 
               {exSets.map((set, i) => (
@@ -463,6 +474,13 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
                     ) : (
                       <Ionicons name="checkmark" size={18} color={theme.textMuted} />
                     )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => deleteSet(exercise.exercise_id, i)}
+                    style={styles.deleteSetBtn}
+                    hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
+                  >
+                    <Ionicons name="trash-outline" size={16} color={theme.textMuted} />
                   </TouchableOpacity>
                 </View>
               ))}
@@ -667,6 +685,7 @@ const styles = StyleSheet.create({
   setNum: { width: 30, fontSize: typography.sizes.sm, textAlign: 'center' },
   setInput: { flex: 1, minWidth: 0, borderRadius: radius.sm, borderWidth: 1, paddingHorizontal: spacing[2], paddingVertical: spacing[2], fontSize: typography.sizes.base, textAlign: 'center' },
   checkBtn: { width: 40, height: 40, borderRadius: radius.md, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  deleteSetBtn: { width: 28, height: 40, alignItems: 'center', justifyContent: 'center' },
   prBadge: { fontSize: 8, fontWeight: '700', textAlign: 'center' },
   addSetBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing[1], paddingVertical: spacing[2], borderTopWidth: 1, marginTop: spacing[1] },
   addSetText: { fontSize: typography.sizes.sm },

@@ -182,6 +182,53 @@ export async function getClientWorkoutStats(clientId) {
  * Delete cloud workout documents matching a local session ID.
  * Called when a user deletes a session locally so the trainer view stays in sync.
  */
+export async function updateCloudSession(userId, session, sets) {
+  const q = query(
+    collection(firestore, 'workout_sessions_cloud'),
+    where('clientId', '==', userId),
+    where('localSessionId', '==', session.id)
+  );
+  const snapshot = await getDocs(q);
+  if (snapshot.empty) {
+    // No cloud doc yet — upload fresh
+    await uploadWorkoutSession(userId, session, sets);
+    return;
+  }
+  const startedAt = session.started_at
+    ? Timestamp.fromDate(new Date(session.started_at))
+    : serverTimestamp();
+  const completedAt = session.completed_at
+    ? Timestamp.fromDate(new Date(session.completed_at))
+    : serverTimestamp();
+  const data = {
+    clientId: userId,
+    localSessionId: session.id,
+    programId: session.program_id || null,
+    programDayId: session.program_day_id || null,
+    dayName: session.day_name || 'Workout',
+    startedAt,
+    completedAt,
+    uploadedAt: serverTimestamp(),
+    durationSeconds: session.duration_seconds || 0,
+    notes: session.notes || '',
+    totalSets: sets.length,
+    completedSets: sets.filter(s => s.completed).length,
+    prCount: sets.filter(s => s.is_pr).length,
+    exercises: [...new Set(sets.map(s => s.exercise_name))],
+    sets: sets.map(s => ({
+      exerciseId: s.exercise_id,
+      exerciseName: s.exercise_name,
+      setNumber: s.set_number,
+      weightKg: s.weight_kg || null,
+      reps: s.reps || null,
+      rpe: s.rpe || null,
+      completed: s.completed === 1,
+      isPR: s.is_pr === 1,
+    })),
+  };
+  await setDoc(snapshot.docs[0].ref, data);
+}
+
 export async function deleteCloudSession(userId, localSessionId) {
   if (!userId || !localSessionId) return;
 
