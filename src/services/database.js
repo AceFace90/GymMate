@@ -23,7 +23,7 @@ const MIGRATIONS = [
     category    TEXT    NOT NULL,  -- barbell|dumbbell|machine|cable|bodyweight|cardio
     instructions TEXT,
     is_custom   INTEGER DEFAULT 0,
-    created_at  TEXT    DEFAULT (datetime('now'))
+    created_at  TEXT    DEFAULT (datetime('now', 'localtime'))
   );
 
   CREATE TABLE IF NOT EXISTS programs (
@@ -32,7 +32,7 @@ const MIGRATIONS = [
     description TEXT,
     days_per_week INTEGER DEFAULT 3,
     is_active   INTEGER DEFAULT 0,
-    created_at  TEXT    DEFAULT (datetime('now'))
+    created_at  TEXT    DEFAULT (datetime('now', 'localtime'))
   );
 
   CREATE TABLE IF NOT EXISTS program_days (
@@ -59,7 +59,7 @@ const MIGRATIONS = [
     program_id      INTEGER REFERENCES programs(id),
     program_day_id  INTEGER REFERENCES program_days(id),
     day_name        TEXT,
-    started_at      TEXT    DEFAULT (datetime('now')),
+    started_at      TEXT    DEFAULT (datetime('now', 'localtime')),
     completed_at    TEXT,
     duration_seconds INTEGER,
     notes           TEXT
@@ -76,7 +76,7 @@ const MIGRATIONS = [
     rpe             REAL,
     completed       INTEGER DEFAULT 0,
     is_pr           INTEGER DEFAULT 0,
-    logged_at       TEXT    DEFAULT (datetime('now'))
+    logged_at       TEXT    DEFAULT (datetime('now', 'localtime'))
   );
 
   CREATE TABLE IF NOT EXISTS schema_version (
@@ -97,7 +97,7 @@ const MIGRATIONS = [
     session_id      INTEGER NOT NULL REFERENCES workout_sessions(id) ON DELETE CASCADE,
     trainer_user_id TEXT    NOT NULL,
     feedback_text   TEXT    NOT NULL,
-    created_at      TEXT    DEFAULT (datetime('now'))
+    created_at      TEXT    DEFAULT (datetime('now', 'localtime'))
   );
 
   INSERT OR IGNORE INTO schema_version (version) VALUES (2);
@@ -358,7 +358,7 @@ export async function completeSession(id, { durationSeconds, notes }) {
   const database = await getDb();
   await database.runAsync(
     `UPDATE workout_sessions
-     SET completed_at = datetime('now'), duration_seconds = ?, notes = ?
+     SET completed_at = datetime('now', 'localtime'), duration_seconds = ?, notes = ?
      WHERE id = ?`,
     [durationSeconds || null, notes || null, id]
   );
@@ -503,7 +503,7 @@ export async function getWeeklyVolume(weeksBack = 12) {
      FROM workout_sessions ws
      LEFT JOIN session_sets ss ON ss.session_id = ws.id AND ss.completed = 1
      WHERE ws.completed_at IS NOT NULL
-       AND ws.started_at >= datetime('now', '-${weeksBack} weeks')
+       AND ws.started_at >= datetime('now', 'localtime', '-${weeksBack} weeks')
      GROUP BY week
      ORDER BY week ASC`
   );
@@ -521,7 +521,7 @@ export async function getMuscleGroupVolume(daysBack = 30) {
      JOIN workout_sessions ws ON ws.id = ss.session_id
      WHERE ss.completed = 1
        AND ws.completed_at IS NOT NULL
-       AND ws.started_at >= datetime('now', '-${daysBack} days')
+       AND ws.started_at >= datetime('now', 'localtime', '-${daysBack} days')
      GROUP BY e.muscle_group
      ORDER BY total_sets DESC`
   );
@@ -541,7 +541,7 @@ export async function getDailyActivity(daysBack = 14) {
      FROM workout_sessions ws
      LEFT JOIN session_sets ss ON ss.session_id = ws.id
      WHERE ws.completed_at IS NOT NULL
-       AND DATE(ws.started_at) >= DATE('now', '-' || ? || ' days')
+       AND DATE(ws.started_at) >= DATE('now', 'localtime', '-' || ? || ' days')
      GROUP BY DATE(ws.started_at)
      ORDER BY date ASC`,
     [daysBack]

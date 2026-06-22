@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,12 +29,21 @@ function formatDate(iso) {
 
 export default function WorkoutDetailScreen({ route }) {
   const { theme } = useTheme();
-  const { formatWeight } = useUnits();
+  const { formatWeight, weightUnit } = useUnits();
   const sessionId = route?.params?.sessionId;
 
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
+  // editValues: { [setId]: { weight: string, reps: string } }
+  const [editValues, setEditValues] = useState({});
   const [saving, setSaving] = useState(false);
+
+  const reload = async () => {
+    const s = await db.getSessionById(sessionId);
+    setSession(s);
+    return s;
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -42,14 +51,49 @@ export default function WorkoutDetailScreen({ route }) {
       (async () => {
         setLoading(true);
         const s = await db.getSessionById(sessionId);
-        if (active) {
-          setSession(s);
-          setLoading(false);
-        }
+        if (active) { setSession(s); setLoading(false); }
       })();
       return () => { active = false; };
     }, [sessionId])
   );
+
+  const toggleEditing = () => {
+    if (editing) {
+      // Leaving edit mode — clear unsaved changes
+      setEditValues({});
+    } else {
+      // Entering edit mode — seed inputs from current set values
+      const vals = {};
+      (session?.sets || []).forEach((s) => {
+        vals[s.id] = {
+          weight: s.weight_kg != null ? String(s.weight_kg) : '',
+          reps: s.reps != null ? String(s.reps) : '',
+        };
+      });
+      setEditValues(vals);
+    }
+    setEditing((e) => !e);
+  };
+
+  const handleSaveSet = async (set) => {
+    const val = editValues[set.id];
+    if (!val) return;
+    const weightKg = val.weight !== '' ? parseFloat(val.weight) : null;
+    const reps = val.reps !== '' ? parseInt(val.reps, 10) : null;
+    if ((weightKg != null && isNaN(weightKg)) || (reps != null && isNaN(reps))) return;
+
+    setSaving(true);
+    try {
+      await db.updateSet(set.id, { weightKg, reps, rpe: set.rpe, completed: set.completed });
+      const updated = await reload();
+      const user = await auth.getCurrentUser();
+      if (user) await workoutSync.updateCloudSession(user.id, updated, updated.sets || []);
+    } catch (e) {
+      console.error('Failed to save set:', e);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleDeleteSet = (set) => {
     confirmAction({
@@ -61,12 +105,11 @@ export default function WorkoutDetailScreen({ route }) {
         setSaving(true);
         try {
           await db.deleteSet(set.id);
-          const updated = await db.getSessionById(sessionId);
-          setSession(updated);
+          const updated = await reload();
           const user = await auth.getCurrentUser();
-          if (user) {
-            await workoutSync.updateCloudSession(user.id, updated, updated.sets || []);
-          }
+          if (user) await workoutSync.updateCloudSession(user.id, updated, updated.sets || []);
+          // Remove from editValues
+          setEditValues((prev) => { const n = { ...prev }; delete n[set.id]; return n; });
         } catch (e) {
           console.error('Failed to delete set:', e);
         } finally {
@@ -98,7 +141,6 @@ export default function WorkoutDetailScreen({ route }) {
     );
   }
 
-  // Group sets by exercise, preserving first-seen order
   const sets = session.sets || [];
   const exerciseGroups = [];
   const groupIndex = {};
@@ -122,12 +164,30 @@ export default function WorkoutDetailScreen({ route }) {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Workout summary */}
         <Card style={styles.infoCard}>
-          <Text style={[styles.workoutTitle, { color: theme.text }]}>
-            {session.day_name || 'Workout'}
-          </Text>
-          <Text style={[styles.workoutDate, { color: theme.textSecondary }]}>
-            {formatDate(session.started_at)}
-          </Text>
+          <View style={styles.titleRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.workoutTitle, { color: theme.text }]}>
+                {session.day_name || 'Workout'}
+              </Text>
+              <Text style={[styles.workoutDate, { color: theme.textSecondary }]}>
+                {formatDate(session.started_at)}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={toggleEditing}
+              style={[styles.editBtn, editing && { backgroundColor: theme.accentBg }]}
+              disabled={saving}
+            >
+              <Ionicons
+                name={editing ? 'checkmark-done-outline' : 'create-outline'}
+                size={18}
+                color={editing ? theme.accent : theme.textSecondary}
+              />
+              <Text style={[styles.editBtnText, { color: editing ? theme.accent : theme.textSecondary }]}>
+                {editing ? 'Done' : 'Edit'}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           <View style={styles.statsRow}>
             <View style={styles.statBox}>
@@ -160,7 +220,6 @@ export default function WorkoutDetailScreen({ route }) {
           ) : null}
         </Card>
 
-        {/* Exercises */}
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Exercises</Text>
 
         {exerciseGroups.length === 0 ? (
@@ -174,37 +233,70 @@ export default function WorkoutDetailScreen({ route }) {
             <Card key={group.name} style={styles.exerciseCard}>
               <Text style={[styles.exerciseName, { color: theme.text }]}>{group.name}</Text>
 
+              {/* Header */}
               <View style={[styles.tableRow, styles.tableHeader, { borderBottomColor: theme.border }]}>
                 <Text style={[styles.cellHeader, styles.setCol, { color: theme.textSecondary }]}>Set</Text>
-                <Text style={[styles.cellHeader, styles.dataCol, { color: theme.textSecondary }]}>Weight</Text>
+                <Text style={[styles.cellHeader, styles.dataCol, { color: theme.textSecondary }]}>
+                  {weightUnit === 'lbs' ? 'lbs' : 'kg'}
+                </Text>
                 <Text style={[styles.cellHeader, styles.dataCol, { color: theme.textSecondary }]}>Reps</Text>
-                <View style={styles.actionCol} />
+                {editing && <View style={styles.actionCol} />}
               </View>
 
-              {group.sets.map((set) => (
-                <View key={set.id} style={styles.tableRow}>
-                  <View style={[styles.setCol, styles.setNumCell]}>
-                    <Text style={[styles.cellText, { color: theme.text }]}>{set.set_number}</Text>
-                    {set.is_pr ? (
-                      <Ionicons name="trophy" size={12} color={theme.accent} />
-                    ) : null}
+              {group.sets.map((set) => {
+                const val = editValues[set.id];
+                return (
+                  <View key={set.id} style={styles.tableRow}>
+                    <View style={[styles.setCol, styles.setNumCell]}>
+                      <Text style={[styles.cellText, { color: theme.text }]}>{set.set_number}</Text>
+                      {set.is_pr ? <Ionicons name="trophy" size={12} color={theme.accent} /> : null}
+                    </View>
+
+                    {editing && val ? (
+                      <>
+                        <TextInput
+                          style={[styles.editInput, styles.dataCol, { backgroundColor: theme.input, borderColor: theme.border, color: theme.text }]}
+                          value={val.weight}
+                          onChangeText={(v) => setEditValues((prev) => ({ ...prev, [set.id]: { ...prev[set.id], weight: v } }))}
+                          onBlur={() => handleSaveSet(set)}
+                          keyboardType="decimal-pad"
+                          placeholder="—"
+                          placeholderTextColor={theme.textMuted}
+                        />
+                        <TextInput
+                          style={[styles.editInput, styles.dataCol, { backgroundColor: theme.input, borderColor: theme.border, color: theme.text }]}
+                          value={val.reps}
+                          onChangeText={(v) => setEditValues((prev) => ({ ...prev, [set.id]: { ...prev[set.id], reps: v } }))}
+                          onBlur={() => handleSaveSet(set)}
+                          keyboardType="number-pad"
+                          placeholder="—"
+                          placeholderTextColor={theme.textMuted}
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <Text style={[styles.cellText, styles.dataCol, { color: theme.text }]}>
+                          {set.weight_kg ? formatWeight(set.weight_kg) : '—'}
+                        </Text>
+                        <Text style={[styles.cellText, styles.dataCol, { color: theme.text }]}>
+                          {set.reps || '—'}
+                        </Text>
+                      </>
+                    )}
+
+                    {editing && (
+                      <TouchableOpacity
+                        onPress={() => handleDeleteSet(set)}
+                        style={styles.actionCol}
+                        disabled={saving}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons name="close-circle-outline" size={20} color={theme.textMuted} />
+                      </TouchableOpacity>
+                    )}
                   </View>
-                  <Text style={[styles.cellText, styles.dataCol, { color: theme.text }]}>
-                    {set.weight_kg ? formatWeight(set.weight_kg) : '—'}
-                  </Text>
-                  <Text style={[styles.cellText, styles.dataCol, { color: theme.text }]}>
-                    {set.reps || '—'}
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => handleDeleteSet(set)}
-                    style={styles.actionCol}
-                    disabled={saving}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <Ionicons name="close-circle-outline" size={20} color={theme.textMuted} />
-                  </TouchableOpacity>
-                </View>
-              ))}
+                );
+              })}
             </Card>
           ))
         )}
@@ -217,8 +309,11 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: spacing[4], gap: spacing[3] },
   infoCard: {},
+  titleRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: spacing[4] },
   workoutTitle: { fontSize: typography.sizes['2xl'], fontWeight: '700', marginBottom: spacing[1] },
-  workoutDate: { fontSize: typography.sizes.sm, marginBottom: spacing[4] },
+  workoutDate: { fontSize: typography.sizes.sm },
+  editBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing[1], paddingHorizontal: spacing[3], paddingVertical: spacing[2], borderRadius: radius.md, marginLeft: spacing[2] },
+  editBtnText: { fontSize: typography.sizes.sm, fontWeight: '600' },
   statsRow: { flexDirection: 'row', justifyContent: 'space-around' },
   statBox: { alignItems: 'center', gap: spacing[2] },
   statText: { fontSize: typography.sizes.sm, fontWeight: '600' },
@@ -230,12 +325,13 @@ const styles = StyleSheet.create({
   exerciseName: { fontSize: typography.sizes.base, fontWeight: '700', marginBottom: spacing[3] },
   tableRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing[2] },
   tableHeader: { borderBottomWidth: 1, marginBottom: spacing[1] },
-  cellHeader: { fontSize: typography.sizes.xs, fontWeight: '700' },
+  cellHeader: { fontSize: typography.sizes.xs, fontWeight: '700', textAlign: 'center' },
   cellText: { fontSize: typography.sizes.sm },
   setCol: { width: 56 },
   dataCol: { flex: 1, textAlign: 'center' },
   actionCol: { width: 28, alignItems: 'center' },
   setNumCell: { flexDirection: 'row', alignItems: 'center', gap: spacing[1] },
+  editInput: { flex: 1, borderRadius: radius.sm, borderWidth: 1, paddingHorizontal: spacing[2], paddingVertical: spacing[1], fontSize: typography.sizes.sm, textAlign: 'center', marginHorizontal: spacing[1] },
   emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: spacing[12] },
   emptyTitle: { fontSize: typography.sizes.xl, fontWeight: '700', marginTop: spacing[3] },
   emptyText: { fontSize: typography.sizes.base, textAlign: 'center', marginTop: spacing[2] },

@@ -197,8 +197,8 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
         const hasReps = updatedSet.reps && updatedSet.reps.trim() !== '';
 
         if (hasWeight && hasReps) {
-          // Trigger auto-complete after state settles
-          setTimeout(() => completeSet(exercise, setIndex), 100);
+          // Pass updatedSet directly to avoid reading stale state in completeSet
+          setTimeout(() => completeSet(exercise, setIndex, updatedSet), 100);
         }
       }
 
@@ -212,8 +212,8 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
     }
   };
 
-  const completeSet = async (exercise, setIndex) => {
-    const setData = sets[exercise.exercise_id]?.[setIndex];
+  const completeSet = async (exercise, setIndex, setDataOverride) => {
+    const setData = setDataOverride ?? sets[exercise.exercise_id]?.[setIndex];
     if (!setData) return;
     const w = setData.weight ? parseWeight(parseFloat(setData.weight)) : null;
     const r = parseInt(setData.reps) || null;
