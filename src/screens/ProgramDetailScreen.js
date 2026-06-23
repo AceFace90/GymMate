@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  Modal, TextInput, Alert, FlatList, ActivityIndicator,
+  Modal, TextInput, Alert, FlatList, ActivityIndicator, Platform,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,6 +11,7 @@ import { useTheme } from '../hooks/useTheme';
 import { spacing, typography, radius, colors } from '../theme';
 import * as db from '../services/database';
 import * as auth from '../services/auth';
+import * as programTemplates from '../services/programTemplates';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import MuscleTag from '../components/MuscleTag';
@@ -23,6 +24,8 @@ export default function ProgramDetailScreen({ route, navigation }) {
   const [program, setProgram] = useState(null);
   const [loading, setLoading] = useState(true);
   const [trainerName, setTrainerName] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [pushing, setPushing] = useState(false);
 
   // Add day modal
   const [showAddDay, setShowAddDay] = useState(false);
@@ -41,8 +44,9 @@ export default function ProgramDetailScreen({ route, navigation }) {
 
   const loadProgram = async () => {
     setLoading(true);
-    const data = await db.getProgramById(programId);
+    const [data, user] = await Promise.all([db.getProgramById(programId), auth.getCurrentUser()]);
     setProgram(data);
+    setCurrentUser(user);
 
     // If this is an assigned program, fetch the trainer's name
     if (data?.created_by_user_id) {
@@ -148,8 +152,34 @@ export default function ProgramDetailScreen({ route, navigation }) {
 
   if (!program) return null;
 
-  // Check if this is an assigned (read-only) program
   const isAssigned = Boolean(program.linked_template_id);
+  const isTrainer = currentUser?.role === 'trainer';
+  const isOwnProgram = !isAssigned && (program.created_by_user_id === currentUser?.id || !program.created_by_user_id);
+
+  async function handlePushUpdates() {
+    if (!currentUser) return;
+    setPushing(true);
+    try {
+      const count = await programTemplates.updateTemplateAndSync(
+        `tpl_${currentUser.id}_prog_${program.id}`,
+        currentUser.id
+      );
+      if (Platform.OS === 'web') {
+        alert(`Updates pushed to ${count} client${count !== 1 ? 's' : ''}`);
+      } else {
+        Alert.alert('Done', `Updates pushed to ${count} client${count !== 1 ? 's' : ''}`);
+      }
+    } catch (e) {
+      console.error('Push updates failed:', e);
+      if (Platform.OS === 'web') {
+        alert('Failed to push updates');
+      } else {
+        Alert.alert('Error', 'Failed to push updates');
+      }
+    } finally {
+      setPushing(false);
+    }
+  }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]} edges={['bottom']}>
@@ -182,7 +212,24 @@ export default function ProgramDetailScreen({ route, navigation }) {
 
         {/* Start workout CTA */}
         {(program.days?.length ?? 0) > 0 && !program.is_template && (
-          <Button title="▶  Start Workout" onPress={() => setShowPickDay(true)} size="lg" style={{ marginBottom: spacing[5] }} />
+          <Button title="▶  Start Workout" onPress={() => setShowPickDay(true)} size="lg" style={{ marginBottom: spacing[3] }} />
+        )}
+
+        {/* Trainer actions — assign to clients or push updates */}
+        {isTrainer && isOwnProgram && (
+          <View style={{ gap: spacing[2], marginBottom: spacing[5] }}>
+            <Button
+              title="Assign to Clients"
+              variant="secondary"
+              onPress={() => navigation.navigate('AssignProgram', { program })}
+            />
+            <Button
+              title={pushing ? 'Pushing...' : 'Push Updates to Clients'}
+              variant="secondary"
+              onPress={handlePushUpdates}
+              loading={pushing}
+            />
+          </View>
         )}
 
         {/* Days */}

@@ -219,7 +219,9 @@ export async function createCustomExercise({ name, muscleGroup, category, instru
 
 export async function getPrograms() {
   const database = await getDb();
-  return database.getAllAsync('SELECT * FROM programs ORDER BY created_at DESC');
+  return database.getAllAsync(
+    'SELECT * FROM programs WHERE is_template = 0 OR is_template IS NULL ORDER BY created_at DESC'
+  );
 }
 
 export async function getProgramById(id) {

@@ -33,6 +33,33 @@ export async function createTemplate(trainerId, programData) {
   return templateId;
 }
 
+// Upsert a Firestore template from a local program — used when assigning
+// directly from the Programs screen. Keyed by programId so repeat calls
+// update the same doc rather than creating duplicates.
+export async function upsertTemplateForProgram(trainerId, program) {
+  const templateId = `tpl_${trainerId}_prog_${program.id}`;
+  const templateRef = doc(firestore, 'program_templates', templateId);
+  const fullProgram = program.days ? program : await db.getProgramById(program.id);
+  const programData = {
+    name: fullProgram.name,
+    description: fullProgram.description || '',
+    daysPerWeek: fullProgram.days_per_week || 3,
+    days: fullProgram.days || [],
+    programId: fullProgram.id,
+  };
+  await setDoc(templateRef, {
+    trainerId,
+    programId: fullProgram.id,
+    name: fullProgram.name,
+    description: fullProgram.description || '',
+    daysPerWeek: fullProgram.days_per_week || 3,
+    programData,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+  return templateId;
+}
+
 // Get all templates for a trainer
 export async function getMyTemplates(trainerId) {
   const q = query(

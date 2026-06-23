@@ -125,14 +125,9 @@ export default function TrainerDashboardScreen({ navigation }) {
         {/* Header */}
         <View style={styles.header}>
           <Text style={[styles.title, { color: theme.accent }]}>My Clients</Text>
-          <View style={{ flexDirection: 'row', gap: spacing[3] }}>
-            <TouchableOpacity onPress={() => navigation.navigate('Templates')}>
-              <Ionicons name="document-text" size={24} color={theme.accent} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleConnectClient}>
-              <Ionicons name="person-add" size={24} color={theme.accent} />
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity onPress={handleConnectClient}>
+            <Ionicons name="person-add" size={24} color={theme.accent} />
+          </TouchableOpacity>
         </View>
 
         {/* Stats Overview */}

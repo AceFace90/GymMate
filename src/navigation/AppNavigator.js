@@ -25,7 +25,6 @@ import TrainerDashboardScreen from '../screens/trainer/TrainerDashboardScreen';
 import ClientDetailScreen from '../screens/trainer/ClientDetailScreen';
 import ClientWorkoutDetailScreen from '../screens/trainer/ClientWorkoutDetailScreen';
 import ConnectionScreen from '../screens/trainer/ConnectionScreen';
-import TemplatesScreen from '../screens/trainer/TemplatesScreen';
 import AssignProgramScreen from '../screens/trainer/AssignProgramScreen';
 
 // Client Screens
@@ -37,7 +36,6 @@ const ProgramsStack = createStackNavigator();
 const ExercisesStack = createStackNavigator();
 const ProfileStack = createStackNavigator();
 const ClientsStack = createStackNavigator();
-const TemplatesStack = createStackNavigator();
 
 // Shared stack header styling. Renders the back arrow as an Ionicons glyph
 // instead of React Navigation's default PNG — the PNG asset 404s under the
@@ -80,6 +78,7 @@ function ProgramsStackNav() {
         component={ActiveWorkoutScreen}
         options={{ title: 'Workout', headerBackVisible: false }}
       />
+      <ProgramsStack.Screen name="AssignProgram" component={AssignProgramScreen} options={{ headerShown: false }} />
     </ProgramsStack.Navigator>
   );
 }
@@ -119,20 +118,8 @@ function ClientsStackNav() {
       <ClientsStack.Screen name="ClientDetail" component={ClientDetailScreen} options={{ headerShown: false }} />
       <ClientsStack.Screen name="ClientWorkoutDetail" component={ClientWorkoutDetailScreen} options={{ headerShown: false }} />
       <ClientsStack.Screen name="Connection" component={ConnectionScreen} options={{ headerShown: false }} />
-      <ClientsStack.Screen name="Templates" component={TemplatesScreen} options={{ headerShown: false }} />
       <ClientsStack.Screen name="AssignProgram" component={AssignProgramScreen} options={{ headerShown: false }} />
     </ClientsStack.Navigator>
-  );
-}
-
-function TemplatesStackNav() {
-  const { theme } = useTheme();
-  return (
-    <TemplatesStack.Navigator screenOptions={stackScreenOptions(theme)}>
-      <TemplatesStack.Screen name="TemplatesList" component={TemplatesScreen} options={{ headerShown: false }} />
-      <TemplatesStack.Screen name="ProgramDetail" component={ProgramDetailScreen} options={{ title: 'Program' }} />
-      <TemplatesStack.Screen name="AssignProgram" component={AssignProgramScreen} options={{ headerShown: false }} />
-    </TemplatesStack.Navigator>
   );
 }
 
