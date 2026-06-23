@@ -13,6 +13,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db as firestore } from './firebase';
 import * as db from './database';
 import { nsKey } from './activeUser';
+import { restoreSessionsFromCloud } from './workoutSync';
 
 // AsyncStorage keys that should be backed up (all are namespaced per user via nsKey)
 const ASYNC_STORAGE_KEYS = [
@@ -133,6 +134,7 @@ export async function syncOnSignIn(uid) {
     if (localHasData) {
       console.log('[cloudSync] Action: PUSH (cloud empty, local has data)');
       await backupToCloud(uid);
+      await restoreSessionsFromCloud(uid);
       return { action: 'pushed' };
     }
     console.log('[cloudSync] Action: NONE (both empty)');
@@ -142,7 +144,6 @@ export async function syncOnSignIn(uid) {
   if (!localHasData) {
     console.log('[cloudSync] Action: PULL (local empty, cloud has data)');
     await db.importAllData(remote.payload);
-    // Restore AsyncStorage data too
     if (remote.payload.asyncStorage) {
       console.log('[cloudSync] Restoring AsyncStorage data...');
       for (const [key, value] of Object.entries(remote.payload.asyncStorage)) {
@@ -156,6 +157,7 @@ export async function syncOnSignIn(uid) {
       }
     }
     await setLastSync(remote.updatedAt);
+    await restoreSessionsFromCloud(uid);
     return { action: 'pulled' };
   }
 
@@ -163,17 +165,15 @@ export async function syncOnSignIn(uid) {
   const lastSync = await getLastSync();
   console.log('[cloudSync] Both have data. lastSync:', lastSync, 'remote.updatedAt:', remote.updatedAt);
   if (lastSync && remote.updatedAt && lastSync === remote.updatedAt) {
-    // Cloud hasn't moved since we last synced → our local holds that baseline
-    // (and maybe newer local edits). Push so we don't lose recent local work.
     console.log('[cloudSync] Action: PUSH (cloud unchanged since last sync)');
     await backupToCloud(uid);
+    await restoreSessionsFromCloud(uid);
     return { action: 'pushed' };
   }
 
   // Cloud changed elsewhere (or we have no baseline) → trust the durable cloud.
   console.log('[cloudSync] Action: PULL (cloud changed or no baseline)');
   await db.importAllData(remote.payload);
-  // Restore AsyncStorage data too
   if (remote.payload.asyncStorage) {
     console.log('[cloudSync] Restoring AsyncStorage data...');
     for (const [key, value] of Object.entries(remote.payload.asyncStorage)) {
@@ -187,5 +187,6 @@ export async function syncOnSignIn(uid) {
     }
   }
   await setLastSync(remote.updatedAt);
+  await restoreSessionsFromCloud(uid);
   return { action: 'pulled' };
 }

@@ -147,7 +147,8 @@ export async function initDatabase(builtinExercises) {
 const BACKUP_VERSION = 1;
 const BACKUP_TABLES = [
   'exercises', 'programs', 'program_days', 'program_exercises',
-  'workout_sessions', 'session_sets',
+  // workout_sessions and session_sets are excluded — restored from
+  // workout_sessions_cloud instead, keeping the blob small.
 ];
 
 export async function exportAllData() {
@@ -199,6 +200,11 @@ export async function getExercises({ muscleGroup, category, search } = {}) {
 export async function getExerciseById(id) {
   const database = await getDb();
   return database.getFirstAsync('SELECT * FROM exercises WHERE id = ?', [id]);
+}
+
+export async function getExerciseByName(name) {
+  const database = await getDb();
+  return database.getFirstAsync('SELECT * FROM exercises WHERE name = ? COLLATE NOCASE', [name]);
 }
 
 export async function createCustomExercise({ name, muscleGroup, category, instructions }) {
@@ -394,6 +400,20 @@ export async function deleteSession(id) {
   await database.runAsync('DELETE FROM workout_sessions WHERE id = ?', [id]);
 }
 
+// Restore a session from cloud backup. Uses INSERT OR REPLACE so safe to call
+// multiple times. Returns the local session id.
+export async function restoreSession({ id, program_id, program_day_id, day_name, started_at, completed_at, duration_seconds, notes }) {
+  const database = await getDb();
+  await database.runAsync(
+    `INSERT OR REPLACE INTO workout_sessions
+       (id, program_id, program_day_id, day_name, started_at, completed_at, duration_seconds, notes)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [id, program_id ?? null, program_day_id ?? null, day_name ?? 'Workout',
+     started_at ?? null, completed_at ?? null, duration_seconds ?? null, notes ?? null]
+  );
+  return id;
+}
+
 // ─── Session Sets ────────────────────────────────────────────────────────────
 
 export async function logSet({ sessionId, exerciseId, exerciseName, setNumber, weightKg, reps, rpe }) {
@@ -428,6 +448,24 @@ export async function updateSet(id, { weightKg, reps, rpe, completed }) {
 export async function deleteSet(id) {
   const database = await getDb();
   await database.runAsync('DELETE FROM session_sets WHERE id = ?', [id]);
+}
+
+// Restore a set from cloud backup. No explicit id — let SQLite assign one.
+export async function restoreSet({ session_id, exercise_id, exercise_name, set_number, weight_kg, reps, rpe, completed, is_pr }) {
+  const database = await getDb();
+  // Skip if this set already exists for this session/exercise/set_number
+  const existing = await database.getFirstAsync(
+    'SELECT id FROM session_sets WHERE session_id = ? AND exercise_name = ? AND set_number = ?',
+    [session_id, exercise_name, set_number]
+  );
+  if (existing) return;
+  await database.runAsync(
+    `INSERT INTO session_sets
+       (session_id, exercise_id, exercise_name, set_number, weight_kg, reps, rpe, completed, is_pr)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [session_id, exercise_id ?? 0, exercise_name, set_number,
+     weight_kg ?? null, reps ?? null, rpe ?? null, completed ?? 0, is_pr ?? 0]
+  );
 }
 
 export async function getSetsForSession(sessionId) {

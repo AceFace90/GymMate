@@ -1,5 +1,6 @@
 import { collection, doc, query, where, orderBy, limit as firestoreLimit, getDocs, setDoc, deleteDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db as firestore } from './firebase';
+import * as db from './database';
 
 /**
  * Upload a completed workout session to the cloud for trainer viewing
@@ -241,4 +242,62 @@ export async function deleteCloudSession(userId, localSessionId) {
   const snapshot = await getDocs(q);
   const deletes = snapshot.docs.map(d => deleteDoc(d.ref));
   await Promise.all(deletes);
+}
+
+/**
+ * Restore all workout sessions and sets from workout_sessions_cloud into
+ * local SQLite. Called on sign-in when sessions are not in the blob backup.
+ * Idempotent — uses INSERT OR REPLACE so safe to call multiple times.
+ */
+export async function restoreSessionsFromCloud(userId) {
+  if (!userId) return;
+
+  const q = query(
+    collection(firestore, 'workout_sessions_cloud'),
+    where('clientId', '==', userId),
+    orderBy('completedAt', 'desc')
+  );
+
+  const snapshot = await getDocs(q);
+  if (snapshot.empty) return;
+
+  for (const docSnap of snapshot.docs) {
+    const d = docSnap.data();
+
+    const startedAt = d.startedAt?.toDate?.()?.toISOString?.() ?? null;
+    const completedAt = d.completedAt?.toDate?.()?.toISOString?.() ?? null;
+
+    // Restore the session row, keyed by localSessionId so re-runs are idempotent
+    const sessionId = await db.restoreSession({
+      id: d.localSessionId,
+      program_id: d.programId ?? null,
+      program_day_id: d.programDayId ?? null,
+      day_name: d.dayName ?? 'Workout',
+      started_at: startedAt,
+      completed_at: completedAt,
+      duration_seconds: d.durationSeconds ?? null,
+      notes: d.notes ?? null,
+    });
+
+    // Restore set rows — resolve exercise_id by name since IDs differ per device
+    const sets = d.sets || [];
+    const exerciseCache = {};
+    for (const s of sets) {
+      if (!exerciseCache[s.exerciseName]) {
+        const match = await db.getExerciseByName(s.exerciseName);
+        exerciseCache[s.exerciseName] = match?.id ?? 0;
+      }
+      await db.restoreSet({
+        session_id: sessionId,
+        exercise_id: exerciseCache[s.exerciseName],
+        exercise_name: s.exerciseName,
+        set_number: s.setNumber,
+        weight_kg: s.weightKg ?? null,
+        reps: s.reps ?? null,
+        rpe: s.rpe ?? null,
+        completed: s.completed ? 1 : 0,
+        is_pr: s.isPR ? 1 : 0,
+      });
+    }
+  }
 }
