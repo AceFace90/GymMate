@@ -144,11 +144,10 @@ export async function initDatabase(builtinExercises) {
 // ─── Backup / restore ────────────────────────────────────────────────────────
 // Mirror of the web DB's export/import for native (expo-sqlite). Used by cloudSync.js.
 
-const BACKUP_VERSION = 1;
+// v2 — sessions removed from blob; restored from workout_sessions_cloud instead
+const BACKUP_VERSION = 2;
 const BACKUP_TABLES = [
   'exercises', 'programs', 'program_days', 'program_exercises',
-  // workout_sessions and session_sets are excluded — restored from
-  // workout_sessions_cloud instead, keeping the blob small.
 ];
 
 export async function exportAllData() {
