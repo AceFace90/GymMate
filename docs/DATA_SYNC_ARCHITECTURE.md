@@ -1,13 +1,13 @@
 # GymMate - Data Sync Architecture
 
-**Last Updated:** 2026-06-16  
-**Version:** 1.2.0
+**Last Updated:** 2026-06-23
+**Version:** 1.3.0
 
 ---
 
 ## Overview
 
-GymMate uses a **local-first architecture** with optional cloud backup. All data lives in local storage (SQLite on native, localStorage on web) for fast access, with Firestore providing cloud backup and sync for signed-in users.
+GymMate uses a **local-first architecture** with optional cloud backup. All data lives in local storage (SQLite on native, localStorage on web) for fast access, with Firestore providing cloud backup, cross-device sync, and trainer↔client program/workout sharing.
 
 ---
 
@@ -27,25 +27,7 @@ GymMate uses a **local-first architecture** with optional cloud backup. All data
 | **Trainer Features** | ❌ Not available | ✅ Full access |
 | **Client Features** | ❌ Not available | ✅ Full access |
 | **Workout Sharing** | ❌ Not available | ✅ With trainer |
-| **Program Templates** | ❌ Not available | ✅ From trainer |
-
-### Key Differences
-
-**Local-Only Account:**
-- All data stored on device only
-- No backup or recovery if device is lost
-- Cannot connect with trainers
-- Cannot share workouts
-- Faster (no network calls)
-- Works offline always
-
-**Google Account:**
-- Data backed up to Firestore
-- Sync across multiple devices
-- Connect with trainers (PT features)
-- Share workouts with trainer
-- Receive program templates
-- Requires internet for sync
+| **Assigned Programs** | ❌ Not available | ✅ From trainer |
 
 ---
 
@@ -55,356 +37,209 @@ GymMate uses a **local-first architecture** with optional cloud backup. All data
 
 **SQLite Database (Native) / localStorage (Web):**
 - Exercises (built-in + custom)
-- Programs (user-created)
-- Program days
-- Program exercises
+- Programs (user-created + trainer-assigned)
+- Program days + exercises
 - Workout sessions
 - Session sets
-- Counters (for ID generation)
 
 **AsyncStorage:**
-- `gymmate_biometrics` - Profile data (name, age, sex, height, weight, body fat %, activity level, primary goal, pregnancy/cycle data)
-- `gymmate_units` - Metric/Imperial preference
-- `gymmate_last_sync` - Timestamp of last cloud sync (per user namespace)
-- `gymmate_theme` - Dark/light/system theme preference
-- `GEMINI_API_KEY` - User's Gemini AI key (if configured)
+- `gymmate_biometrics` — profile data
+- `gymmate_units` — metric/imperial preference
+- `gymmate_last_sync` — last cloud sync timestamp (per-user namespace)
+- `gymmate_theme` — dark/light/system preference
+- `GEMINI_API_KEY` — user's Gemini key (never leaves device)
 
 ### Cloud Storage (Google Login Only)
 
-**Firestore Collection: `users/{uid}`**
-- Full backup of local database (exercises, programs, sessions, sets)
-- AsyncStorage data (biometrics, units preference)
-- `updatedAt` timestamp for sync reconciliation
+**`users/{uid}`** — Blob backup: programs, exercises, biometrics, units preference.
+Deliberately **excludes** workout sessions and sets (those live in `workout_sessions_cloud`).
+- Max useful size: ~50–200 KB (programs + exercises only — static after initial seeding)
+- Backup version: 2
 
-**Firestore Collection: `trainer_clients/{relationshipId}`**
-- Trainer-client relationships
-- Connection status
-- Trainer name, email
-- Client name, email
+**`workout_sessions_cloud/{sessionId}`** — One document per completed workout.
+- Written on workout completion and on set edits from history
+- Read by trainer for client progress view
+- Read by `restoreSessionsFromCloud()` on sign-in to rebuild local session history
+- No size ceiling concern — separate documents
 
-**Firestore Collection: `program_templates/{templateId}`**
-- Trainer-created program templates
-- Template days and exercises
-- Assigned to specific trainer
+**`trainer_clients/{relationshipId}`** — PT↔client relationships.
+- Created by trainer (invite), updated by client (accept) or either (revoke)
+- A client can have multiple accepted trainer relationships
 
-**Firestore Collection: `program_assignments/{assignmentId}`**
-- Programs assigned by trainer to client
-- Assignment status
-- Program data
+**`program_templates/{templateId}`** — Invisible sync layer for PT-assigned programs.
+- Keyed `tpl_{trainerId}_prog_{programId}` — one per local program per trainer
+- Upserted silently when PT assigns a program or pushes updates
+- Not surfaced in any UI — purely plumbing
 
-**Firestore Collection: `workout_sessions_cloud/{sessionId}`**
-- Client workout sessions (synced after completion)
-- Exercise sets with weight/reps
-- Workout duration, notes
-- Visible to trainer
+**`program_assignments/{assignmentId}`** — Programs assigned to clients.
+- Contains full `programData` snapshot (name, days, exercises)
+- `assignmentType`: `linked` (overwritten on push) or `custom` (snapshot, never overwritten)
+- Read by client's `syncAssignedPrograms()` on Programs screen load
 
-**Firestore Collection: `workout_feedback_cloud/{feedbackId}`**
-- Trainer feedback on client workouts
-- Visible to client
+**`workout_feedback_cloud/{feedbackId}`** — Trainer feedback on client workouts.
 
 ---
 
 ## Data Flow: When & What
 
-### 1. App Initialization
+### Sign-In
 
-**On App Launch:**
 ```
-1. Load current user from AsyncStorage
-2. Set active user ID (for data namespacing)
-3. Initialize local database
-4. Seed built-in exercises (if not present)
-5. If Google user: syncOnSignIn()
-```
-
-**syncOnSignIn() Logic:**
-- **Cloud empty, local has data** → Push local to cloud
-- **Cloud has data, local empty** → Pull cloud to local
-- **Both have data:**
-  - If cloud unchanged since last sync → Push local (has newer edits)
-  - If cloud changed elsewhere → Pull cloud (trust remote)
-  - If no sync marker → Pull cloud (safe default)
-
-### 2. Profile Save
-
-**When: User clicks "Save Profile" button**
-
-**Flow:**
-```
-ProfileScreen.handleSave()
-  ↓
-1. Save to AsyncStorage (nsKey('gymmate_biometrics'))
-2. If Google user: backupToCloud(uid)
-   ↓
-   - Export all local data (database + AsyncStorage)
-   - Write to Firestore: users/{uid}
-   - Update last sync timestamp
+auth.signInWithGoogle()
+  → syncOnSignIn(uid)
+      Logic:
+      - Cloud empty + local has data  → push blob
+      - Local empty + cloud has data  → pull blob
+      - Both have data + cloud unchanged since lastSync → push blob
+      - Both have data + cloud changed → pull blob
+  → restoreSessionsFromCloud(uid)
+      - Queries workout_sessions_cloud where clientId == uid
+      - Writes workout_sessions + session_sets into local SQLite
+      - Idempotent (skips existing rows)
+      - Resolves exercise IDs by name lookup (safe on fresh-install device)
 ```
 
-**Data Backed Up:**
-- Profile: name, age, sex, height, weight, body fat %, activity level, primary goal
-- Pregnancy: isPregnant, trimester
-- Cycle: last period date, cycle length
-- All workout data (sessions, sets, exercises, programs)
+### Workout Completion
 
-### 3. Units Preference Change
-
-**When: User toggles Metric/Imperial in Settings**
-
-**Flow:**
-```
-SettingsScreen → setUnits()
-  ↓
-useUnits.setUnitsPreference()
-  ↓
-1. Update state
-2. Save to AsyncStorage (nsKey('gymmate_units'))
-3. If Google user: backupToCloud(uid)
-```
-
-### 4. Workout Completion
-
-**When: User clicks "Finish Workout" in ActiveWorkoutScreen**
-
-**Flow:**
 ```
 ActiveWorkoutScreen.handleFinish()
-  ↓
-1. Save locally: db.completeSession(sessionId)
-2. If Google user: workoutSync.uploadWorkoutSession()
-   ↓
-   Write to Firestore: workout_sessions_cloud/{sessionId}
-   - Includes: exercises, sets, weight, reps, duration, notes
-   - Visible to trainer (if connected)
+  → db.completeSession(sessionId)               # local SQLite
+  → workoutSync.uploadWorkoutSession(userId, session, sets)
+      → setDoc(workout_sessions_cloud/{id})     # trainer-visible + restore source
+  → cloudSync.backupToCloud(uid)                # debounced blob backup
 ```
 
-**Local Storage:**
-- Session marked complete (completed_at timestamp)
-- All sets persist with completed flag
+### Workout History Edit (delete/edit set)
 
-**Cloud Storage (Google only):**
-- Copy of session + sets → `workout_sessions_cloud`
-- Trainer can query by clientId
-- Does NOT trigger full backup (separate collection)
-
-### 5. Logout
-
-**When: User clicks "Log Out" in ProfileScreen**
-
-**Flow:**
 ```
-ProfileScreen.confirmLogout()
-  ↓
-auth.signOutGoogle()
-  ↓
-1. If Google user: backupToCloud(uid) - final backup
-2. Sign out from Firebase Auth
-3. Clear current user from AsyncStorage
-4. Clear active user ID (namespace)
-5. Return to login screen
+WorkoutDetailScreen.handleDeleteSet / handleSaveSet
+  → db.deleteSet / db.updateSet                 # local SQLite
+  → workoutSync.updateCloudSession(userId, session, sets)
+      → setDoc on existing workout_sessions_cloud doc  # keeps trainer view in sync
 ```
 
-**Important:** Local data is NOT deleted on logout. It remains in the user-namespaced storage keys for next sign-in.
+### Program Assignment (PT flow)
 
-### 6. Login
-
-**When: User signs in with Google**
-
-**Flow:**
 ```
-LoginScreen → auth.signInWithGoogle()
-  ↓
-1. Authenticate with Firebase
-2. Get user data (uid, email, name, photo)
-3. Set active user ID (namespace all data reads)
-4. syncOnSignIn(uid) - reconcile local vs cloud
-5. Initialize database (seed exercises if needed)
-6. Save current user to AsyncStorage
-7. Navigate to app
+ProgramDetailScreen → "Assign to Clients"
+  → AssignProgramScreen (loads PT's own programs only)
+  → On confirm:
+      → programTemplates.upsertTemplateForProgram(trainerId, program)
+          → setDoc(program_templates/tpl_{trainerId}_prog_{programId}, { merge: true })
+      → programTemplates.assignToClient(templateId, clientId, trainerId, assignmentType)
+          → setDoc(program_assignments/{id}, { programData: snapshot, assignmentType })
 ```
 
-### 7. Trainer-Client Connection
+### Push Updates to Clients (PT flow)
 
-**When: Client enters trainer code**
-
-**Flow:**
 ```
-ConnectTrainerScreen → trainerClient.createConnection()
-  ↓
-1. Look up trainer by code
-2. Create relationship: trainer_clients/{relationshipId}
-3. Store: trainerId, clientId, status, names, emails
+ProgramDetailScreen → "Push Updates to Clients"
+  → programTemplates.updateTemplateAndSync(templateId, trainerId)
+      → upserts program_templates doc with fresh programData
+      → queries program_assignments where templateId + trainerId
+      → overwrites programData in each linked assignment doc
 ```
 
-**When: Trainer views client workouts**
+### Client Program Sync
 
-**Flow:**
 ```
-ClientDetailScreen.load()
-  ↓
-1. Query: workout_sessions_cloud where clientId = {clientId}
-2. Display workout history, stats, PRs
+ProgramsScreen.loadPrograms()
+  → syncAssignedPrograms()
+      → programTemplates.getClientAssignments(clientId)
+          → reads all program_assignments where clientId == uid
+      → For each assignment:
+          - linked:  create or overwrite local program (stays current with trainer)
+          - custom:  create only if not exists (independent copy, never overwritten)
+      → Deletes local programs whose assignments no longer exist
+```
+
+### Trainer-Client Connection (multi-trainer)
+
+```
+ConnectTrainerScreen (no longer blocks if trainer already connected)
+  → trainerClient.findInvite(code)
+  → trainerClient.acceptInvite(relationshipId, clientId, clientName)
+      → updateDoc(trainer_clients/{id})
+
+ProfileScreen
+  → trainerClient.getMyTrainers(clientId)  → array of all accepted connections
+  → Per-trainer disconnect button → revokeConnection() + cascade-deletes assignments
 ```
 
 ---
 
-## Data Backup Schedule
+## Backup Schedule
 
-### Automatic Backups (Google Login Only)
+| Trigger | What happens |
+|---|---|
+| Sign-in | Pull or push blob + restore sessions from cloud |
+| Workout finish | Upload to workout_sessions_cloud + debounced blob backup |
+| Set edit in history | Update workout_sessions_cloud doc |
+| Profile save | Blob backup |
+| Units change | Blob backup |
+| Program edit (blur) | Blob backup |
+| Sign-out | Final blob backup |
 
-1. **On Sign-In** - `syncOnSignIn()` reconciles local vs cloud
-2. **On Profile Save** - Immediate backup after saving biometrics
-3. **On Units Change** - Immediate backup after toggling metric/imperial
-4. **On Sign-Out** - Final backup before logout
-5. **On Workout Complete** - Session uploaded to `workout_sessions_cloud` (separate from full backup)
+---
 
-### What Gets Backed Up
+## What the Blob Contains (BACKUP_VERSION 2)
 
-**Full Backup (users/{uid}):**
-- All exercises (built-in + custom)
-- All programs (user-created)
-- All workout sessions
-- All session sets
-- Profile/biometrics data
-- Units preference
+**Included:** `exercises`, `programs`, `program_days`, `program_exercises`
 
-**Separate Collections (not in backup):**
-- Trainer-client relationships (`trainer_clients`)
-- Program templates (`program_templates`)
-- Program assignments (`program_assignments`)
-- Workout sessions cloud (`workout_sessions_cloud`) - separate for trainer visibility
-- Workout feedback (`workout_feedback_cloud`)
+**Excluded:**
+- `workout_sessions` / `session_sets` — restored from `workout_sessions_cloud`
+- Theme preference — device-specific
+- Gemini API key — security, never leaves device
+- Sync markers — device-specific
 
-### What Does NOT Get Backed Up
+---
 
-- Theme preference (device-specific)
-- Gemini API key (security - never leaves device)
-- Sync markers (device-specific)
-- Local-only accounts (no Google sign-in)
+## Firestore Security Rules Summary
+
+- `users/{uid}` — owner read/write only (isUserMatch)
+- `trainer_clients` — trainer or client read/write; `isUserMatch` handles `google-` prefix
+- `workout_sessions_cloud` — client write own; any authenticated read (trainer queries by clientId)
+- `program_templates` — trainer read/write own (isUserMatch on trainerId)
+- `program_assignments` — trainer create/delete; client read + update `lastSyncedAt` only
 
 ---
 
 ## Data Namespacing
 
-**Problem:** Multiple users (including demo) used to share one localStorage dataset.
+All AsyncStorage and localStorage keys are namespaced per user via `activeUser.js`:
 
-**Solution:** Per-user namespacing via `activeUser.js`
-
-**How It Works:**
-```javascript
-// Base key: 'gymmate_sessions'
-// Namespaced: 'gymmate_u_google-abc123_sessions'
-
-nsKey('gymmate_sessions')
-  → 'gymmate_u_{userId}_sessions'
-
-// Before login (no active user): uses base key
-// After login: uses namespaced key
+```
+nsKey('gymmate_sessions') → 'gymmate_u_{userId}_sessions'
 ```
 
-**User IDs:**
-- Google users: `google-{uid}` (e.g., `google-abc123xyz`)
-- Local users: `local-{timestamp}` (e.g., `local-1234567890`)
-- Demo user: `demo-superwoman`
+User ID formats:
+- Google: `google-{firebase-uid}`
+- Local: `local-{timestamp}`
+- Demo: `demo-superwoman`
 
-**Critical:** `setActiveUserId()` must be called BEFORE any database operations.
+`setActiveUserId()` must be called before any database reads.
 
 ---
 
-## Firestore Security Rules
+## Developer Checklist (new features)
 
-**users/{uid}:**
-```
-allow read, write: if request.auth.uid == uid;
-```
-- Users can only read/write their own backup document
-
-**trainer_clients/{relationshipId}:**
-```
-allow read, write: if isTrainer() || isClient();
-```
-- Trainer and client can both read/write the relationship
-
-**workout_sessions_cloud/{sessionId}:**
-```
-allow read, write: if isClientOrTrainer();
-```
-- Client can write their own workouts
-- Trainer can read client workouts
-
-**program_templates/{templateId}:**
-```
-allow read, write: if isTrainer();
-```
-- Only trainers can create/edit templates
-
-**program_assignments/{assignmentId}:**
-```
-allow read: if isClientOrTrainer();
-allow write: if isTrainer();
-```
-- Trainer assigns programs
-- Client can read assigned programs
-
----
-
-## Troubleshooting
-
-### Profile Data Not Syncing
-
-**Symptom:** Weight/height missing on new device  
-**Cause:** Profile save didn't trigger cloud backup  
-**Solution:** Ensure `backupToCloud()` is called in `ProfileScreen.handleSave()`
-
-### Records Disappearing After Logout
-
-**Symptom:** Personal records missing after re-login  
-**Cause:** `activeUserId` not cleared on logout, stale namespace  
-**Solution:** Call `setActiveUserId(null)` in logout handler
-
-### Workouts Not Visible to Trainer
-
-**Symptom:** Trainer sees 0 workouts for client  
-**Cause:** Workout not uploaded to `workout_sessions_cloud`  
-**Solution:** Ensure `workoutSync.uploadWorkoutSession()` called after `completeSession()`
-
-### Data From Other User Appearing
-
-**Symptom:** Seeing workouts/programs from different user  
-**Cause:** `setActiveUserId()` not called early enough  
-**Solution:** Call `setActiveUserId()` BEFORE any database reads (App.js init, login)
-
----
-
-## Developer Checklist
-
-When adding new features that store data:
-
-- [ ] Decide: Local-only or cloud-backed?
-- [ ] If local: Use `nsKey()` for storage keys
-- [ ] If cloud: Add to Firestore with proper security rules
-- [ ] If should sync: Add to `exportAllData()` / `importAllData()`
-- [ ] If user-editable: Trigger `backupToCloud()` after save
-- [ ] Update this document with data flow
-- [ ] Update feature matrix if Google-only feature
+- [ ] Decide: local-only or cloud-backed?
+- [ ] If cloud: add Firestore security rule
+- [ ] If in blob: add table to `BACKUP_TABLES` in `database.js`
+- [ ] If user-editable: trigger `backupToCloud()` after save
+- [ ] Timestamps: use `datetime('now', 'localtime')` — never bare `datetime('now')`
+- [ ] Update this document
 
 ---
 
 ## Related Files
 
-- `src/services/cloudSync.js` - Backup/restore logic
-- `src/services/activeUser.js` - Data namespacing
-- `src/services/database.js` - Local SQLite operations
-- `src/services/database.web.js` - Web localStorage operations
-- `src/services/workoutSync.js` - Workout cloud sync for trainers
-- `src/services/auth.js` - Authentication & user management
-- `firestore.rules` - Firestore security rules
-
----
-
-**This document should be updated whenever:**
-- New data storage is added
-- Sync behavior changes
-- New Google-only features are added
-- Backup schedule changes
-- Data flow changes
+- `src/services/cloudSync.js` — blob backup/restore
+- `src/services/workoutSync.js` — session cloud sync + `restoreSessionsFromCloud`
+- `src/services/activeUser.js` — data namespacing
+- `src/services/database.js` — local SQLite operations (schema v2)
+- `src/services/database.web.js` — web localStorage operations
+- `src/services/trainerClient.js` — PT↔client connections (multi-trainer)
+- `src/services/programTemplates.js` — template/assignment Firestore ops
+- `src/services/auth.js` — authentication
+- `firestore.rules` — security rules
