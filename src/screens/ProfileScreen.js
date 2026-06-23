@@ -35,7 +35,7 @@ export default function ProfileScreen({ navigation, onLogout }) {
   const [form, setForm] = useState(EMPTY_PROFILE);
   const [saved, setSaved] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-  const [trainer, setTrainer] = useState(null);
+  const [trainers, setTrainers] = useState([]);
   const [loadingTrainer, setLoadingTrainer] = useState(true);
 
   useEffect(() => {
@@ -55,8 +55,8 @@ export default function ProfileScreen({ navigation, onLogout }) {
         return;
       }
 
-      const trainerConnection = await trainerClient.getMyTrainer(user.id);
-      setTrainer(trainerConnection);
+      const trainerConnections = await trainerClient.getMyTrainers(user.id);
+      setTrainers(trainerConnections);
     } catch (error) {
       console.error('Failed to load trainer:', error);
     } finally {
@@ -64,19 +64,16 @@ export default function ProfileScreen({ navigation, onLogout }) {
     }
   }
 
-  async function handleDisconnectTrainer() {
-    if (!trainer) return;
-
+  function handleDisconnectTrainer(trainerConnection) {
     confirmAction({
       title: 'Disconnect Trainer',
-      message: `Disconnect from ${trainer.trainerName}? They will no longer see your workouts or progress.`,
+      message: `Disconnect from ${trainerConnection.trainerName}? They will no longer see your workouts or progress.`,
       confirmText: 'Disconnect',
       destructive: true,
       onConfirm: async () => {
         try {
-          await trainerClient.revokeConnection(trainer.relationshipId, currentUser.id);
-          setTrainer(null);
-          alert('Disconnected from trainer');
+          await trainerClient.revokeConnection(trainerConnection.relationshipId, currentUser.id);
+          setTrainers((prev) => prev.filter((t) => t.relationshipId !== trainerConnection.relationshipId));
         } catch (error) {
           console.error('Failed to disconnect:', error);
           alert('Failed to disconnect');
@@ -268,27 +265,27 @@ export default function ProfileScreen({ navigation, onLogout }) {
           {saved ? '✓ Profile Saved!' : 'Save Profile'}
         </Button>
 
-        {/* Trainer Connection */}
-        <Text style={[styles.sectionHeader, { color: theme.textMuted }]}>Trainer Connection</Text>
+        {/* Trainer Connections */}
+        <Text style={[styles.sectionHeader, { color: theme.textMuted }]}>Trainer Connections</Text>
         <Card>
-          {!loadingTrainer && trainer ? (
+          {!loadingTrainer && trainers.length > 0 ? (
             <>
-              <View style={styles.trainerRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.trainerLabel, { color: theme.textSecondary }]}>
-                    Connected to:
-                  </Text>
-                  <Text style={[styles.trainerName, { color: theme.text }]}>
-                    {trainer.trainerName}
-                  </Text>
+              {trainers.map((t) => (
+                <View key={t.relationshipId} style={[styles.trainerRow, { marginBottom: spacing[2] }]}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.trainerName, { color: theme.text }]}>{t.trainerName}</Text>
+                  </View>
+                  <Ionicons name="checkmark-circle" size={20} color={theme.accent} style={{ marginRight: spacing[2] }} />
+                  <TouchableOpacity onPress={() => handleDisconnectTrainer(t)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Ionicons name="close-circle-outline" size={20} color={theme.textMuted} />
+                  </TouchableOpacity>
                 </View>
-                <Ionicons name="checkmark-circle" size={24} color={theme.accent} />
-              </View>
+              ))}
               <Button
-                title="Disconnect"
+                title="Connect Another Trainer"
                 variant="secondary"
-                onPress={handleDisconnectTrainer}
-                style={{ marginTop: spacing[3] }}
+                onPress={() => navigation.navigate('ConnectTrainer')}
+                style={{ marginTop: spacing[2] }}
               />
             </>
           ) : (

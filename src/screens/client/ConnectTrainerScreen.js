@@ -18,7 +18,7 @@ export default function ConnectTrainerScreen({ navigation }) {
   const [trainerInfo, setTrainerInfo] = useState(null);
   const [loading, setLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-  const [existingTrainer, setExistingTrainer] = useState(null);
+  const [existingTrainers, setExistingTrainers] = useState([]);
 
   React.useEffect(() => {
     loadUser();
@@ -27,23 +27,12 @@ export default function ConnectTrainerScreen({ navigation }) {
   async function loadUser() {
     const user = await auth.getCurrentUser();
     setCurrentUser(user);
-
-    // Check if user already has a trainer connection
     if (user) {
       try {
-        const trainer = await trainerClient.getMyTrainer(user.id);
-        if (trainer) {
-          setExistingTrainer(trainer);
-          // Navigate back immediately if already connected
-          if (Platform.OS === 'web') {
-            alert(`You're already connected to ${trainer.trainerName}`);
-          } else {
-            Alert.alert('Already Connected', `You're already connected to ${trainer.trainerName}`);
-          }
-          navigation.goBack();
-        }
+        const trainers = await trainerClient.getMyTrainers(user.id);
+        setExistingTrainers(trainers);
       } catch (error) {
-        console.log('[ConnectTrainerScreen] No existing trainer connection');
+        console.log('[ConnectTrainerScreen] Could not load existing trainers');
       }
     }
   }
@@ -149,6 +138,26 @@ export default function ConnectTrainerScreen({ navigation }) {
             </Text>
           </View>
         </Card>
+
+        {/* Existing trainer connections */}
+        {existingTrainers.length > 0 && (
+          <Card style={[styles.infoCard, { marginBottom: spacing[4] }]}>
+            <Ionicons name="people-outline" size={24} color={theme.accent} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.infoTitle, { color: theme.text }]}>
+                Already connected to {existingTrainers.length} trainer{existingTrainers.length !== 1 ? 's' : ''}
+              </Text>
+              {existingTrainers.map((t) => (
+                <Text key={t.relationshipId} style={[styles.infoText, { color: theme.textSecondary }]}>
+                  • {t.trainerName}
+                </Text>
+              ))}
+              <Text style={[styles.infoText, { color: theme.textSecondary, marginTop: spacing[1] }]}>
+                You can connect to additional trainers below.
+              </Text>
+            </View>
+          </Card>
+        )}
 
         {/* Invite Code Input */}
         <Text style={[styles.label, { color: theme.text }]}>Enter Invite Code</Text>

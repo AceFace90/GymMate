@@ -105,7 +105,7 @@ export default function ProgramsScreen({ navigation }) {
         // Assignment already contains programData with name, description, days, exercises
         const programData = assignment.programData || {};
         const programName = programData.name || 'Trainer Program';
-        const programDesc = programData.description || 'Assigned by your trainer';
+        const programDesc = `__trainer:${assignment.trainerName || 'Your trainer'}`;
         const daysPerWeek = programData.daysPerWeek || programData.days_per_week || 3;
 
         let programId;
@@ -304,6 +304,10 @@ export default function ProgramsScreen({ navigation }) {
   const renderProgram = ({ item }) => {
     const isActive = Boolean(item.is_active);
     const isAssigned = Boolean(item.linked_template_id);
+    const trainerName = item.description?.startsWith('__trainer:')
+      ? item.description.slice('__trainer:'.length)
+      : null;
+    const displayDesc = trainerName ? null : item.description;
     return (
     <TouchableOpacity onPress={() => navigation.navigate('ProgramDetail', { programId: item.id })} activeOpacity={0.8}>
       <Card style={[styles.programCard, isActive && { borderColor: theme.accent }]}>
@@ -315,8 +319,10 @@ export default function ProgramsScreen({ navigation }) {
               </View>
             )}
             <Text style={[styles.programName, { color: theme.text }]}>{item.name}</Text>
-            {item.description ? (
-              <Text style={[styles.programDesc, { color: theme.textSecondary }]} numberOfLines={2}>{item.description}</Text>
+            {trainerName ? (
+              <Text style={[styles.programDesc, { color: theme.accent }]}>From: {trainerName}</Text>
+            ) : displayDesc ? (
+              <Text style={[styles.programDesc, { color: theme.textSecondary }]} numberOfLines={2}>{displayDesc}</Text>
             ) : null}
             <Text style={[styles.programMeta, { color: theme.textMuted }]}>{item.days_per_week} days/week</Text>
           </View>

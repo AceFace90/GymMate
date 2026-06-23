@@ -105,23 +105,22 @@ export async function getMyClients(trainerId) {
   return snapshot.docs.map(doc => ({ relationshipId: doc.id, ...doc.data() }));
 }
 
-// Get trainer for a client
-export async function getMyTrainer(clientId) {
+// Get all trainers for a client (returns array — supports multiple trainers)
+export async function getMyTrainers(clientId) {
   const q = query(
     collection(firestore, 'trainer_clients'),
     where('clientId', '==', clientId),
     where('clientStatus', '==', 'accepted'),
     where('trainerStatus', '==', 'accepted')
   );
-
   const snapshot = await getDocs(q);
+  return snapshot.docs.map(d => ({ relationshipId: d.id, ...d.data() }));
+}
 
-  if (snapshot.empty) {
-    return null;
-  }
-
-  const doc = snapshot.docs[0];
-  return { relationshipId: doc.id, ...doc.data() };
+// Convenience: get first trainer (backwards compat for callers that only need one)
+export async function getMyTrainer(clientId) {
+  const trainers = await getMyTrainers(clientId);
+  return trainers[0] ?? null;
 }
 
 // Either party can revoke connection
