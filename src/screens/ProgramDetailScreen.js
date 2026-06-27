@@ -42,6 +42,12 @@ export default function ProgramDetailScreen({ route, navigation }) {
   // Select day to start workout
   const [showPickDay, setShowPickDay] = useState(false);
 
+  // Edit sets/reps modal
+  const [showEditExercise, setShowEditExercise] = useState(false);
+  const [editingEx, setEditingEx] = useState(null);
+  const [editSets, setEditSets] = useState(3);
+  const [editReps, setEditReps] = useState('8-12');
+
   const loadProgram = async () => {
     setLoading(true);
     const [data, user] = await Promise.all([db.getProgramById(programId), auth.getCurrentUser()]);
@@ -114,6 +120,23 @@ export default function ProgramDetailScreen({ route, navigation }) {
       days: prev.days.map((d) => (d.id === day.id ? { ...d, exercises: list } : d)),
     }));
     await db.reorderDayExercises(day.id, list.map((e) => e.id));
+  };
+
+  const openEditExercise = (ex) => {
+    setEditingEx(ex);
+    setEditSets(ex.sets ?? 3);
+    setEditReps(ex.reps ?? '8-12');
+    setShowEditExercise(true);
+  };
+
+  const handleSaveExercise = async () => {
+    if (!editingEx) return;
+    const sets = Math.max(1, Math.min(99, Number(editSets) || 1));
+    const reps = editReps.trim() || '8-12';
+    await db.updateProgramExercise(editingEx.id, { sets, reps });
+    setShowEditExercise(false);
+    setEditingEx(null);
+    loadProgram();
   };
 
   const handleRemoveExercise = (peId, exerciseName) => {
@@ -270,7 +293,14 @@ export default function ProgramDetailScreen({ route, navigation }) {
                   <Text style={[styles.exName, { color: theme.text }]}>{ex.exercise_name}</Text>
                   <View style={styles.exMeta}>
                     <MuscleTag group={ex.muscle_group} />
-                    <Text style={[styles.exSets, { color: theme.textSecondary }]}> {ex.sets} × {ex.reps}</Text>
+                    {!isAssigned ? (
+                      <TouchableOpacity onPress={() => openEditExercise(ex)} style={styles.exSetsBtn}>
+                        <Text style={[styles.exSets, { color: theme.accent }]}> {ex.sets} × {ex.reps}</Text>
+                        <Ionicons name="pencil" size={11} color={theme.accent} style={{ marginLeft: 2, marginTop: 1 }} />
+                      </TouchableOpacity>
+                    ) : (
+                      <Text style={[styles.exSets, { color: theme.textSecondary }]}> {ex.sets} × {ex.reps}</Text>
+                    )}
                   </View>
                 </View>
                 {!isAssigned && (
@@ -405,6 +435,48 @@ export default function ProgramDetailScreen({ route, navigation }) {
         </SafeAreaView>
       </Modal>
 
+      {/* Edit Sets/Reps Modal */}
+      <Modal visible={showEditExercise} animationType="slide" presentationStyle="formSheet">
+        <SafeAreaView style={[styles.modal, { backgroundColor: theme.bg }]}>
+          <View style={styles.modalHeader}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>{editingEx?.exercise_name}</Text>
+            <TouchableOpacity onPress={() => setShowEditExercise(false)}>
+              <Ionicons name="close" size={24} color={theme.textSecondary} />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.modalContent}>
+            <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Sets</Text>
+            <View style={styles.stepperRow}>
+              <TouchableOpacity
+                onPress={() => setEditSets((s) => Math.max(1, s - 1))}
+                style={[styles.stepperBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
+              >
+                <Ionicons name="remove" size={20} color={theme.text} />
+              </TouchableOpacity>
+              <Text style={[styles.stepperValue, { color: theme.text }]}>{editSets}</Text>
+              <TouchableOpacity
+                onPress={() => setEditSets((s) => Math.min(99, s + 1))}
+                style={[styles.stepperBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
+              >
+                <Ionicons name="add" size={20} color={theme.text} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.fieldLabel, { color: theme.textSecondary, marginTop: spacing[4] }]}>Reps / Duration</Text>
+            <TextInput
+              value={editReps}
+              onChangeText={setEditReps}
+              placeholder="e.g. 8-12 or 30-60 sec"
+              placeholderTextColor={theme.textMuted}
+              style={[styles.textInput, { backgroundColor: theme.input, borderColor: theme.border, color: theme.text }]}
+              autoCapitalize="none"
+            />
+
+            <Button title="Save" onPress={handleSaveExercise} style={{ marginTop: spacing[5] }} />
+          </View>
+        </SafeAreaView>
+      </Modal>
+
       {/* Pick Day to Start Modal */}
       <Modal visible={showPickDay} animationType="slide" presentationStyle="formSheet">
         <SafeAreaView style={[styles.modal, { backgroundColor: theme.bg }]}>
@@ -455,6 +527,10 @@ const styles = StyleSheet.create({
   exName: { fontSize: typography.sizes.base, fontWeight: '500' },
   exMeta: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
   exSets: { fontSize: typography.sizes.sm, marginLeft: spacing[1] },
+  exSetsBtn: { flexDirection: 'row', alignItems: 'center' },
+  stepperRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], marginTop: spacing[1] },
+  stepperBtn: { width: 44, height: 44, borderRadius: radius.md, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  stepperValue: { fontSize: typography.sizes['2xl'], fontWeight: '700', minWidth: 40, textAlign: 'center' },
   addExerciseBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing[1], paddingTop: spacing[3], marginTop: spacing[2], borderTopWidth: 1 },
   addExerciseText: { fontSize: typography.sizes.sm, fontWeight: '600' },
   addDayBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing[2], padding: spacing[4], borderRadius: radius.lg, borderWidth: 1, borderStyle: 'dashed', marginTop: spacing[2] },
