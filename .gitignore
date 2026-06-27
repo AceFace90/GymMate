@@ -1,6 +1,7 @@
 # Claude working notes (local only)
 memory/
 HANDOFF.md
+.claude/
 
 # Dependencies
 node_modules/
