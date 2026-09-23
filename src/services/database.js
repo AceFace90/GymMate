@@ -283,6 +283,16 @@ export async function updateProgram(id, { name, description, daysPerWeek, isActi
 
 export async function deleteProgram(id) {
   const database = await getDb();
+  // Detach logged sessions before deleting: workout_sessions.program_id /
+  // program_day_id have no ON DELETE rule, so a plain delete throws a foreign-key
+  // constraint once the program has any logged workouts. Nulling the refs
+  // preserves the workout history (matches web, where the id simply dangles).
+  await database.runAsync(
+    `UPDATE workout_sessions SET program_day_id = NULL
+     WHERE program_day_id IN (SELECT id FROM program_days WHERE program_id = ?)`,
+    [id]
+  );
+  await database.runAsync('UPDATE workout_sessions SET program_id = NULL WHERE program_id = ?', [id]);
   await database.runAsync('DELETE FROM programs WHERE id = ?', [id]);
 }
 

@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getGeminiKey, setGeminiKey as persistGeminiKey, clearGeminiKey } from '../services/geminiKey';
 
 import { useTheme } from '../hooks/useTheme';
 import { useUnits } from '../hooks/useUnits';
@@ -18,12 +18,6 @@ const THEME_OPTIONS = [
   { key: 'light',  label: 'Light',  icon: 'sunny-outline' },
   { key: 'dark',   label: 'Dark',   icon: 'moon-outline' },
 ];
-
-export const GEMINI_KEY_STORAGE = 'gymmate_gemini_api_key';
-
-export async function getGeminiKey() {
-  return AsyncStorage.getItem(GEMINI_KEY_STORAGE);
-}
 
 function Row({ label, value, theme, onPress }) {
   const content = (
@@ -62,7 +56,7 @@ export default function SettingsScreen() {
       confirmAction({ title: 'No key entered', message: 'Paste your Gemini API key to enable AI features.', confirmText: 'OK' });
       return;
     }
-    await AsyncStorage.setItem(GEMINI_KEY_STORAGE, trimmed);
+    await persistGeminiKey(trimmed);
     setKeySaved(true);
     setTimeout(() => setKeySaved(false), 2000);
   }
@@ -74,7 +68,7 @@ export default function SettingsScreen() {
       confirmText: 'Remove',
       destructive: true,
       onConfirm: async () => {
-        await AsyncStorage.removeItem(GEMINI_KEY_STORAGE);
+        await clearGeminiKey();
         setGeminiKey('');
       },
     });

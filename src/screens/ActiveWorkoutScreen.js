@@ -24,7 +24,7 @@ import Button from '../components/Button';
 import MuscleTag from '../components/MuscleTag';
 import ExerciseScannerModal from '../components/ExerciseScannerModal';
 import { confirmAction } from '../utils/confirm';
-import { getGeminiKey } from './SettingsScreen';
+import { getGeminiKey } from '../services/geminiKey';
 
 // Format seconds as M:SS
 function formatTime(secs) {

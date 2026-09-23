@@ -10,7 +10,7 @@ import { useTheme } from '../hooks/useTheme';
 import { spacing, typography, radius } from '../theme';
 import * as db from '../services/database';
 import { identifyExercise } from '../services/gemini';
-import { getGeminiKey } from '../screens/SettingsScreen';
+import { getGeminiKey } from '../services/geminiKey';
 import { candidatesFromVision } from '../utils/matchExercise';
 import MuscleTag from './MuscleTag';
 import Button from './Button';

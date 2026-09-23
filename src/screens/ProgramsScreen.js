@@ -13,7 +13,7 @@ import * as db from '../services/database';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { generateProgram } from '../services/gemini';
-import { getGeminiKey } from './SettingsScreen';
+import { getGeminiKey } from '../services/geminiKey';
 import { confirmAction } from '../utils/confirm';
 import { bestMatch } from '../utils/matchExercise';
 import * as programTemplates from '../services/programTemplates';

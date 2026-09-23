@@ -1,4 +1,4 @@
-import { getGeminiKey } from '../screens/SettingsScreen';
+import { getGeminiKey } from './geminiKey';
 
 // gemini-1.5-flash was retired by Google; 2.5-flash is the current GA multimodal model.
 const GEMINI_MODEL = 'gemini-2.5-flash';
