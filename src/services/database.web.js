@@ -2,6 +2,7 @@
 // Metro resolves this file automatically on web (database.web.js > database.js)
 
 import { nsKey } from './activeUser';
+import { BACKUP_VERSION, CANONICAL_TABLES, normalizeToV3 } from './backupFormat';
 
 // ─── Storage helpers ─────────────────────────────────────────────────────────
 // Every base key below is namespaced per active user via nsKey() so users (and
@@ -71,32 +72,61 @@ export function flushBackup() {
 // Serialize the whole local dataset for cloud backup, and restore it wholesale.
 // Used by cloudSync.js. Schema version lets us migrate restored payloads later.
 
-const BACKUP_VERSION = 1;
+// Maps canonical (v3, snake_case) table keys to this build's KEYS keys (camelCase).
+const CANONICAL_TO_WEBKEY = {
+  exercises: 'exercises',
+  programs: 'programs',
+  program_days: 'programDays',
+  program_exercises: 'programExercises',
+};
 
 export async function exportAllData() {
+  // v3: library tables only, under canonical snake_case keys. Sessions come from
+  // workout_sessions_cloud; biometrics/units travel in cloudSync's asyncStorage.
   const data = {};
-  for (const key of Object.keys(KEYS)) {
-    data[key] = (() => { try { return JSON.parse(localStorage.getItem(nsKey(KEYS[key]))) ?? null; } catch { return null; } })();
+  for (const table of CANONICAL_TABLES) {
+    data[table] = getTable(CANONICAL_TO_WEBKEY[table]);
   }
-  // Biometrics live outside KEYS (read directly by Home/Biometrics screens) but
-  // belong in the per-user backup too.
-  data.biometrics = (() => { try { return JSON.parse(localStorage.getItem(nsKey('gymmate_biometrics'))) ?? null; } catch { return null; } })();
   return { version: BACKUP_VERSION, data };
 }
 
+// Recompute per-table id counters from the rows currently stored, so nextId()
+// can't hand out an id that collides with a restored row. Replaces relying on a
+// `counters` table inside the blob (dropped in v3).
+function recomputeCounters() {
+  const counters = {};
+  for (const webKey of ['exercises', 'programs', 'programDays', 'programExercises', 'sessions', 'sessionSets']) {
+    counters[webKey] = getTable(webKey).reduce((max, r) => (typeof r.id === 'number' && r.id > max ? r.id : max), 0);
+  }
+  localStorage.setItem(nsKey(KEYS.counters), JSON.stringify(counters));
+}
+
 export async function importAllData(payload) {
-  if (!payload || !payload.data) return;
+  const norm = normalizeToV3(payload);
+  if (!norm.data) return;
   // Restoring FROM the cloud must not trigger a backup BACK to it.
   backupSuspended = true;
   try {
-    for (const key of Object.keys(KEYS)) {
-      if (payload.data[key] != null) {
-        localStorage.setItem(nsKey(KEYS[key]), JSON.stringify(payload.data[key]));
+    for (const table of CANONICAL_TABLES) {
+      if (Array.isArray(norm.data[table])) {
+        setTable(CANONICAL_TO_WEBKEY[table], norm.data[table]);
       }
     }
-    if (payload.data.biometrics != null) {
-      localStorage.setItem(nsKey('gymmate_biometrics'), JSON.stringify(payload.data.biometrics));
+    // Transition safety net: a legacy v1 web blob carried sessions inline. They
+    // are normally restored from workout_sessions_cloud, but preserve any inline
+    // copy on the one-time v1→v3 migration so pre-cloud-collection sessions
+    // aren't lost. Going forward the written blob (v3) no longer includes them.
+    if (payload?.version === 1) {
+      if (Array.isArray(payload.data?.sessions)) setTable('sessions', payload.data.sessions);
+      if (Array.isArray(payload.data?.sessionSets)) setTable('sessionSets', payload.data.sessionSets);
+      // Very old v1 blobs stored biometrics inline (before cloudSync backed them
+      // up via asyncStorage). cloudSync's asyncStorage restore runs after this and
+      // overwrites when present, so this only fills the pre-asyncStorage gap.
+      if (payload.data?.biometrics != null) {
+        localStorage.setItem(nsKey('gymmate_biometrics'), JSON.stringify(payload.data.biometrics));
+      }
     }
+    recomputeCounters();
   } finally {
     backupSuspended = false;
   }

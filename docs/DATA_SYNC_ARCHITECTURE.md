@@ -54,7 +54,7 @@ GymMate uses a **local-first architecture** with optional cloud backup. All data
 **`users/{uid}`** — Blob backup: programs, exercises, biometrics, units preference.
 Deliberately **excludes** workout sessions and sets (those live in `workout_sessions_cloud`).
 - Max useful size: ~50–200 KB (programs + exercises only — static after initial seeding)
-- Backup version: 2
+- Backup version: 3 (unified web+native format; snake_case keys, library-only — see `src/services/backupFormat.js`)
 
 **`workout_sessions_cloud/{sessionId}`** — One document per completed workout.
 - Written on workout completion and on set edits from history

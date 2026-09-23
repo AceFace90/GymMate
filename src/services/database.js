@@ -1,4 +1,5 @@
 import * as SQLite from 'expo-sqlite';
+import { BACKUP_VERSION, CANONICAL_TABLES, normalizeToV3 } from './backupFormat';
 
 let db = null;
 
@@ -144,28 +145,25 @@ export async function initDatabase(builtinExercises) {
 // ─── Backup / restore ────────────────────────────────────────────────────────
 // Mirror of the web DB's export/import for native (expo-sqlite). Used by cloudSync.js.
 
-// v2 — sessions removed from blob; restored from workout_sessions_cloud instead
-const BACKUP_VERSION = 2;
-const BACKUP_TABLES = [
-  'exercises', 'programs', 'program_days', 'program_exercises',
-];
-
 export async function exportAllData() {
   const database = await getDb();
   const data = {};
-  for (const table of BACKUP_TABLES) {
+  for (const table of CANONICAL_TABLES) {
     data[table] = await database.getAllAsync(`SELECT * FROM ${table}`);
   }
   return { version: BACKUP_VERSION, data };
 }
 
 export async function importAllData(payload) {
-  if (!payload || !payload.data) return;
+  // Normalize legacy blobs (v1 web camelCase / v2 native) to the canonical v3
+  // shape so a backup made on either platform restores here.
+  const norm = normalizeToV3(payload);
+  if (!norm.data) return;
   const database = await getDb();
   await database.execAsync('PRAGMA foreign_keys = OFF;');
   try {
-    for (const table of BACKUP_TABLES) {
-      const rows = payload.data[table];
+    for (const table of CANONICAL_TABLES) {
+      const rows = norm.data[table];
       if (!Array.isArray(rows)) continue;
       await database.execAsync(`DELETE FROM ${table}`);
       for (const row of rows) {
