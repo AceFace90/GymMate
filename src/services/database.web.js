@@ -526,15 +526,15 @@ export async function logSet({ sessionId, exerciseId, exerciseName, setNumber, w
   // not here — a later set in the same session may turn out to be the heaviest.
   const allSets = getTable('sessionSets');
   const id = nextId('sessionSets');
-  allSets.push({ id, session_id: sessionId, exercise_id: exerciseId, exercise_name: exerciseName, set_number: setNumber, weight_kg: weightKg || null, reps: reps || null, rpe: rpe || null, completed: true, is_pr: 0, logged_at: now() });
+  allSets.push({ id, session_id: sessionId, exercise_id: exerciseId, exercise_name: exerciseName, set_number: setNumber, weight_kg: weightKg || null, reps: reps || null, rpe: rpe || null, completed: 1, is_pr: 0, logged_at: now() });
   setTable('sessionSets', allSets);
   return { id };
 }
 
 // Restore a set from cloud backup. Idempotent: skips if a set with the same
 // (session_id, exercise_name, set_number) already exists, otherwise inserts.
-// Mirrors the native restoreSet contract; normalizes completed to a boolean
-// since web stores booleans while the cloud/native side passes 1/0.
+// Mirrors the native restoreSet contract; normalizes completed to integer 1/0
+// (the shared representation used by native and the cloud blob).
 export async function restoreSet({ session_id, exercise_id, exercise_name, set_number, weight_kg, reps, rpe, completed, is_pr }) {
   const rows = getTable('sessionSets');
   const exists = rows.some(
@@ -550,7 +550,7 @@ export async function restoreSet({ session_id, exercise_id, exercise_name, set_n
     weight_kg: weight_kg ?? null,
     reps: reps ?? null,
     rpe: rpe ?? null,
-    completed: !!completed,
+    completed: completed ? 1 : 0,
     is_pr: is_pr ? 1 : 0,
     logged_at: now(),
   });
@@ -560,7 +560,7 @@ export async function restoreSet({ session_id, exercise_id, exercise_name, set_n
 export async function updateSet(id, { weightKg, reps, rpe, completed }) {
   const rows = getTable('sessionSets');
   const s = rows.find((s) => s.id === id);
-  if (s) { s.weight_kg = weightKg || null; s.reps = reps || null; s.rpe = rpe || null; s.completed = !!completed; }
+  if (s) { s.weight_kg = weightKg || null; s.reps = reps || null; s.rpe = rpe || null; s.completed = completed ? 1 : 0; }
   setTable('sessionSets', rows);
 }
 
@@ -604,19 +604,25 @@ export async function getExerciseHistory(exerciseId, limit = 30) {
 
 export async function getPersonalRecords() {
   const allSets = getTable('sessionSets');
-  // Check for completed === 1 (stored as number) or completed === true
-  const sets = allSets.filter((ss) => (ss.completed === 1 || ss.completed === true) && ss.weight_kg);
+  const sets = allSets.filter((ss) => ss.completed && ss.weight_kg);
   const exercises = getTable('exercises');
   const sessions = getTable('sessions');
   const sessionMap = Object.fromEntries(sessions.map((s) => [s.id, s]));
 
   // Best weight per exercise. exercise_id is stored as a string on sets but the
-  // exercises table keys by number, so coerce before indexing.
+  // exercises table keys by number, so coerce before indexing. On an equal-weight
+  // tie the earliest achieved_at wins, so the record is deterministic and matches
+  // native (which tie-breaks by MIN(started_at)).
   const best = {};
   for (const ss of sets) {
     const exerciseId = parseInt(ss.exercise_id, 10);
-    if (!best[exerciseId] || ss.weight_kg > best[exerciseId].weight_kg) {
+    const cur = best[exerciseId];
+    if (!cur || ss.weight_kg > cur.weight_kg) {
       best[exerciseId] = ss;
+    } else if (ss.weight_kg === cur.weight_kg) {
+      const a = sessionMap[ss.session_id]?.started_at || '';
+      const b = sessionMap[cur.session_id]?.started_at || '';
+      if (a && (!b || a < b)) best[exerciseId] = ss;
     }
   }
 
@@ -694,10 +700,15 @@ export async function getMuscleGroupVolume(daysBack = 30) {
 // that has a completed session — { date: 'YYYY-MM-DD', sessions, total_sets, total_volume }.
 // The dashboard fills in the zero days client-side.
 export async function getDailyActivity(daysBack = 14) {
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - daysBack);
+  // Compare on calendar date (not an exact instant N days ago) to match native's
+  // DATE(started_at) >= DATE('now','localtime','-N days'). Using an exact-time
+  // cutoff would include/exclude a boundary-day session depending on time of day.
+  const c = new Date();
+  c.setDate(c.getDate() - daysBack);
+  const p = (n) => String(n).padStart(2, '0');
+  const cutoffDate = `${c.getFullYear()}-${p(c.getMonth() + 1)}-${p(c.getDate())}`;
 
-  const sessions = getTable('sessions').filter((s) => s.completed_at && new Date(s.started_at) >= cutoff);
+  const sessions = getTable('sessions').filter((s) => s.completed_at && dateStr(s.started_at) >= cutoffDate);
   const sessionMap = Object.fromEntries(sessions.map((s) => [s.id, s]));
   const sets = getTable('sessionSets').filter((ss) => ss.completed && sessionMap[ss.session_id]);
 

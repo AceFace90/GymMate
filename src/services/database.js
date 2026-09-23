@@ -573,7 +573,10 @@ export async function getPersonalRecords() {
          ss.exercise_id,
          ss.weight_kg as best_weight,
          ss.reps as reps_at_best,
-         ws.started_at as achieved_at
+         -- MIN() makes the tie-break deterministic: among equal-weight PR sets
+         -- the earliest is chosen, and SQLite's min/max bare-column rule pulls
+         -- reps_at_best from that same row. Matches web's earliest-achieved tie-break.
+         MIN(ws.started_at) as achieved_at
        FROM session_sets ss
        JOIN workout_sessions ws ON ws.id = ss.session_id
        WHERE ss.completed = 1
