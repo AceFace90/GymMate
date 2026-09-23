@@ -180,35 +180,36 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
   };
 
   const updateSet = async (exerciseId, setIndex, field, value, exercise) => {
+    const currentSet = sets[exerciseId]?.[setIndex];
+    if (!currentSet) return;
+
+    // Editing an already-completed set: uncomplete it and drop its logged row.
+    if (currentSet.completed) {
+      setSets((prev) => {
+        const updated = [...(prev[exerciseId] || [])];
+        updated[setIndex] = { ...updated[setIndex], [field]: value, completed: false, isPR: false, dbId: null };
+        return { ...prev, [exerciseId]: updated };
+      });
+      if (currentSet.dbId) await db.deleteSet(currentSet.dbId);
+      return;
+    }
+
+    // Editing an incomplete set: apply the change, then auto-complete once both
+    // weight and reps are present. completeSet is a side effect kept OUT of the
+    // state updater — a setTimeout inside the updater double-fired under React
+    // StrictMode and raced the delete path. completeSet takes the new set data
+    // directly, so it doesn't depend on the setSets above having committed.
+    const updatedSet = { ...currentSet, [field]: value };
     setSets((prev) => {
       const updated = [...(prev[exerciseId] || [])];
-      const currentSet = updated[setIndex];
-
-      // If set is completed and user is editing, uncomplete it first
-      if (currentSet.completed) {
-        // We'll uncomplete it synchronously below
-        updated[setIndex] = { ...currentSet, [field]: value, completed: false, isPR: false, dbId: null };
-      } else {
-        const updatedSet = { ...currentSet, [field]: value };
-        updated[setIndex] = updatedSet;
-
-        // Auto-complete if both fields have values and not already completed
-        const hasWeight = updatedSet.weight && updatedSet.weight.trim() !== '';
-        const hasReps = updatedSet.reps && updatedSet.reps.trim() !== '';
-
-        if (hasWeight && hasReps) {
-          // Pass updatedSet directly to avoid reading stale state in completeSet
-          setTimeout(() => completeSet(exercise, setIndex, updatedSet), 100);
-        }
-      }
-
+      updated[setIndex] = updatedSet;
       return { ...prev, [exerciseId]: updated };
     });
 
-    // If set was completed, delete from database
-    const currentSet = sets[exerciseId]?.[setIndex];
-    if (currentSet?.completed && currentSet?.dbId) {
-      await db.deleteSet(currentSet.dbId);
+    const hasWeight = updatedSet.weight && updatedSet.weight.trim() !== '';
+    const hasReps = updatedSet.reps && updatedSet.reps.trim() !== '';
+    if (hasWeight && hasReps) {
+      await completeSet(exercise, setIndex, updatedSet);
     }
   };
 

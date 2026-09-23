@@ -8,9 +8,14 @@ async function callGemini(parts) {
   const key = await getGeminiKey();
   if (!key) throw new Error('NO_KEY');
 
-  const res = await fetch(`${GEMINI_URL}?key=${key}`, {
+  // Pass the key via the x-goog-api-key header rather than a ?key= query param
+  // so it doesn't leak into URLs, proxy logs, or browser history.
+  const res = await fetch(GEMINI_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': key,
+    },
     body: JSON.stringify({ contents: [{ parts }] }),
   });
 
