@@ -237,10 +237,8 @@ function repairOrphanedSets(exercisesByName) {
 
 export async function getExercises({ muscleGroup, category, search } = {}) {
   let rows = getTable('exercises');
-  console.log('[DB] getExercises: total exercises:', rows.length, 'filter:', muscleGroup || 'none');
   if (muscleGroup) {
     rows = rows.filter((e) => e.muscle_group === muscleGroup);
-    console.log('[DB] After muscle group filter:', rows.length, 'exercises');
   }
   if (category)    rows = rows.filter((e) => e.category === category);
   if (search)      rows = rows.filter((e) => e.name.toLowerCase().includes(search.toLowerCase()));
@@ -270,7 +268,11 @@ export async function createCustomExercise({ name, muscleGroup, category, instru
 // ─── Programs ─────────────────────────────────────────────────────────────────
 
 export async function getPrograms() {
-  return getTable('programs').sort((a, b) => b.created_at.localeCompare(a.created_at));
+  // Exclude templates (is_template truthy) — they're an invisible sync layer,
+  // not user-facing programs. Matches native's `is_template = 0 OR NULL` filter.
+  return getTable('programs')
+    .filter((p) => !p.is_template)
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
 }
 
 export async function getProgramById(id) {

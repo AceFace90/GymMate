@@ -200,6 +200,7 @@ export async function getExerciseById(id) {
 }
 
 export async function getExerciseByName(name) {
+  if (!name) return null;
   const database = await getDb();
   return database.getFirstAsync('SELECT * FROM exercises WHERE name = ? COLLATE NOCASE', [name]);
 }
@@ -262,8 +263,13 @@ export async function createProgram({ name, description, daysPerWeek, isActive, 
   return result.lastInsertRowId;
 }
 
-export async function updateProgram(id, { name, description, daysPerWeek, isActive }) {
+export async function updateProgram(id, { name, description, daysPerWeek, isActive, isTemplate }) {
   const database = await getDb();
+  if (isTemplate !== undefined) {
+    // Web parity: allow toggling a program's template flag. Without this a
+    // "save as template" flow silently no-ops on native.
+    await database.runAsync('UPDATE programs SET is_template = ? WHERE id = ?', [isTemplate ? 1 : 0, id]);
+  }
   if (isActive !== undefined) {
     // Only one active program at a time
     await database.runAsync('UPDATE programs SET is_active = 0');
@@ -656,7 +662,7 @@ export async function getLastSetForExercise(exerciseId) {
 
 export async function getExerciseStats(exerciseId) {
   const database = await getDb();
-  return database.getFirstAsync(
+  const row = await database.getFirstAsync(
     `SELECT
        MAX(ss.weight_kg) as max_weight,
        MAX(ss.reps * COALESCE(ss.weight_kg, 0)) as best_volume,
@@ -666,4 +672,12 @@ export async function getExerciseStats(exerciseId) {
      WHERE ss.exercise_id = ? AND ss.completed = 1 AND ws.completed_at IS NOT NULL`,
     [exerciseId]
   );
+  // With no matching history, SQL aggregates return NULL for max_weight/
+  // best_volume. Coerce to 0 so callers doing `.toFixed()` don't crash — matches
+  // the web implementation's zero defaults.
+  return {
+    max_weight: row?.max_weight ?? 0,
+    best_volume: row?.best_volume ?? 0,
+    total_sessions: row?.total_sessions ?? 0,
+  };
 }
