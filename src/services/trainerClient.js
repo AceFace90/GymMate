@@ -1,5 +1,31 @@
-import { collection, doc, query, where, getDocs, getDoc, setDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, query, where, getDocs, getDoc, setDoc, updateDoc, deleteDoc, serverTimestamp, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db as firestore } from './firebase';
+
+// Grant or revoke a trainer's read access to a client's EXISTING cloud sessions
+// by maintaining the viewerIds array on each workout_sessions_cloud doc. New
+// sessions get viewerIds at upload time (workoutSync); this keeps a client's
+// history in sync on connect (grant) and on client-initiated revoke (remove).
+// Runs client-side and relies on the client owning their session docs.
+async function setSessionViewer(clientId, trainerId, grant) {
+  if (!clientId || !trainerId) return;
+  try {
+    // Session docs store clientId in mixed forms (bare uid on upload,
+    // 'google-<uid>' on edit), so match both to re-stamp all of them.
+    const bare = clientId.startsWith('google-') ? clientId.slice(7) : clientId;
+    const forms = [bare, `google-${bare}`];
+    const q = query(
+      collection(firestore, 'workout_sessions_cloud'),
+      where('clientId', 'in', forms)
+    );
+    const snapshot = await getDocs(q);
+    const op = grant ? arrayUnion(trainerId) : arrayRemove(trainerId);
+    await Promise.all(snapshot.docs.map((d) => updateDoc(d.ref, { viewerIds: op })));
+  } catch (e) {
+    // Best-effort: a trainer-initiated revoke can't rewrite the client's docs
+    // (client owns them); the client heals it on their next session upload.
+    console.error('[trainerClient] setSessionViewer failed:', e);
+  }
+}
 
 // Generate 6-character invite code (uppercase alphanumeric)
 export function generateInviteCode() {
@@ -86,6 +112,10 @@ export async function acceptInvite(relationshipId, clientId, clientName) {
     });
 
     console.log('[trainerClient] Invite accepted successfully');
+
+    // Grant the trainer read access to this client's existing cloud sessions.
+    const snap = await getDoc(relationshipRef);
+    await setSessionViewer(clientId, snap.data()?.trainerId, true);
   } catch (error) {
     console.error('[trainerClient] Failed to accept invite:', error);
     throw error;
@@ -148,6 +178,9 @@ export async function revokeConnection(relationshipId, userId) {
   } else {
     throw new Error('Unauthorized to revoke this connection');
   }
+
+  // Remove the trainer's read access to the client's existing sessions.
+  await setSessionViewer(data.clientId, data.trainerId, false);
 
   // Clean up program assignments for this trainer-client pair
   const q = query(

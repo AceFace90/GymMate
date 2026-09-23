@@ -284,7 +284,11 @@ export async function syncAssignedPrograms(clientId, currentUserId) {
       // Add days and exercises
       if (programData.days && programData.days.length > 0) {
         for (const day of programData.days) {
-          const dayId = await db.addProgramDay(programId, day.day_number || day.dayNumber, day.name);
+          const dayId = await db.addProgramDay(programId, {
+            name: day.name,
+            dayNumber: day.day_number || day.dayNumber,
+            sortOrder: day.sort_order || day.sortOrder || 0,
+          });
 
           if (day.exercises && day.exercises.length > 0) {
             for (const exercise of day.exercises) {
@@ -303,11 +307,10 @@ export async function syncAssignedPrograms(clientId, currentUserId) {
 
       syncedPrograms.push({ id: programId });
 
-      // Update assignment with local program ID
-      const assignmentRef = doc(firestore, 'program_assignments', assignment.assignmentId);
-      await updateDoc(assignmentRef, {
-        localProgramId: programId,
-      });
+      // Mark the assignment as synced. localProgramId is device-specific and the
+      // security rules only let the client write lastSyncedAt, so record that
+      // instead (the trainer's ClientDetail view reads lastSyncedAt).
+      await updateAssignmentLastSync(assignment.assignmentId);
     }
   }
 

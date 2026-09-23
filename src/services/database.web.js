@@ -109,8 +109,26 @@ function nextId(tableName) {
   return counters[tableName];
 }
 
+// Ensure the id counter is at least `id`, so ids reused from cloud restore (which
+// keep their original localSessionId) can't later collide with a fresh nextId().
+function ensureCounterAtLeast(tableName, id) {
+  if (typeof id !== 'number') return;
+  const counters = (() => { try { return JSON.parse(localStorage.getItem(nsKey(KEYS.counters))) || {}; } catch { return {}; } })();
+  if ((counters[tableName] || 0) < id) {
+    counters[tableName] = id;
+    localStorage.setItem(nsKey(KEYS.counters), JSON.stringify(counters));
+  }
+}
+
+// Local wall-clock 'YYYY-MM-DD HH:MM:SS' (no timezone), matching native's
+// datetime('now','localtime'). Both platforms store the same ambiguous local
+// format so string-sorting and `new Date(str)` parsing stay consistent, and the
+// cloud upload no longer shifts times by the local tz offset (previously now()
+// emitted UTC wall-clock that the uploader re-parsed as local). See P1 #9.
 function now() {
-  return new Date().toISOString().replace('T', ' ').slice(0, 19);
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 }
 
 function dateStr(iso) {
@@ -201,6 +219,14 @@ export async function getExercises({ muscleGroup, category, search } = {}) {
 
 export async function getExerciseById(id) {
   return getTable('exercises').find((e) => e.id === id) || null;
+}
+
+// Case-insensitive lookup by name. Used by session restore to re-link cloud sets
+// (whose exercise_id differs per device) to this device's exercise rows.
+export async function getExerciseByName(name) {
+  if (!name) return null;
+  const lc = String(name).toLowerCase();
+  return getTable('exercises').find((e) => e.name.toLowerCase() === lc) || null;
 }
 
 export async function createCustomExercise({ name, muscleGroup, category, instructions }) {
@@ -436,6 +462,31 @@ export async function deleteSession(id) {
   setTable('sessionSets', getTable('sessionSets').filter((ss) => ss.session_id !== id));
 }
 
+// Restore a session from cloud backup, keyed by its original id so re-runs are
+// idempotent (mirrors the native INSERT OR REPLACE). Returns the local id.
+export async function restoreSession({ id, program_id, program_day_id, day_name, started_at, completed_at, duration_seconds, notes }) {
+  const rows = getTable('sessions');
+  const rowData = {
+    id,
+    program_id: program_id ?? null,
+    program_day_id: program_day_id ?? null,
+    day_name: day_name ?? 'Workout',
+    started_at: started_at ?? null,
+    completed_at: completed_at ?? null,
+    duration_seconds: duration_seconds ?? null,
+    notes: notes ?? null,
+  };
+  const existing = rows.find((s) => s.id === id);
+  if (existing) {
+    Object.assign(existing, rowData);
+  } else {
+    rows.push(rowData);
+    ensureCounterAtLeast('sessions', id);
+  }
+  setTable('sessions', rows);
+  return id;
+}
+
 // ─── Session Sets ─────────────────────────────────────────────────────────────
 
 export async function logSet({ sessionId, exerciseId, exerciseName, setNumber, weightKg, reps, rpe }) {
@@ -446,6 +497,32 @@ export async function logSet({ sessionId, exerciseId, exerciseName, setNumber, w
   allSets.push({ id, session_id: sessionId, exercise_id: exerciseId, exercise_name: exerciseName, set_number: setNumber, weight_kg: weightKg || null, reps: reps || null, rpe: rpe || null, completed: true, is_pr: 0, logged_at: now() });
   setTable('sessionSets', allSets);
   return { id };
+}
+
+// Restore a set from cloud backup. Idempotent: skips if a set with the same
+// (session_id, exercise_name, set_number) already exists, otherwise inserts.
+// Mirrors the native restoreSet contract; normalizes completed to a boolean
+// since web stores booleans while the cloud/native side passes 1/0.
+export async function restoreSet({ session_id, exercise_id, exercise_name, set_number, weight_kg, reps, rpe, completed, is_pr }) {
+  const rows = getTable('sessionSets');
+  const exists = rows.some(
+    (ss) => ss.session_id === session_id && ss.exercise_name === exercise_name && ss.set_number === set_number
+  );
+  if (exists) return;
+  rows.push({
+    id: nextId('sessionSets'),
+    session_id,
+    exercise_id: exercise_id ?? 0,
+    exercise_name,
+    set_number,
+    weight_kg: weight_kg ?? null,
+    reps: reps ?? null,
+    rpe: rpe ?? null,
+    completed: !!completed,
+    is_pr: is_pr ? 1 : 0,
+    logged_at: now(),
+  });
+  setTable('sessionSets', rows);
 }
 
 export async function updateSet(id, { weightKg, reps, rpe, completed }) {

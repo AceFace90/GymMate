@@ -361,6 +361,50 @@ export async function startSession({ programId, programDayId, dayName }) {
   return result.lastInsertRowId;
 }
 
+// Award at most one PR per exercise in a session: its single heaviest set, and
+// only if that weight beats the exercise's best across all PRIOR sessions.
+// Runs at finish so a later set can't be missed and a warmup ramp can't trophy
+// every set (the old per-set bug in logSet that flagged everything). Mirrors the
+// web implementation in database.web.js.
+async function markSessionPRs(sessionId) {
+  const database = await getDb();
+
+  // Clear any PR flags previously set for this session, then re-award below.
+  await database.runAsync('UPDATE session_sets SET is_pr = 0 WHERE session_id = ?', [sessionId]);
+
+  const sessionSets = await database.getAllAsync(
+    `SELECT id, exercise_id, weight_kg, set_number
+     FROM session_sets
+     WHERE session_id = ? AND completed = 1 AND weight_kg > 0`,
+    [sessionId]
+  );
+  if (sessionSets.length === 0) return;
+
+  // Heaviest set this session per exercise (ties → earliest set_number).
+  const topSet = {};
+  for (const ss of sessionSets) {
+    const cur = topSet[ss.exercise_id];
+    if (!cur || ss.weight_kg > cur.weight_kg ||
+        (ss.weight_kg === cur.weight_kg && ss.set_number < cur.set_number)) {
+      topSet[ss.exercise_id] = ss;
+    }
+  }
+
+  for (const key of Object.keys(topSet)) {
+    const best = topSet[key];
+    // Prior all-time best for this exercise, from other sessions only.
+    const prior = await database.getFirstAsync(
+      `SELECT MAX(weight_kg) AS best
+       FROM session_sets
+       WHERE exercise_id = ? AND completed = 1 AND session_id != ?`,
+      [best.exercise_id, sessionId]
+    );
+    if (best.weight_kg > (prior?.best ?? 0)) {
+      await database.runAsync('UPDATE session_sets SET is_pr = 1 WHERE id = ?', [best.id]);
+    }
+  }
+}
+
 export async function completeSession(id, { durationSeconds, notes }) {
   const database = await getDb();
   await database.runAsync(
@@ -369,6 +413,15 @@ export async function completeSession(id, { durationSeconds, notes }) {
      WHERE id = ?`,
     [durationSeconds || null, notes || null, id]
   );
+
+  await markSessionPRs(id);
+}
+
+// Clear PR flags for one exercise across all sessions (used from ProgressScreen
+// when the user resets a PR). Web parity: database.web.js resetPRsForExercise.
+export async function resetPRsForExercise(exerciseId) {
+  const database = await getDb();
+  await database.runAsync('UPDATE session_sets SET is_pr = 0 WHERE exercise_id = ?', [exerciseId]);
 }
 
 export async function getRecentSessions(limit = 20) {
@@ -419,23 +472,16 @@ export async function restoreSession({ id, program_id, program_day_id, day_name,
 
 export async function logSet({ sessionId, exerciseId, exerciseName, setNumber, weightKg, reps, rpe }) {
   const database = await getDb();
-  // Check for PR
-  const pr = await database.getFirstAsync(
-    `SELECT MAX(weight_kg) as best
-     FROM session_sets ss
-     JOIN workout_sessions ws ON ws.id = ss.session_id
-     WHERE ss.exercise_id = ? AND ss.completed = 1 AND ws.id != ?`,
-    [exerciseId, sessionId]
-  );
-  const isPR = weightKg && pr && pr.best !== null ? weightKg > pr.best : (!pr || pr.best === null) && weightKg > 0;
-
+  // PR flags are computed once at completeSession (one per exercise per workout),
+  // not here — flagging per-set trophied every set on a first session and every
+  // set of an ascending warmup ramp. See markSessionPRs.
   const result = await database.runAsync(
     `INSERT INTO session_sets
        (session_id, exercise_id, exercise_name, set_number, weight_kg, reps, rpe, completed, is_pr)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)`,
-    [sessionId, exerciseId, exerciseName, setNumber, weightKg || null, reps || null, rpe || null, isPR ? 1 : 0]
+     VALUES (?, ?, ?, ?, ?, ?, ?, 1, 0)`,
+    [sessionId, exerciseId, exerciseName, setNumber, weightKg || null, reps || null, rpe || null]
   );
-  return { id: result.lastInsertRowId, isPR };
+  return { id: result.lastInsertRowId };
 }
 
 export async function updateSet(id, { weightKg, reps, rpe, completed }) {
