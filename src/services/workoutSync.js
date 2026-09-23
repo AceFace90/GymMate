@@ -1,23 +1,7 @@
 import { collection, doc, query, where, orderBy, limit as firestoreLimit, getDocs, setDoc, updateDoc, deleteDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db as firestore } from './firebase';
 import * as db from './database';
-
-// workout_sessions_cloud.clientId is canonically the bare Firebase uid — the
-// trainer read-path (ClientDetailScreen) strips 'google-' before querying. But
-// callers pass mixed forms (ActiveWorkoutScreen passes bare uid, WorkoutDetail
-// passes 'google-<uid>'), which produced cross-form duplicate docs and hid
-// edited sessions from trainers. Normalize to bare uid everywhere we write/query.
-function bareUid(id) {
-  return id && id.startsWith('google-') ? id.slice(7) : id;
-}
-
-// Format a Date as local wall-clock 'YYYY-MM-DD HH:MM:SS' — the shared on-device
-// timestamp format (see database.web.js now() / native datetime('now','localtime')).
-function toLocalWallClock(date) {
-  if (!date) return null;
-  const p = (n) => String(n).padStart(2, '0');
-  return `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())} ${p(date.getHours())}:${p(date.getMinutes())}:${p(date.getSeconds())}`;
-}
+import { bareUid, toLocalWallClock } from '../utils/idFormat';
 
 // Returns the set of user IDs allowed to read a client's session docs: the
 // client plus every trainer they currently have an active (accepted) connection

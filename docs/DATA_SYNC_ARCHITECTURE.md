@@ -182,7 +182,7 @@ ProfileScreen
 
 ---
 
-## What the Blob Contains (BACKUP_VERSION 2)
+## What the Blob Contains (BACKUP_VERSION 3)
 
 **Included:** `exercises`, `programs`, `program_days`, `program_exercises`
 
@@ -225,7 +225,7 @@ User ID formats:
 
 - [ ] Decide: local-only or cloud-backed?
 - [ ] If cloud: add Firestore security rule
-- [ ] If in blob: add table to `BACKUP_TABLES` in `database.js`
+- [ ] If in blob: add table to `CANONICAL_TABLES` in `src/services/backupFormat.js`
 - [ ] If user-editable: trigger `backupToCloud()` after save
 - [ ] Timestamps: use `datetime('now', 'localtime')` — never bare `datetime('now')`
 - [ ] Update this document
