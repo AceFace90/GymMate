@@ -3,6 +3,7 @@
 
 import { nsKey } from './activeUser';
 import { BACKUP_VERSION, CANONICAL_TABLES, normalizeToV3 } from './backupFormat';
+import { bucketWeeklyVolume } from '../utils/dateBuckets';
 
 // ─── Storage helpers ─────────────────────────────────────────────────────────
 // Every base key below is namespaced per active user via nsKey() so users (and
@@ -646,31 +647,18 @@ export async function getWeeklyVolume(weeksBack = 12) {
   cutoff.setDate(cutoff.getDate() - weeksBack * 7);
 
   const sessions = getTable('sessions').filter((s) => s.completed_at && new Date(s.started_at) >= cutoff);
-  const sets = getTable('sessionSets').filter((ss) => ss.completed);
   const sessionMap = Object.fromEntries(sessions.map((s) => [s.id, s]));
+  const sets = getTable('sessionSets').filter((ss) => ss.completed);
 
-  const byWeek = {};
+  // Shape into the shared row form and bucket in one place so web and native
+  // produce identical ISO-week grouping (see utils/dateBuckets).
+  const rows = [];
   for (const ss of sets) {
     const session = sessionMap[ss.session_id];
     if (!session) continue;
-    const d = new Date(session.started_at);
-    const weekNum = `${d.getFullYear()}-W${String(getWeekNumber(d)).padStart(2, '0')}`;
-    if (!byWeek[weekNum]) byWeek[weekNum] = { week: weekNum, sessions: new Set(), total_sets: 0, total_volume: 0 };
-    byWeek[weekNum].sessions.add(ss.session_id);
-    byWeek[weekNum].total_sets += 1;
-    byWeek[weekNum].total_volume += (ss.reps || 0) * (ss.weight_kg || 0);
+    rows.push({ session_id: ss.session_id, started_at: session.started_at, reps: ss.reps, weight_kg: ss.weight_kg });
   }
-
-  return Object.values(byWeek)
-    .sort((a, b) => a.week.localeCompare(b.week))
-    .map((w) => ({ ...w, sessions: w.sessions.size }));
-}
-
-function getWeekNumber(date) {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+  return bucketWeeklyVolume(rows);
 }
 
 export async function getMuscleGroupVolume(daysBack = 30) {

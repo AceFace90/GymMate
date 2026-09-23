@@ -1,5 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 import { BACKUP_VERSION, CANONICAL_TABLES, normalizeToV3 } from './backupFormat';
+import { bucketWeeklyVolume } from '../utils/dateBuckets';
 
 let db = null;
 
@@ -596,19 +597,18 @@ export async function getPersonalRecords() {
 
 export async function getWeeklyVolume(weeksBack = 12) {
   const database = await getDb();
-  return database.getAllAsync(
-    `SELECT
-       strftime('%Y-W%W', ws.started_at) as week,
-       COUNT(DISTINCT ws.id) as sessions,
-       COUNT(ss.id) as total_sets,
-       SUM(ss.reps * COALESCE(ss.weight_kg, 0)) as total_volume
+  // Bucket in JS (shared with web) rather than SQLite's strftime('%W'), which
+  // used a different week-numbering scheme than the web build — the same data
+  // grouped into different weeks across platforms. Fetch the completed sets in
+  // the window and let bucketWeeklyVolume do the ISO-week grouping.
+  const rows = await database.getAllAsync(
+    `SELECT ws.id as session_id, ws.started_at, ss.reps, ss.weight_kg
      FROM workout_sessions ws
-     LEFT JOIN session_sets ss ON ss.session_id = ws.id AND ss.completed = 1
+     JOIN session_sets ss ON ss.session_id = ws.id AND ss.completed = 1
      WHERE ws.completed_at IS NOT NULL
-       AND ws.started_at >= datetime('now', 'localtime', '-${weeksBack} weeks')
-     GROUP BY week
-     ORDER BY week ASC`
+       AND ws.started_at >= datetime('now', 'localtime', '-${weeksBack} weeks')`
   );
+  return bucketWeeklyVolume(rows);
 }
 
 export async function getMuscleGroupVolume(daysBack = 30) {
