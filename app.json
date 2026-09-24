@@ -24,7 +24,9 @@
       "shortName": "GymMate",
       "description": "Build programs. Log sessions. Track PRs.",
       "themeColor": "#1a1a1a",
-      "backgroundColor": "#1a1a1a",
+      "backgroundColor": "#1a1a1a"
+    },
+    "experiments": {
       "baseUrl": "/GymMate"
     },
     "plugins": [

@@ -38,34 +38,14 @@ jobs:
         env:
           # Baked into the bundle so the running app knows which build it is.
           # Compared at runtime against the freshly-fetched dist/version.json.
+          # The /GymMate/ base path is applied natively via app.json
+          # experiments.baseUrl — no post-build path rewriting needed.
           EXPO_PUBLIC_APP_VERSION: ${{ github.sha }}
 
-      - name: Show built index.html (debug)
-        run: cat dist/index.html
-
-      - name: Fix asset paths for GitHub Pages subdirectory
-        run: |
-          # If Expo generated absolute paths like /_expo/, prefix with /GymMate/
-          sed -i 's|"/_expo/|"/GymMate/_expo/|g' dist/index.html
-          sed -i 's|src="/_expo/|src="/GymMate/_expo/|g' dist/index.html
-
-          # Fix font/asset paths in the JS bundle (httpServerLocation lacks baseUrl prefix)
-          find dist/_expo -name "*.js" -exec sed -i 's|httpServerLocation:"/assets/|httpServerLocation:"/GymMate/assets/|g' {} +
-
-          # Inject @font-face for Ionicons so tab bar icons render on web
-          IONICONS_FILE=$(find dist/assets -name "Ionicons.*.ttf" | head -1 | sed 's|dist/||')
-          FONT_CSS="<style>@font-face{font-family:'Ionicons';src:url('/GymMate/${IONICONS_FILE}') format('truetype');font-weight:normal;font-style:normal;}</style>"
-          sed -i "s|</head>|${FONT_CSS}</head>|" dist/index.html
-
-          # Add PWA manifest link for proper "Add to Home Screen" icon
-          sed -i 's|</head>|<link rel="manifest" href="/GymMate/manifest.json"></head>|' dist/index.html
-
-          # Copy to 404.html for SPA routing (back button, direct links)
-          cp dist/index.html dist/404.html
-
-          # Version marker for the in-app update check. The running app fetches
-          # this (cache-busted) and compares to its baked EXPO_PUBLIC_APP_VERSION.
-          echo "{\"version\":\"${{ github.sha }}\"}" > dist/version.json
+      - name: Finalize web build (manifest, font-face, 404, version)
+        run: node scripts/postbuild-web.js
+        env:
+          EXPO_PUBLIC_APP_VERSION: ${{ github.sha }}
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
