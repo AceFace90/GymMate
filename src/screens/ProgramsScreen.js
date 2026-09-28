@@ -73,6 +73,12 @@ export default function ProgramsScreen({ navigation }) {
       const currentUser = await auth.getCurrentUser();
       if (!currentUser) return;
 
+      // No live Firebase session (local-only user, or a stored Google profile
+      // with no active sign-in on this origin) → skip cloud sync. request.auth
+      // is null server-side, so every read below would throw a noisy
+      // "Missing or insufficient permissions".
+      if (!auth.getFirebaseUser()?.uid) return;
+
       // Get assignments from Firestore
       const assignments = await programTemplates.getClientAssignments(currentUser.id);
       console.log('[ProgramsScreen] Found assignments from Firestore:', assignments.length);
