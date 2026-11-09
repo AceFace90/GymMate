@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../hooks/useTheme';
 import { useUnits } from '../hooks/useUnits';
 import { spacing, typography, radius } from '../theme';
+import Icon from '../components/Icon';
 import * as db from '../services/database';
 import * as auth from '../services/auth';
 import * as workoutSync from '../services/workoutSync';
@@ -131,7 +132,7 @@ export default function WorkoutDetailScreen({ route }) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
         <View style={styles.emptyState}>
-          <Text style={{ fontSize: 48 }}>🤷</Text>
+          <Icon name="search" size={48} color={theme.textMuted} />
           <Text style={[styles.emptyTitle, { color: theme.text }]}>Workout not found</Text>
           <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
             This session may have been deleted.

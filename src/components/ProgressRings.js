@@ -116,7 +116,7 @@ export default function ProgressRings({ workouts = 0, workoutGoal = 4, sets = 0,
         <View style={styles.statItem}>
           <View style={[styles.statDot, { backgroundColor: '#f97316' }]} />
           <Text style={[styles.statValue, { color: theme.text }]}>
-            🔥 {streak}
+            {streak}
           </Text>
           <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
             Day Streak

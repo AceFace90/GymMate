@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '../hooks/useTheme';
 import { spacing, typography, radius } from '../theme';
+import Icon from '../components/Icon';
 import * as auth from '../services/auth';
 import * as db from '../services/database';
 import { setActiveUserId } from '../services/activeUser';
@@ -149,12 +150,12 @@ export default function LoginScreen({ onLogin }) {
         {/* Feature highlights */}
         <View style={s.featureCard}>
           {[
-            { icon: '📸', title: 'Smart Machine Recognition', desc: 'Photo a machine to log your workout instantly' },
-            { icon: '🤖', title: 'AI Program Builder', desc: 'Generate a custom program for your goals' },
-            { icon: '📈', title: 'Track Progress', desc: 'PRs, volume trends, and muscle group breakdown' },
+            { icon: 'camera', title: 'Smart Machine Recognition', desc: 'Photo a machine to log your workout instantly' },
+            { icon: 'sparkles', title: 'AI Program Builder', desc: 'Generate a custom program for your goals' },
+            { icon: 'chart', title: 'Track Progress', desc: 'PRs, volume trends, and muscle group breakdown' },
           ].map((f) => (
             <View key={f.title} style={s.featureRow}>
-              <Text style={s.featureIcon}>{f.icon}</Text>
+              <View style={s.featureIcon}><Icon name={f.icon} size={24} color={theme.accent} /></View>
               <View style={{ flex: 1 }}>
                 <Text style={s.featureTitle}>{f.title}</Text>
                 <Text style={s.featureDesc}>{f.desc}</Text>
@@ -226,7 +227,7 @@ export default function LoginScreen({ onLogin }) {
                 <Text style={s.syncNote}>Sync across devices · Secure cloud backup</Text>
 
                 <TouchableOpacity onPress={() => setManaging(true)} style={s.manageBtn}>
-                  <Text style={s.manageBtnText}>⚙️ Manage Users</Text>
+                  <Text style={s.manageBtnText}>Manage Users</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -238,7 +239,7 @@ export default function LoginScreen({ onLogin }) {
               activeOpacity={0.8}
               disabled={demoLoading}
             >
-              <Text style={s.demoIcon}>⚡</Text>
+              <Icon name="bolt" size={16} color={theme.textSecondary} />
               <Text style={[s.demoBtnText, { color: theme.textSecondary }]}>
                 {demoLoading ? 'Loading demo…' : 'Try demo as Super Woman'}
               </Text>
@@ -296,7 +297,7 @@ export default function LoginScreen({ onLogin }) {
         ) : (
           /* Name input */
           <View style={s.nameForm}>
-            <Text style={[s.welcomeTitle, { color: theme.text }]}>Welcome to GymMate! 💪</Text>
+            <Text style={[s.welcomeTitle, { color: theme.text }]}>Welcome to GymMate!</Text>
             <Text style={[s.welcomeSub, { color: theme.textSecondary }]}>What should we call you?</Text>
 
             <TextInput
@@ -364,7 +365,7 @@ function makeStyles(theme) {
       gap: spacing[4],
     },
     featureRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing[3] },
-    featureIcon: { fontSize: 24, width: 32, textAlign: 'center' },
+    featureIcon: { width: 32, alignItems: 'center' },
     featureTitle: { fontSize: typography.sizes.base, fontWeight: '700', color: theme.text },
     featureDesc: { fontSize: typography.sizes.sm, color: theme.textSecondary, marginTop: 2 },
 

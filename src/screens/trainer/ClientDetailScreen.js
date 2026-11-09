@@ -200,7 +200,7 @@ export default function ClientDetailScreen({ route, navigation }) {
                     {assignment.programData?.name || 'Unnamed Program'}
                   </Text>
                   <Text style={[styles.assignmentMeta, { color: theme.textSecondary }]}>
-                    {assignment.assignmentType === 'linked' ? '🔗 Linked' : '📄 Custom'} • Assigned {formatDate(assignment.assignedAt)}
+                    {assignment.assignmentType === 'linked' ? 'Linked' : 'Custom'} • Assigned {formatDate(assignment.assignedAt)}
                   </Text>
                   {assignment.lastSyncedAt && (
                     <Text style={[styles.assignmentMeta, { color: theme.textMuted, fontSize: typography.sizes.xs }]}>
@@ -284,7 +284,7 @@ export default function ClientDetailScreen({ route, navigation }) {
                     </Text>
                     {workout.prCount > 0 && (
                       <Text style={[styles.prBadge, { color: theme.accent }]}>
-                        🎉 {workout.prCount} PR{workout.prCount > 1 ? 's' : ''}
+                        {workout.prCount} PR{workout.prCount > 1 ? 's' : ''}
                       </Text>
                     )}
                   </View>

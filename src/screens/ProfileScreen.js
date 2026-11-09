@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { useTheme } from '../hooks/useTheme';
 import { spacing, typography, radius } from '../theme';
+import Icon from '../components/Icon';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import UniversalFields from '../components/biometrics/UniversalFields';
@@ -262,7 +263,7 @@ export default function ProfileScreen({ navigation, onLogout }) {
           onPress={handleSave}
           style={saved ? { backgroundColor: '#16a34a' } : undefined}
         >
-          {saved ? '✓ Profile Saved!' : 'Save Profile'}
+          {saved ? 'Profile Saved!' : 'Save Profile'}
         </Button>
 
         {/* Trainer Connections */}
@@ -344,16 +345,16 @@ export default function ProfileScreen({ navigation, onLogout }) {
         <Text style={[styles.sectionHeader, { color: theme.textMuted }]}>Tips</Text>
         <Card>
           {[
-            { icon: '💪', tip: 'Log sets with weight + reps to track your PRs automatically.' },
-            { icon: '📈', tip: 'Check the Progress tab after each session to see your trends.' },
-            { icon: '🎯', tip: 'Create programs with multiple days to stay consistent.' },
-            { icon: '⏱️', tip: "The rest timer vibrates when it's time to start your next set." },
+            { icon: 'barbell', tip: 'Log sets with weight + reps to track your PRs automatically.' },
+            { icon: 'chart', tip: 'Check the Progress tab after each session to see your trends.' },
+            { icon: 'target', tip: 'Create programs with multiple days to stay consistent.' },
+            { icon: 'stopwatch', tip: "The rest timer vibrates when it's time to start your next set." },
           ].map((t, i) => (
             <View
               key={i}
               style={[styles.tipRow, i > 0 && { borderTopColor: theme.border, borderTopWidth: StyleSheet.hairlineWidth }]}
             >
-              <Text style={{ fontSize: 20 }}>{t.icon}</Text>
+              <Icon name={t.icon} size={22} color={theme.accent} />
               <Text style={[styles.tipText, { color: theme.textSecondary }]}>{t.tip}</Text>
             </View>
           ))}
@@ -378,7 +379,7 @@ export default function ProfileScreen({ navigation, onLogout }) {
 
         <View style={styles.footer}>
           <Text style={[styles.footerText, { color: theme.textMuted }]}>
-            Made with 💚 to complement{' '}
+            Made to complement{' '}
             <Text
               style={[styles.footerLink, { color: theme.accent }]}
               onPress={() => Linking.openURL('https://macromate-xcu1.onrender.com/')}

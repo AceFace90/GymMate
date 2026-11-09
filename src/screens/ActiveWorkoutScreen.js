@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../hooks/useTheme';
 import { useUnits } from '../hooks/useUnits';
 import { spacing, typography, radius } from '../theme';
+import Icon from '../components/Icon';
 import * as db from '../services/database';
 import * as auth from '../services/auth';
 import * as workoutSync from '../services/workoutSync';
@@ -499,7 +500,7 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
 
         {exercises.length === 0 && (
           <View style={styles.emptyState}>
-            <Text style={{ fontSize: 40 }}>💪</Text>
+            <Icon name="barbell" size={40} color={theme.textMuted} />
             <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
               Add your first exercise to start logging sets.
             </Text>

@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../hooks/useTheme';
 import { useUnits } from '../hooks/useUnits';
 import { spacing, typography, radius, colors } from '../theme';
+import Icon from '../components/Icon';
 import * as db from '../services/database';
 import Card from '../components/Card';
 import MuscleTag from '../components/MuscleTag';
@@ -231,7 +232,7 @@ export default function ExerciseDetailScreen({ route }) {
 
         {history.length === 0 && (
           <View style={styles.emptyState}>
-            <Text style={{ fontSize: 40 }}>📊</Text>
+            <Icon name="chart" size={40} color={theme.textMuted} />
             <Text style={[styles.emptyTitle, { color: theme.text }]}>No history yet</Text>
             <Text style={[styles.emptyText, { color: theme.textSecondary }]}>Add this exercise to a program and start logging.</Text>
           </View>

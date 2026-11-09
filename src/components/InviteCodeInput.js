@@ -41,7 +41,7 @@ export default function InviteCodeInput({ value, onChangeText, isValid, errorMes
       {/* Validation Feedback */}
       {isValid === true && (
         <Text style={[styles.feedback, { color: theme.accent }]}>
-          ✓ Valid code
+          Valid code
         </Text>
       )}
 

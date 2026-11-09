@@ -4,6 +4,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { spacing, typography, radius } from '../../theme';
 import { getCurrentPhase, daysUntilNextPeriod, PHASES } from '../../utils/cyclePhase';
 import DatePicker from '../DatePicker';
+import Icon from '../Icon';
 
 export default function CycleTracker({ form, onChange }) {
   const { theme } = useTheme();
@@ -41,7 +42,7 @@ export default function CycleTracker({ form, onChange }) {
       {phase && (
         <View style={[styles.phaseCard, { backgroundColor: theme.card, borderColor: theme.border, borderLeftColor: phase.color }]}>
           <View style={styles.phaseHeader}>
-            <Text style={styles.phaseIcon}>{phase.icon}</Text>
+            <Icon name="dot" size={28} color={phase.color} />
             <View style={{ flex: 1 }}>
               <Text style={[styles.phaseLabel, { color: phase.color }]}>{phase.label} Phase</Text>
               <Text style={[styles.phaseDay, { color: theme.textMuted }]}>Day {phase.dayInCycle} of {phase.cycleLength}</Text>
@@ -75,7 +76,6 @@ export default function CycleTracker({ form, onChange }) {
               { backgroundColor: p.color, opacity: phase?.key === key ? 1 : 0.25 },
             ]}
           >
-            <Text style={styles.pipIcon}>{p.icon}</Text>
             <Text style={[styles.pipLabel, { color: phase?.key === key ? '#fff' : 'transparent' }]}>{p.label}</Text>
           </View>
         ))}

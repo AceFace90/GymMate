@@ -74,7 +74,7 @@ export default function ExerciseScannerModal({ visible, onClose, onPick }) {
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleClose}>
       <SafeAreaView style={[styles.modal, { backgroundColor: theme.bg }]}>
         <View style={styles.header}>
-          <Text style={[styles.title, { color: theme.text }]}>📸 Scan Exercise</Text>
+          <Text style={[styles.title, { color: theme.text }]}>Scan Exercise</Text>
           <TouchableOpacity onPress={handleClose}>
             <Ionicons name="close" size={24} color={theme.textSecondary} />
           </TouchableOpacity>
@@ -91,8 +91,8 @@ export default function ExerciseScannerModal({ visible, onClose, onPick }) {
               <Text style={[styles.hint, { color: theme.textSecondary }]}>
                 Snap a photo of a machine or movement and we'll identify the exercise for you.
               </Text>
-              <Button title="📷  Take Photo" onPress={() => pickImage(true)} size="lg" style={{ marginTop: spacing[4] }} />
-              <Button title="🖼  Choose from Library" variant="secondary" onPress={() => pickImage(false)} size="lg" style={{ marginTop: spacing[3] }} />
+              <Button title="Take Photo" onPress={() => pickImage(true)} size="lg" style={{ marginTop: spacing[4] }} />
+              <Button title="Choose from Library" variant="secondary" onPress={() => pickImage(false)} size="lg" style={{ marginTop: spacing[3] }} />
             </>
           )}
 

@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '../hooks/useTheme';
 import { spacing, typography, radius, colors } from '../theme';
+import Icon from '../components/Icon';
 import * as db from '../services/database';
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -123,7 +124,7 @@ export default function ProgramsScreen({ navigation }) {
 
           // Update program metadata
           await db.updateProgram(programId, {
-            name: `🔒 ${programName}`,
+            name: programName,
             description: programDesc,
             days_per_week: daysPerWeek,
           });
@@ -138,7 +139,7 @@ export default function ProgramsScreen({ navigation }) {
         } else {
           // Create new local program (as read-only, linked to assignment)
           programId = await db.createProgram({
-            name: `🔒 ${programName}`,
+            name: programName,
             description: programDesc,
             daysPerWeek: daysPerWeek,
             isActive: false,
@@ -387,7 +388,7 @@ export default function ProgramsScreen({ navigation }) {
         style={[styles.quickBtn, { borderColor: theme.accentBorder, backgroundColor: theme.accentBg }]}
         activeOpacity={0.8}
       >
-        <Text style={{ fontSize: 18 }}>⚡</Text>
+        <Icon name="bolt" size={20} color={theme.accent} />
         <View style={{ flex: 1 }}>
           <Text style={[styles.quickTitle, { color: theme.accent }]}>Quick Workout</Text>
           <Text style={[styles.quickSub, { color: theme.textSecondary }]}>Log an ad-hoc session without a program</Text>
@@ -399,7 +400,7 @@ export default function ProgramsScreen({ navigation }) {
         <ActivityIndicator color={theme.accent} style={{ marginTop: spacing[10] }} />
       ) : programs.length === 0 ? (
         <View style={styles.empty}>
-          <Text style={{ fontSize: 48 }}>🏋️</Text>
+          <Icon name="barbell" size={48} color={theme.textMuted} />
           <Text style={[styles.emptyTitle, { color: theme.text }]}>No programs yet</Text>
           <Text style={[styles.emptyText, { color: theme.textSecondary }]}>Create your first workout program to get started.</Text>
           <Button title="Create Program" onPress={() => setShowCreate(true)} style={{ marginTop: spacing[4] }} />
@@ -427,7 +428,7 @@ export default function ProgramsScreen({ navigation }) {
             {/* AI Generation */}
             {hasKey ? (
               <View style={[styles.aiBox, { backgroundColor: theme.accentBg, borderColor: theme.accentBorder }]}>
-                <Text style={[styles.aiLabel, { color: theme.accent }]}>🤖 Generate with AI</Text>
+                <Text style={[styles.aiLabel, { color: theme.accent }]}>Generate with AI</Text>
                 <TextInput
                   value={aiPrompt}
                   onChangeText={(v) => { setAiPrompt(v); setAiError(''); }}
@@ -447,7 +448,7 @@ export default function ProgramsScreen({ navigation }) {
               </View>
             ) : (
               <View style={[styles.aiBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                <Text style={[styles.aiLabel, { color: theme.textMuted }]}>🤖 AI Generation</Text>
+                <Text style={[styles.aiLabel, { color: theme.textMuted }]}>AI Generation</Text>
                 <Text style={[styles.aiHint, { color: theme.textMuted }]}>Add your Gemini API key in Settings → AI Features to generate programs automatically.</Text>
               </View>
             )}

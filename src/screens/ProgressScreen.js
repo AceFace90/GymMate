@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../hooks/useTheme';
 import { useUnits } from '../hooks/useUnits';
 import { spacing, typography, radius, colors } from '../theme';
+import Icon from '../components/Icon';
 import * as db from '../services/database';
 import * as auth from '../services/auth';
 import * as workoutSync from '../services/workoutSync';
@@ -340,7 +341,7 @@ export default function ProgressScreen({ navigation }) {
             <>
               {recentSessions.length === 0 ? (
                 <View style={styles.emptyState}>
-                  <Text style={{ fontSize: 48 }}>📋</Text>
+                  <Icon name="list" size={48} color={theme.textMuted} />
                   <Text style={[styles.emptyTitle, { color: theme.text }]}>No sessions yet</Text>
                   <Text style={[styles.emptyText, { color: theme.textSecondary }]}>Your completed workouts will appear here.</Text>
                 </View>
@@ -391,7 +392,7 @@ export default function ProgressScreen({ navigation }) {
             <>
               {personalRecords.length === 0 ? (
                 <View style={styles.emptyState}>
-                  <Text style={{ fontSize: 48 }}>🏆</Text>
+                  <Icon name="trophy" size={48} color={theme.textMuted} />
                   <Text style={[styles.emptyTitle, { color: theme.text }]}>No records yet</Text>
                   <Text style={[styles.emptyText, { color: theme.textSecondary }]}>Log some workouts and your PRs will appear here.</Text>
                 </View>

@@ -1,8 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { signInWithPopup, signOut } from 'firebase/auth';
-import { auth as fbAuth, googleProvider } from './firebase';
+import { signInWithPopup, signOut, reauthenticateWithPopup } from 'firebase/auth';
+import { collection, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { auth as fbAuth, googleProvider, db as firestore } from './firebase';
 import * as cloudSync from './cloudSync';
-import { setActiveUserId } from './activeUser';
+import { setActiveUserId, getActiveUserId } from './activeUser';
 
 const USERS_KEY = 'gymmate_users';
 const CURRENT_USER_KEY = 'gymmate_current_user';
@@ -192,4 +193,48 @@ export async function updateTrainerProfile(userId, bio, specialties) {
   }
 
   throw new Error('User not found');
+}
+
+// Permanently removes this user's data: local storage under their namespace and (when signed in
+// with Google) their cloud backup doc plus uploaded workout sessions. Sign-in stays active.
+// Cloud deletes are best-effort; returns { cloudOk } so the UI can say if anything was skipped.
+export async function deleteAllUserData() {
+  let cloudOk = true;
+  const uid = fbAuth.currentUser?.uid;
+  if (uid) {
+    try {
+      await deleteDoc(doc(firestore, 'users', uid));
+      for (const clientId of [uid, `google-${uid}`]) {
+        const snap = await getDocs(query(collection(firestore, 'workout_sessions_cloud'), where('clientId', '==', clientId)));
+        for (const d of snap.docs) await deleteDoc(d.ref);
+      }
+    } catch (e) {
+      console.error('Cloud delete failed:', e);
+      cloudOk = false;
+    }
+  }
+  const id = getActiveUserId();
+  if (id) {
+    const prefix = `gymmate_u_${id}_`;
+    const keys = await AsyncStorage.getAllKeys();
+    await AsyncStorage.multiRemove(keys.filter((k) => k.startsWith(prefix)));
+  }
+  return { cloudOk };
+}
+
+// Deletes the Firebase account after wiping data. Re-authenticates once if Firebase asks for a fresh login.
+export async function deleteAccount() {
+  const { cloudOk } = await deleteAllUserData();
+  const fbUser = fbAuth.currentUser;
+  if (fbUser) {
+    try {
+      await fbUser.delete();
+    } catch (e) {
+      if (e?.code !== 'auth/requires-recent-login') throw e;
+      await reauthenticateWithPopup(fbUser, googleProvider);
+      await fbUser.delete();
+    }
+  }
+  await clearCurrentUser();
+  return { cloudOk };
 }

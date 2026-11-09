@@ -63,7 +63,6 @@ export default function PregnancyProfile({ form, onChange }) {
                 },
               ]}
             >
-              <Text style={styles.stageIcon}>{s.icon}</Text>
               <Text style={[styles.stageLabel, { color: active ? theme.accent : theme.text }]}>{s.label}</Text>
               {s.sublabel ? <Text style={[styles.stageSub, { color: theme.textMuted }]}>{s.sublabel}</Text> : null}
             </TouchableOpacity>
@@ -74,7 +73,6 @@ export default function PregnancyProfile({ form, onChange }) {
       {guidance && selected && (
         <View style={[styles.guidanceCard, { backgroundColor: theme.card, borderColor: theme.accentBorder }]}>
           <View style={styles.guidanceHeader}>
-            <Text style={styles.guidanceIcon}>{selected.icon}</Text>
             <Text style={[styles.guidanceTitle, { color: theme.accent }]}>{selected.label}</Text>
           </View>
 
@@ -90,7 +88,7 @@ export default function PregnancyProfile({ form, onChange }) {
             </View>
             <View style={[styles.divider, { backgroundColor: theme.border }]} />
             <View style={[styles.cautionBox, { backgroundColor: 'rgba(245,158,11,0.1)', borderColor: 'rgba(245,158,11,0.3)' }]}>
-              <Text style={[styles.guidanceLabel, { color: '#f59e0b' }]}>⚠️ Cautions</Text>
+              <Text style={[styles.guidanceLabel, { color: '#f59e0b' }]}>Cautions</Text>
               <Text style={[styles.guidanceText, { color: '#fde68a' }]}>{guidance.caution}</Text>
             </View>
           </View>

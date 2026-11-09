@@ -175,7 +175,7 @@ export default function HomeScreen({ navigation, user }) {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Greeting */}
         <Text style={[styles.greeting, { color: theme.textSecondary }]}>{greeting()},</Text>
-        <Text style={[styles.name, { color: theme.text }]}>{firstName} 👋</Text>
+        <Text style={[styles.name, { color: theme.text }]}>{firstName}</Text>
         {goalLabel ? (
           <Text style={[styles.goal, { color: theme.textSecondary }]}>
             Goal: <Text style={{ color: theme.accent, fontWeight: '700' }}>{goalLabel}</Text>
@@ -208,7 +208,7 @@ export default function HomeScreen({ navigation, user }) {
             </>
           )}
           <TouchableOpacity onPress={quickWorkout} style={styles.quickLink} activeOpacity={0.7}>
-            <Text style={[styles.quickLinkText, { color: theme.accent }]}>⚡ Quick Workout (no program)</Text>
+            <Text style={[styles.quickLinkText, { color: theme.accent }]}>Quick Workout (no program)</Text>
           </TouchableOpacity>
         </Card>
 

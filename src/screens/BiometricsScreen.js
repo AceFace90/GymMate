@@ -142,7 +142,7 @@ export default function BiometricsScreen({ navigation }) {
             onPress={handleSave}
             style={saved ? { backgroundColor: '#16a34a' } : undefined}
           >
-            {saved ? '✓ Saved!' : 'Save Profile'}
+            {saved ? 'Saved!' : 'Save Profile'}
           </Button>
           {navigation?.canGoBack() && (
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.cancelBtn}>

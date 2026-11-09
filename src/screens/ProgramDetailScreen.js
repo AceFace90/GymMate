@@ -219,7 +219,7 @@ export default function ProgramDetailScreen({ route, navigation }) {
             </View>
             {program.is_active ? (
               <View style={[styles.metaBadge, { backgroundColor: theme.accentBg, borderColor: theme.accentBorder }]}>
-                <Text style={[styles.metaBadgeText, { color: theme.accent }]}>✓ Active</Text>
+                <Text style={[styles.metaBadgeText, { color: theme.accent }]}>Active</Text>
               </View>
             ) : null}
           </View>

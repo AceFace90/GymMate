@@ -1,264 +1,313 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView,
-  TextInput, Linking,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, TextInput, Alert, Platform, Image,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { getGeminiKey, setGeminiKey as persistGeminiKey, clearGeminiKey } from '../services/geminiKey';
-
 import { useTheme } from '../hooks/useTheme';
 import { useUnits } from '../hooks/useUnits';
-import { spacing, typography, radius } from '../theme';
-import Card from '../components/Card';
+import { getGeminiKey, setGeminiKey as persistGeminiKey, clearGeminiKey } from '../services/geminiKey';
+import { deleteAllUserData, deleteAccount, isGoogleUser } from '../services/auth';
+import { fontFamily, breakpoints } from '../theme';
 import { confirmAction } from '../utils/confirm';
+import Icon from '../components/Icon';
 
 const THEME_OPTIONS = [
-  { key: 'system', label: 'System', icon: 'phone-portrait-outline' },
-  { key: 'light',  label: 'Light',  icon: 'sunny-outline' },
-  { key: 'dark',   label: 'Dark',   icon: 'moon-outline' },
+  { key: 'system', label: 'System', icon: 'phone' },
+  { key: 'light', label: 'Light', icon: 'sun' },
+  { key: 'dark', label: 'Dark', icon: 'moon' },
+];
+const UNITS_OPTIONS = [
+  { key: 'metric', label: 'Metric (kg, cm)' },
+  { key: 'imperial', label: 'Imperial (lbs, ft/in)' },
 ];
 
-function Row({ label, value, theme, onPress }) {
-  const content = (
-    <View style={[styles.row, { borderBottomColor: theme.border }]}>
-      <Text style={[styles.rowLabel, { color: theme.text }]}>{label}</Text>
-      {value ? <Text style={[styles.rowValue, { color: onPress ? theme.accent : theme.textSecondary }]}>{value}</Text> : null}
-      {onPress && <Ionicons name="open-outline" size={16} color={theme.textMuted} style={{ marginLeft: 4 }} />}
+const PRIVACY_URL = 'https://aceface90.github.io/GymMate/privacy-policy.html';
+
+function Segmented({ options, value, onSelect }) {
+  const { theme } = useTheme();
+  return (
+    <View style={[styles.segTrack, { backgroundColor: theme.fill }]} accessibilityRole="radiogroup">
+      {options.map((o) => {
+        const active = value === o.key;
+        return (
+          <TouchableOpacity
+            key={o.key}
+            onPress={() => onSelect(o.key)}
+            activeOpacity={0.7}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: active }}
+            style={[styles.segItem, active && [styles.segActive, { backgroundColor: theme.isDark ? '#636366' : '#ffffff' }]]}
+          >
+            <Text style={[styles.segText, { color: theme.text, fontWeight: active ? '600' : '400', fontFamily }]}>{o.label}</Text>
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
-
-  if (onPress) {
-    return (
-      <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
-        {content}
-      </TouchableOpacity>
-    );
-  }
-
-  return content;
 }
 
-export default function SettingsScreen() {
+function Section({ title, footer, children }) {
+  const { theme } = useTheme();
+  return (
+    <View style={styles.section}>
+      {title ? <Text style={[styles.sectionHeader, { color: theme.textSecondary, fontFamily }]}>{title.toUpperCase()}</Text> : null}
+      <View style={[styles.group, { backgroundColor: theme.card }]}>{children}</View>
+      {footer ? <Text style={[styles.footer, { color: theme.textSecondary, fontFamily }]}>{footer}</Text> : null}
+    </View>
+  );
+}
+
+// Row with a hairline separator inset 16 from the left (omitted on the last row).
+function Row({ last, children, style, onPress, accessibilityLabel }) {
+  const { theme } = useTheme();
+  const Wrapper = onPress ? TouchableOpacity : View;
+  return (
+    <Wrapper
+      onPress={onPress}
+      activeOpacity={0.6}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole={onPress ? 'button' : undefined}
+      style={[styles.row, style]}
+    >
+      {children}
+      {!last && <View style={[styles.sep, { backgroundColor: theme.separator }]} />}
+    </Wrapper>
+  );
+}
+
+export default function SettingsScreen({ navigation, user, onLogout }) {
   const { theme, preference, setTheme } = useTheme();
   const { units, setUnits } = useUnits();
-  const [geminiKey, setGeminiKey] = useState('');
-  const [keySaved, setKeySaved] = useState(false);
-  const [keyVisible, setKeyVisible] = useState(false);
+  const { width } = useWindowDimensions();
+  const [keyInput, setKeyInput] = useState('');
+  const [hasKey, setHasKey] = useState(false);
+  const signedInWithGoogle = isGoogleUser(user);
 
   useEffect(() => {
-    getGeminiKey().then((k) => { if (k) setGeminiKey(k); });
+    getGeminiKey().then((k) => setHasKey(!!k));
   }, []);
 
-  async function saveKey() {
-    const trimmed = geminiKey.trim();
-    if (!trimmed) {
-      confirmAction({ title: 'No key entered', message: 'Paste your Gemini API key to enable AI features.', confirmText: 'OK' });
-      return;
-    }
-    await persistGeminiKey(trimmed);
-    setKeySaved(true);
-    setTimeout(() => setKeySaved(false), 2000);
-  }
+  const saveKey = async () => {
+    const k = keyInput.trim();
+    if (!k) return;
+    await persistGeminiKey(k);
+    setKeyInput('');
+    setHasKey(true);
+  };
+  const removeKey = () => confirmAction({
+    title: 'Remove API key?',
+    message: 'AI features will be disabled until you add a key again.',
+    confirmText: 'Remove',
+    destructive: true,
+    onConfirm: async () => { await clearGeminiKey(); setHasKey(false); },
+  });
 
-  async function removeKey() {
-    confirmAction({
-      title: 'Remove API key?',
-      message: 'AI features will be disabled until you add a key again.',
-      confirmText: 'Remove',
-      destructive: true,
-      onConfirm: async () => {
-        await clearGeminiKey();
-        setGeminiKey('');
-      },
-    });
-  }
+  const fail = (e) => {
+    const msg = e?.message ?? String(e);
+    if (Platform.OS === 'web') window.alert(`Couldn't complete that: ${msg}`);
+    else Alert.alert('Error', msg);
+  };
+  const reload = () => { if (Platform.OS === 'web') window.location.reload(); };
 
-  const hasKey = geminiKey.trim().length > 0;
+  const handleDeleteData = () => confirmAction({
+    title: 'Delete all data?',
+    message: 'This permanently removes every workout, program and your profile from this device and your account. Your sign-in stays active. There is no undo.',
+    confirmText: 'Delete All Data',
+    destructive: true,
+    onConfirm: () => deleteAllUserData().then(({ cloudOk }) => {
+      if (!cloudOk) fail(new Error('Local data was deleted, but some cloud data could not be removed.'));
+      reload();
+    }).catch(fail),
+  });
+  const handleDeleteAccount = () => confirmAction({
+    title: 'Delete your account?',
+    message: 'This permanently deletes your account and all synced data. There is no undo.',
+    confirmText: 'Delete Account',
+    destructive: true,
+    onConfirm: () => deleteAccount().then(() => onLogout?.()).catch(fail),
+  });
+
+  const name = user?.name || 'Athlete';
+  const email = user?.email && !user.email.endsWith('@gymmate.app') ? user.email : '';
+  const bottomPad = width < breakpoints.desktop ? 24 : 40;
+  const link = (text, url) => (
+    <Text style={{ color: theme.accent, fontWeight: '600' }} accessibilityRole="link" onPress={() => Linking.openURL(url)}>{text}</Text>
+  );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: theme.bg }}>
+      <ScrollView contentContainerStyle={[styles.container, { paddingBottom: bottomPad }]}>
+        <View style={styles.inner}>
+          <Text style={[styles.title, { color: theme.text, fontFamily }]} accessibilityRole="header">Settings</Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary, fontFamily }]}>Your profile, appearance and account.</Text>
 
-        {/* Appearance */}
-        <Text style={[styles.sectionHeader, { color: theme.textMuted }]}>Appearance</Text>
-        <Card noPad>
-          <View style={styles.themeSelector}>
-            {THEME_OPTIONS.map((opt) => (
-              <TouchableOpacity
-                key={opt.key}
-                onPress={() => setTheme(opt.key)}
-                style={[
-                  styles.themeOption,
-                  {
-                    backgroundColor: preference === opt.key ? theme.accentBg : 'transparent',
-                    borderColor: preference === opt.key ? theme.accentBorder : 'transparent',
-                  },
-                ]}
-              >
-                <Ionicons name={opt.icon} size={20} color={preference === opt.key ? theme.accent : theme.textMuted} />
-                <Text style={[styles.themeLabel, { color: preference === opt.key ? theme.accent : theme.textSecondary }]}>
-                  {opt.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </Card>
-
-        {/* Units */}
-        <Text style={[styles.sectionHeader, { color: theme.textMuted }]}>Units</Text>
-        <Card noPad>
-          <View style={styles.themeSelector}>
-            {[
-              { key: 'metric', label: 'Metric', desc: 'kg, cm' },
-              { key: 'imperial', label: 'Imperial', desc: 'lbs, ft/in' },
-            ].map((opt) => (
-              <TouchableOpacity
-                key={opt.key}
-                onPress={() => setUnits(opt.key)}
-                style={[
-                  styles.themeOption,
-                  {
-                    backgroundColor: units === opt.key ? theme.accentBg : 'transparent',
-                    borderColor: units === opt.key ? theme.accentBorder : 'transparent',
-                  },
-                ]}
-              >
-                <Text style={[styles.themeLabel, { color: units === opt.key ? theme.accent : theme.textSecondary, marginTop: 0 }]}>
-                  {opt.label}
-                </Text>
-                <Text style={[styles.unitsDesc, { color: units === opt.key ? theme.accent : theme.textMuted }]}>
-                  {opt.desc}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </Card>
-
-        {/* AI Features */}
-        <Text style={[styles.sectionHeader, { color: theme.textMuted }]}>AI Features</Text>
-        <Card style={{ gap: spacing[3] }}>
-          <View style={styles.aiHeader}>
-            <Text style={{ fontSize: 28 }}>🤖</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.aiTitle, { color: theme.text }]}>Gemini API Key</Text>
-              <Text style={[styles.aiDesc, { color: theme.textSecondary }]}>
-                Paste your own Google Gemini API key to unlock AI program generation and photo exercise detection.
-                Your key is stored only on this device.
-              </Text>
-            </View>
-          </View>
-
-          {hasKey && (
-            <View style={[styles.keyStatus, { backgroundColor: theme.accentBg, borderColor: theme.accentBorder }]}>
-              <Ionicons name="checkmark-circle" size={16} color={theme.accent} />
-              <Text style={[styles.keyStatusText, { color: theme.accent }]}>AI features unlocked</Text>
-            </View>
-          )}
-
-          <View style={[styles.keyInputRow, { borderColor: theme.border, backgroundColor: theme.input }]}>
-            <TextInput
-              style={[styles.keyInput, { color: theme.text }]}
-              value={geminiKey}
-              onChangeText={(v) => { setGeminiKey(v); setKeySaved(false); }}
-              placeholder="AIza..."
-              placeholderTextColor={theme.textMuted}
-              secureTextEntry={!keyVisible}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            <TouchableOpacity onPress={() => setKeyVisible((v) => !v)} style={styles.eyeBtn}>
-              <Ionicons name={keyVisible ? 'eye-off-outline' : 'eye-outline'} size={18} color={theme.textMuted} />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.keyActions}>
-            <TouchableOpacity
-              onPress={saveKey}
-              style={[styles.saveBtn, { backgroundColor: keySaved ? '#16a34a' : theme.accent }]}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.saveBtnText, { color: theme.isDark ? '#000' : '#fff' }]}>
-                {keySaved ? '✓ Saved' : 'Save Key'}
-              </Text>
-            </TouchableOpacity>
-            {hasKey && (
-              <TouchableOpacity onPress={removeKey} style={[styles.removeBtn, { borderColor: theme.border }]}>
-                <Text style={[styles.removeBtnText, { color: theme.textSecondary }]}>Remove</Text>
-              </TouchableOpacity>
+          <View style={[styles.group, styles.profileCard, { backgroundColor: theme.card }]}>
+            {user?.photo_url ? (
+              <Image source={{ uri: user.photo_url }} style={styles.avatar} accessibilityIgnoresInvertColors />
+            ) : (
+              <View style={[styles.avatar, { backgroundColor: theme.accent }]}>
+                <Text style={[styles.avatarText, { color: theme.accentContrast, fontFamily }]}>{name.charAt(0).toUpperCase()}</Text>
+              </View>
             )}
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.profileName, { color: theme.text, fontFamily }]} numberOfLines={1}>{name}</Text>
+              {email ? <Text style={[styles.profileEmail, { color: theme.textSecondary, fontFamily }]} numberOfLines={1}>{email}</Text> : null}
+            </View>
           </View>
 
-          <Text style={[styles.keyHint, { color: theme.textMuted }]}>
-            Get a free key at aistudio.google.com → Create API key
-          </Text>
-        </Card>
+          <Section
+            title="Account"
+            footer={signedInWithGoogle ? 'Your data syncs to this account and is available on any device you sign into.' : 'This profile is stored on this device only.'}
+          >
+            <Row last onPress={onLogout} accessibilityLabel="Log out">
+              <Text style={[styles.rowLabel, { color: theme.danger, fontFamily }]}>Log Out</Text>
+            </Row>
+          </Section>
 
-        {/* About */}
-        <Text style={[styles.sectionHeader, { color: theme.textMuted }]}>About</Text>
-        <Card noPad>
-          <Row label="Version" value="1.2.0" theme={theme} />
-          <Row label="Exercises" value="150+ built-in" theme={theme} />
-          <Row
-            label="Companion App"
-            value="MacroMate"
-            theme={theme}
-            onPress={() => Linking.openURL('https://aceface90.github.io/macromate')}
-          />
-        </Card>
+          <Section title="About you">
+            <Row last onPress={() => navigation.navigate('Profile')} accessibilityLabel="Body and goals">
+              <Text style={[styles.rowLabel, { flex: 1, color: theme.text, fontFamily }]}>Body & goals</Text>
+              <Icon name="chevronRight" size={16} color={theme.textSecondary} />
+            </Row>
+          </Section>
 
-        {/* Credits */}
-        <Text style={[styles.sectionHeader, { color: theme.textMuted }]}>Credits</Text>
-        <Card>
-          <Text style={[styles.creditsText, { color: theme.textSecondary }]}>
-            Exercise demonstration videos provided by{' '}
-            <Text
-              style={[styles.creditLink, { color: theme.accent }]}
-              onPress={() => Linking.openURL('https://www.youtube.com/@atppersonaltraining4506/featured')}
-            >
-              ATP Personal Training
-            </Text>
-            {' '}via YouTube.
-          </Text>
-        </Card>
+          <Section title="Appearance">
+            {THEME_OPTIONS.map((o, i) => (
+              <Row key={o.key} last={i === THEME_OPTIONS.length - 1} onPress={() => setTheme(o.key)} accessibilityLabel={o.label}>
+                <Icon name={o.icon} size={20} color={theme.accent} />
+                <Text style={[styles.rowLabel, { flex: 1, color: theme.text, fontFamily }]}>{o.label}</Text>
+                {preference === o.key ? <Icon name="check" size={20} color={theme.accent} /> : null}
+              </Row>
+            ))}
+          </Section>
 
+          <Section title="Units">
+            <Row last style={styles.segRow}>
+              <Segmented options={UNITS_OPTIONS} value={units} onSelect={setUnits} />
+            </Row>
+          </Section>
+
+          <Section
+            title="AI features"
+            footer="Paste your own Gemini API key to enable AI program generation and photo exercise detection. Stored only on this device, never synced."
+          >
+            <Row last={!hasKey && false}>
+              <Icon name="key" size={20} color={theme.textSecondary} />
+              <Text style={[styles.rowLabel, { flex: 1, color: theme.text, fontFamily }]}>Gemini API key</Text>
+              {hasKey ? (
+                <View style={styles.savedWrap}>
+                  <Icon name="check" size={16} color={theme.accent} />
+                  <Text style={[styles.rowValue, { color: theme.accent, fontFamily }]}>Saved</Text>
+                </View>
+              ) : null}
+            </Row>
+            {hasKey ? (
+              <Row last onPress={removeKey} accessibilityLabel="Remove Gemini key">
+                <Icon name="trash" size={20} color={theme.danger} />
+                <Text style={[styles.rowLabel, { color: theme.danger, fontFamily }]}>Remove</Text>
+              </Row>
+            ) : (
+              <Row last style={styles.keyInputRow}>
+                <TextInput
+                  value={keyInput}
+                  onChangeText={setKeyInput}
+                  placeholder="AIza…"
+                  placeholderTextColor={theme.textMuted}
+                  autoCorrect={false}
+                  autoCapitalize="none"
+                  accessibilityLabel="Gemini API key"
+                  style={[styles.input, { backgroundColor: theme.input, color: theme.text, fontFamily }]}
+                />
+                <TouchableOpacity
+                  onPress={saveKey}
+                  disabled={!keyInput.trim()}
+                  accessibilityRole="button"
+                  accessibilityLabel="Save key"
+                  style={[styles.saveBtn, { backgroundColor: theme.accent, opacity: keyInput.trim() ? 1 : 0.4 }]}
+                >
+                  <Text style={[styles.saveBtnText, { color: theme.accentContrast, fontFamily }]}>Save</Text>
+                </TouchableOpacity>
+              </Row>
+            )}
+          </Section>
+
+          <Section
+            title="Your data"
+            footer="Delete All Data permanently removes every workout, program and your profile from this device and your account (your sign-in stays active). Delete Account removes the account itself and all synced data. There is no undo."
+          >
+            <Row last={!signedInWithGoogle} onPress={handleDeleteData} accessibilityLabel="Delete all data">
+              <Icon name="trash" size={20} color={theme.danger} />
+              <Text style={[styles.rowLabel, { color: theme.danger, fontFamily }]}>Delete All Data</Text>
+            </Row>
+            {signedInWithGoogle ? (
+              <Row last onPress={handleDeleteAccount} accessibilityLabel="Delete account">
+                <Icon name="warning" size={20} color={theme.danger} />
+                <Text style={[styles.rowLabel, { color: theme.danger, fontFamily }]}>Delete Account</Text>
+              </Row>
+            ) : null}
+          </Section>
+
+          <Section title="About">
+            <Row>
+              <Text style={[styles.rowLabel, { color: theme.text, fontFamily }]}>Version</Text>
+              <Text style={[styles.rowValue, { color: theme.textSecondary, fontFamily, flex: 1, textAlign: 'right' }]}>1.2.0</Text>
+            </Row>
+            <Row>
+              <Text style={[styles.rowLabel, { color: theme.text, fontFamily }]}>Companion apps</Text>
+              <Text style={[styles.rowValue, { color: theme.textSecondary, fontFamily, flex: 1, textAlign: 'right' }]}>
+                {link('MacroMate', 'https://aceface90.github.io/MacroMate/')}{' · '}{link('LabMate', 'https://aceface90.github.io/LabMate/')}
+              </Text>
+            </Row>
+            <Row last onPress={() => Linking.openURL(PRIVACY_URL)} accessibilityLabel="Privacy Policy">
+              <Text style={[styles.rowLabel, { flex: 1, color: theme.text, fontFamily }]}>Privacy Policy</Text>
+              <Icon name="chevronRight" size={16} color={theme.textSecondary} />
+            </Row>
+          </Section>
+
+          <Section title="Credits">
+            <View style={styles.creditsBody}>
+              <Text style={[styles.credits, { color: theme.textSecondary, fontFamily }]}>
+                {'Exercise demonstration videos provided by '}
+                {link('ATP Personal Training', 'https://www.youtube.com/@atppersonaltraining4506/featured')}
+                {' via YouTube. Calorie and BMI figures are general estimates, not medical advice.'}
+              </Text>
+            </View>
+          </Section>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  content: { padding: spacing[4], gap: spacing[2] },
-  sectionHeader: {
-    fontSize: typography.sizes.xs, fontWeight: '700', textTransform: 'uppercase',
-    letterSpacing: 1, marginTop: spacing[2], marginBottom: spacing[1], marginLeft: spacing[1],
-  },
-  themeSelector: { flexDirection: 'row', padding: spacing[2], gap: spacing[2] },
-  themeOption: { flex: 1, alignItems: 'center', paddingVertical: spacing[3], borderRadius: radius.md, borderWidth: 1 },
-  themeLabel: { fontSize: typography.sizes.xs, fontWeight: '600', marginTop: spacing[1] },
-  unitsDesc: { fontSize: typography.sizes.xs, marginTop: 2 },
-  row: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: spacing[4], paddingVertical: spacing[3],
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  rowLabel: { flex: 1, fontSize: typography.sizes.base },
-  rowValue: { fontSize: typography.sizes.sm },
-  aiHeader: { flexDirection: 'row', gap: spacing[3], alignItems: 'flex-start' },
-  aiTitle: { fontSize: typography.sizes.base, fontWeight: '700', marginBottom: 4 },
-  aiDesc: { fontSize: typography.sizes.sm, lineHeight: 20 },
-  keyStatus: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], padding: spacing[2], borderRadius: radius.md, borderWidth: 1 },
-  keyStatusText: { fontSize: typography.sizes.sm, fontWeight: '600' },
-  keyInputRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: radius.md, paddingHorizontal: spacing[3] },
-  keyInput: { flex: 1, paddingVertical: spacing[3], fontSize: typography.sizes.sm, fontFamily: 'monospace' },
-  eyeBtn: { padding: spacing[2] },
-  keyActions: { flexDirection: 'row', gap: spacing[2] },
-  saveBtn: { flex: 1, alignItems: 'center', paddingVertical: spacing[3], borderRadius: radius.md },
-  saveBtnText: { fontSize: typography.sizes.base, fontWeight: '700' },
-  removeBtn: { paddingHorizontal: spacing[4], paddingVertical: spacing[3], borderRadius: radius.md, borderWidth: 1, alignItems: 'center' },
-  removeBtnText: { fontSize: typography.sizes.base, fontWeight: '600' },
-  keyHint: { fontSize: typography.sizes.xs, textAlign: 'center' },
-  creditsText: { fontSize: typography.sizes.sm, lineHeight: 20 },
-  creditLink: { fontWeight: '600' },
+  container: { paddingHorizontal: 20, paddingTop: 8 },
+  inner: { width: '100%', maxWidth: 720, alignSelf: 'center' },
+  title: { fontSize: 34, fontWeight: '700', marginTop: 8 },
+  subtitle: { fontSize: 15, marginTop: 2, marginBottom: 16 },
+  section: { marginBottom: 24 },
+  sectionHeader: { fontSize: 13, letterSpacing: 0.3, marginLeft: 16, marginBottom: 6 },
+  group: { borderRadius: 26, overflow: 'hidden' },
+  footer: { fontSize: 13, lineHeight: 18, marginTop: 6, paddingHorizontal: 16 },
+  row: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 10 },
+  sep: { position: 'absolute', left: 16, right: 0, bottom: 0, height: StyleSheet.hairlineWidth },
+  rowLabel: { fontSize: 17 },
+  rowValue: { fontSize: 17 },
+  profileCard: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: 16, paddingVertical: 14, marginBottom: 24 },
+  profileName: { fontSize: 22, fontWeight: '700' },
+  profileEmail: { fontSize: 15, marginTop: 1 },
+  avatar: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 20, fontWeight: '600' },
+  segRow: { paddingVertical: 8 },
+  segTrack: { flex: 1, flexDirection: 'row', borderRadius: 9, padding: 2 },
+  segItem: { flex: 1, minHeight: 32, borderRadius: 7, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
+  segActive: { shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } },
+  segText: { fontSize: 14 },
+  savedWrap: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  keyInputRow: { paddingVertical: 8 },
+  input: { flex: 1, height: 44, borderRadius: 10, paddingHorizontal: 12, fontSize: 17, borderWidth: 0 },
+  saveBtn: { height: 44, paddingHorizontal: 18, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  saveBtnText: { fontSize: 17, fontWeight: '600' },
+  creditsBody: { padding: 16 },
+  credits: { fontSize: 13, lineHeight: 19 },
 });
