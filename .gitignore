@@ -50,3 +50,8 @@ yarn-error.log*
 *.sln
 *.sw?
 .aider*
+
+# Xcode per-user state / local tool config (contains secrets)
+xcuserdata/
+.codex/
+GoogleService-Info.plist
