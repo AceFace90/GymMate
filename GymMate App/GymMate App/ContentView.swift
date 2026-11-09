@@ -7,6 +7,7 @@ struct ContentView: View {
             Tab("Programs", systemImage: "calendar") { ProgramsView() }
             Tab("Exercises", systemImage: "list.bullet") { ExercisesView() }
             Tab("Progress", systemImage: "chart.bar.fill") { ProgressTabView() }
+            Tab("Settings", systemImage: "gearshape.fill") { SettingsView() }
         }
         .tint(GymColor.accent)
     }

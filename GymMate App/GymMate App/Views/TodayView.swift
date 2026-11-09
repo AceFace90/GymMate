@@ -3,7 +3,6 @@ import SwiftUI
 struct TodayView: View {
     @Environment(WorkoutStore.self) private var store
     @State private var newRoutine = false
-    @State private var showSettings = false
     @AppStorage(Units.key) private var unitsKey = ""
 
     @ViewBuilder private var routinesSection: some View {
@@ -39,11 +38,7 @@ struct TodayView: View {
     var body: some View {
         NavigationStack {
             GymPage {
-                HStack {
-                    Text("Today").gymHeadline()
-                    Spacer()
-                    Button { showSettings = true } label: { Image(systemName: "gearshape").font(.title2) }
-                }.padding(.top, 8)
+                Text("Today").gymHeadline().padding(.top, 8)
                 Text(store.finished.isEmpty ? "Start your first workout." : "\(store.finished.count) workouts logged.")
                     .gymNarrative()
 
@@ -81,7 +76,6 @@ struct TodayView: View {
             }
             .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $newRoutine) { NewRoutineSheet() }
-            .sheet(isPresented: $showSettings) { SettingsView() }
             .navigationDestination(for: WorkoutSession.self) { WorkoutDetailView(session: $0) }
             .fullScreenCover(isPresented: .constant(store.active != nil)) {
                 if let binding = activeBinding { ActiveWorkoutView(session: binding) }

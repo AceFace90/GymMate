@@ -251,6 +251,16 @@ final class WorkoutStore {
         await CloudSync.backfillViewers(docs: docs, uid: uid)
     }
 
+    /// Wipes all local data and (when signed in) the user's cloud sessions. Profile prefs are cleared too.
+    func deleteAllData() async {
+        if let uid = cloudUid { await CloudSync.deleteAll(uid: uid) }
+        exercises = ExerciseSeed.all
+        sessions = []; routines = []; programs = []; active = nil
+        save()
+        let d = UserDefaults.standard
+        for k in d.dictionaryRepresentation().keys where k.hasPrefix("gymmate_profile_") { d.removeObject(forKey: k) }
+    }
+
     func addCustomExercise(name: String, muscle: MuscleGroup) {
         let trimmed = name.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }

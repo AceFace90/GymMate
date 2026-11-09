@@ -108,6 +108,18 @@ final class AuthService {
         try await Auth.auth().revokeToken(withAuthorizationCode: code)
     }
 
+    /// Deletes the Firebase user. If Firebase demands a recent login, re-authenticates once and retries.
+    func deleteAccount() async throws {
+        guard let fb = firebaseUser else { throw AuthServiceError.noUser }
+        nonisolated(unsafe) let u = fb
+        do { try await u.delete() }
+        catch let e as NSError where e.code == AuthErrorCode.requiresRecentLogin.rawValue {
+            try await reauthenticate()
+            try await u.delete()
+        }
+        GIDSignIn.sharedInstance.signOut()
+    }
+
     func signOut() throws {
         guard isCloudAvailable else { return }
         GIDSignIn.sharedInstance.signOut()

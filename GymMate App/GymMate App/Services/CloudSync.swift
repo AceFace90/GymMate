@@ -90,6 +90,16 @@ enum CloudSync {
         }
     }
 
+    /// Deletes every session doc this user owns. Returns false if any step failed.
+    @discardableResult
+    static func deleteAll(uid: String) async -> Bool {
+        do {
+            let snap = try await col.whereField("clientId", isEqualTo: uid).getDocuments()
+            for d in snap.documents { try await d.reference.delete() }
+            return true
+        } catch { print("[CloudSync] deleteAll failed:", error); return false }
+    }
+
     /// Stable UUID for web ids that aren't UUIDs.
     static func uuid(from string: String) -> UUID {
         if let u = UUID(uuidString: string) { return u }
