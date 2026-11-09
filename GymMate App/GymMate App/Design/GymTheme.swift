@@ -49,6 +49,45 @@ extension View {
     func gymEyebrow() -> some View { font(.subheadline).foregroundStyle(.secondary) }
 }
 
+/// Time-of-day greeting; same thresholds as LabMate/MacroMate.
+nonisolated enum GymGreeting {
+    static func timeOfDay(hour: Int = Calendar.current.component(.hour, from: Date())) -> String {
+        if hour < 12 { return "Good morning" }
+        if hour < 18 { return "Good afternoon" }
+        return "Good evening"
+    }
+
+    static func firstName(of name: String?) -> String? {
+        guard let first = name?.split(separator: " ").first, !first.isEmpty else { return nil }
+        return String(first)
+    }
+}
+
+/// Summary chip (LabMate's chip strip pattern): small ring/icon, grey title, bold value.
+struct GymSummaryChip: View {
+    let title: String
+    let value: String
+    let symbol: String
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: symbol)
+                .font(.title3).foregroundStyle(GymColor.accent)
+                .frame(width: 34, height: 34)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(title).font(.subheadline).foregroundStyle(.secondary)
+                Text(value).font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
+            }
+            .lineLimit(1)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(GymColor.card, in: .rect(cornerRadius: GymMetrics.chipRadius, style: .continuous))
+        .accessibilityElement(children: .combine)
+    }
+}
+
 struct GymCard<Content: View>: View {
     var padding: CGFloat = GymMetrics.cardPadding
     @ViewBuilder var content: Content

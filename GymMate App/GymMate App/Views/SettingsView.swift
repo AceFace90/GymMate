@@ -22,10 +22,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             GymPage {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Settings").gymHeadline()
-                    Text("Your profile, appearance and account.").gymNarrative()
-                }.padding(.top, 8)
+                Text("Settings").gymHeadline().padding(.top, 8)
 
                 accountHeader
                 section("Account", footer: auth.user == nil ? "Sign in to sync workouts with the GymMate web app."
@@ -162,7 +159,8 @@ struct SettingsView: View {
 
     private func section<C: View>(_ title: String, footer: String? = nil, @ViewBuilder _ c: () -> C) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title.uppercased()).font(.footnote).foregroundStyle(.secondary).padding(.leading, 6)
+            Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary).padding(.leading, 6)
+                .accessibilityAddTraits(.isHeader)
             VStack(spacing: 0) { c() }
                 .background(GymColor.card, in: .rect(cornerRadius: GymMetrics.cardRadius, style: .continuous))
             if let footer { Text(footer).font(.footnote).foregroundStyle(.secondary).padding(.horizontal, 6) }

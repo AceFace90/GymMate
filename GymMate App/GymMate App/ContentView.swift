@@ -10,6 +10,7 @@ struct ContentView: View {
             Tab("Settings", systemImage: "gearshape.fill") { SettingsView() }
         }
         .tint(GymColor.accent)
+        .tabBarMinimizeBehavior(.onScrollDown)
     }
 }
 

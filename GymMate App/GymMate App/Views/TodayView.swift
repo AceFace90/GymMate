@@ -2,6 +2,7 @@ import SwiftUI
 
 struct TodayView: View {
     @Environment(WorkoutStore.self) private var store
+    @Environment(AuthService.self) private var auth
     @State private var newRoutine = false
     @AppStorage(Units.key) private var unitsKey = ""
 
@@ -13,7 +14,13 @@ struct TodayView: View {
         }
         .padding(.top, 4)
         if store.routines.isEmpty {
-            Text("Save a set of exercises to start it in one tap.").gymEyebrow()
+            ContentUnavailableView {
+                Label("No routines yet", systemImage: "list.bullet.rectangle")
+            } description: {
+                Text("Save a set of exercises to start it in one tap.")
+            } actions: {
+                Button("New routine") { newRoutine = true }.buttonStyle(.glassProminent).tint(GymColor.accent)
+            }
         }
         ForEach(store.routines) { r in
             GymCard {
@@ -31,6 +38,27 @@ struct TodayView: View {
         }
     }
 
+    private var greetingLine: String {
+        if let name = GymGreeting.firstName(of: auth.user?.displayName) {
+            return "\(GymGreeting.timeOfDay()), \(name)"
+        }
+        return GymGreeting.timeOfDay()
+    }
+
+    /// Last 7 days, mirroring the web "This week" stats.
+    private var summaryChips: some View {
+        let cutoff = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
+        let recent = store.finished.filter { $0.startedAt >= cutoff }
+        return ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                GymSummaryChip(title: "Workouts", value: "\(recent.count)", symbol: "figure.strengthtraining.traditional")
+                GymSummaryChip(title: "Sets", value: "\(recent.reduce(0) { $0 + $1.completedSets })", symbol: "checklist")
+                GymSummaryChip(title: "Volume", value: Units.text(recent.reduce(0) { $0 + $1.volume }), symbol: "scalemass")
+            }
+            .padding(.horizontal, GymMetrics.pagePadding)
+        }
+    }
+
     private var activeBinding: Binding<WorkoutSession>? {
         Binding(get: { store.active }, set: { store.active = $0 }).unwrapped
     }
@@ -39,6 +67,11 @@ struct TodayView: View {
         NavigationStack {
             GymPage {
                 Text("Today").gymHeadline().padding(.top, 8)
+
+                summaryChips
+                    .padding(.horizontal, -GymMetrics.pagePadding)
+
+                Text(greetingLine).gymEyebrow()
                 Text(store.finished.isEmpty ? "Start your first workout." : "\(store.finished.count) workouts logged.")
                     .gymNarrative()
 
