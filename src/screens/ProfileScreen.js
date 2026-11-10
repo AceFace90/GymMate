@@ -181,7 +181,7 @@ export default function ProfileScreen({ navigation, onLogout }) {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
 
         <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
           {currentUser?.google_id
@@ -197,7 +197,7 @@ export default function ProfileScreen({ navigation, onLogout }) {
         {/* Live metrics */}
         {(validBMI || validTDEE) && (
           <Card>
-            <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>Calculated Metrics</Text>
+            <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>Calculated Metrics</Text>
             <View style={styles.metricsRow}>
               {validBMI && (
                 <View style={[styles.metricChip, { backgroundColor: theme.accentBg, borderColor: theme.accentBorder }]}>
@@ -222,7 +222,7 @@ export default function ProfileScreen({ navigation, onLogout }) {
         {/* Female-specific */}
         {isFemale && (
           <Card>
-            <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>Reproductive Health</Text>
+            <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>Reproductive Health</Text>
             <Text style={[styles.sectionDesc, { color: theme.textSecondary }]}>
               Helps us tailor workouts and recovery advice throughout the month.
             </Text>

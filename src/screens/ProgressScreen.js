@@ -207,7 +207,7 @@ export default function ProgressScreen({ navigation }) {
       {loading ? (
         <ActivityIndicator color={theme.accent} style={{ marginTop: spacing[10] }} />
       ) : (
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={styles.content}>
           {/* ── OVERVIEW TAB ───────────────────────────────────────── */}
           {tab === 'Overview' && (
             <>

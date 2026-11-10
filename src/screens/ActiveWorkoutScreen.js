@@ -389,7 +389,7 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
         </TouchableOpacity>
       )}
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.content}>
         {exercises.map((exercise) => {
           const exSets = sets[exercise.exercise_id] || [];
           const last = lastSets[exercise.exercise_id];
@@ -432,9 +432,9 @@ export default function ActiveWorkoutScreen({ route, navigation }) {
 
               {/* Column headers */}
               <View style={styles.setHeaderRow}>
-                <Text style={[styles.setHeaderCell, { color: theme.textMuted, width: 30 }]}>#</Text>
-                <Text style={[styles.setHeaderCell, { color: theme.textMuted, flex: 1 }]}>{weightUnit}</Text>
-                <Text style={[styles.setHeaderCell, { color: theme.textMuted, flex: 1 }]}>reps</Text>
+                <Text style={[styles.setHeaderCell, { color: theme.textSecondary, width: 30 }]}>#</Text>
+                <Text style={[styles.setHeaderCell, { color: theme.textSecondary, flex: 1 }]}>{weightUnit}</Text>
+                <Text style={[styles.setHeaderCell, { color: theme.textSecondary, flex: 1 }]}>reps</Text>
                 <View style={{ width: 72 }} />
               </View>
 

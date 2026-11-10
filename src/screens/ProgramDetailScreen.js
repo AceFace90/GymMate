@@ -206,7 +206,7 @@ export default function ProgramDetailScreen({ route, navigation }) {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.content}>
         {/* Program header */}
         <View style={styles.programHeader}>
           <Text style={[styles.programName, { color: theme.text }]}>{program.name}</Text>

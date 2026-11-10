@@ -162,7 +162,7 @@ export default function WorkoutDetailScreen({ route }) {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.content}>
         {/* Workout summary */}
         <Card style={styles.infoCard}>
           <View style={styles.titleRow}>

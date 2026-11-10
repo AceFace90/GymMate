@@ -411,7 +411,7 @@ export default function ProgramsScreen({ navigation }) {
           keyExtractor={(item) => String(item.id)}
           renderItem={renderProgram}
           contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}
+         
         />
       )}
 

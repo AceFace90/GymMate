@@ -172,7 +172,7 @@ export default function HomeScreen({ navigation, user }) {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.content}>
         {/* Greeting */}
         <Text style={[styles.greeting, { color: theme.textSecondary }]}>{greeting()},</Text>
         <Text style={[styles.name, { color: theme.text }]}>{firstName}</Text>

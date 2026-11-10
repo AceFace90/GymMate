@@ -119,7 +119,7 @@ export default function ExerciseDetailScreen({ route }) {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.content}>
         {/* Exercise info */}
         <Card>
           <Text style={[styles.exName, { color: theme.text }]}>{exercise.name}</Text>

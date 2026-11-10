@@ -58,7 +58,7 @@ export default function BiometricsScreen({ navigation }) {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
 
         <View style={styles.pageHeader}>
           <Text style={[styles.pageTitle, { color: theme.text }]}>Your Profile</Text>
@@ -75,7 +75,7 @@ export default function BiometricsScreen({ navigation }) {
         {/* Live metrics */}
         {(bmi || tdee) && (
           <Card>
-            <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>Calculated Metrics</Text>
+            <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>Calculated Metrics</Text>
             <View style={styles.metricsRow}>
               {bmi && (
                 <View style={[styles.metricChip, { backgroundColor: theme.accentBg, borderColor: theme.accentBorder }]}>
@@ -100,7 +100,7 @@ export default function BiometricsScreen({ navigation }) {
         {/* Female-specific */}
         {isFemale && (
           <Card>
-            <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>Reproductive Health</Text>
+            <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>Reproductive Health</Text>
             <Text style={[styles.sectionDesc, { color: theme.textSecondary }]}>
               Helps us tailor workouts and recovery advice throughout the month.
             </Text>
