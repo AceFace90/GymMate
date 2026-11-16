@@ -47,6 +47,9 @@ struct ActiveWorkoutView: View {
                             .lineLimit(1...4)
                     }
 
+                    WorkoutTimeCard(startedAt: $session.startedAt, durationSeconds: $session.durationSeconds,
+                                    blankMeansAuto: true)
+
                     Button { picking = true } label: {
                         Label("Add exercise", systemImage: "plus")
                             .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 14)
@@ -166,5 +169,31 @@ struct RPEMenu: View {
                 .foregroundStyle(rpe == nil ? .secondary : GymColor.accent)
         }
         .frame(width: 44)
+    }
+}
+
+/// Lets the user set when a workout started and how long it lasted, for logging after the fact or fixing mistakes.
+struct WorkoutTimeCard: View {
+    @Binding var startedAt: Date
+    @Binding var durationSeconds: Int?
+    /// Active workout: an empty duration means "use the live timer". Editing a logged one always has a value.
+    var blankMeansAuto = false
+
+    var body: some View {
+        GymCard {
+            Text("Time").gymEyebrow()
+            DatePicker("Started", selection: $startedAt, in: ...Date.now, displayedComponents: [.date, .hourAndMinute])
+            HStack {
+                Text("Duration (min)")
+                Spacer()
+                TextField(blankMeansAuto ? "Auto" : "0",
+                          value: Binding<Int?>(get: { durationSeconds.map { $0 / 60 } },
+                                               set: { durationSeconds = $0.map { max(0, $0) * 60 } }),
+                          format: .number)
+                    .keyboardType(.numberPad).multilineTextAlignment(.center)
+                    .frame(width: 80).padding(8)
+                    .background(GymColor.track, in: .rect(cornerRadius: 10))
+            }
+        }
     }
 }

@@ -14,7 +14,11 @@ final class WorkoutStore {
     /// Firebase uid when signed in; nil means local-only.
     @ObservationIgnored var cloudUid: String?
 
+    /// Bump when the on-disk / exported shape changes, and add a step to `migrate(_:)`.
+    static let currentSchemaVersion = 1
+
     private struct Snapshot: Codable {
+        var schemaVersion: Int?    // nil = written before versioning (treated as 0)
         var exercises: [Exercise]
         var sessions: [WorkoutSession]
         var routines: [Routine]?   // optional: older files predate routines
@@ -32,7 +36,8 @@ final class WorkoutStore {
 
     private func load() {
         guard let data = try? Data(contentsOf: fileURL),
-              let snap = try? JSONDecoder().decode(Snapshot.self, from: data) else { return }
+              var snap = try? JSONDecoder().decode(Snapshot.self, from: data) else { return }
+        Self.migrate(&snap)
         // Keep the user's custom exercises and any old ones history still points at, then add the
         // full built-in library for names we don't already have.
         let used = Set(snap.sessions.flatMap(\.sets).map(\.exerciseId)
@@ -48,9 +53,59 @@ final class WorkoutStore {
         active = snap.active
     }
 
+    /// Upgrades older snapshots step by step to `currentSchemaVersion`.
+    private static func migrate(_ snap: inout Snapshot) {
+        var v = snap.schemaVersion ?? 0
+        // v0 -> v1: versioning introduced; no shape change.
+        if v < 1 { v = 1 }
+        snap.schemaVersion = v
+    }
+
     func save() {
-        let snap = Snapshot(exercises: exercises, sessions: sessions, routines: routines, programs: programs, active: active)
+        let snap = Snapshot(schemaVersion: Self.currentSchemaVersion, exercises: exercises, sessions: sessions, routines: routines, programs: programs, active: active)
         if let data = try? JSONEncoder().encode(snap) { try? data.write(to: fileURL, options: .atomic) }
+        pushLibraryIfChanged()
+    }
+
+    // MARK: Export
+
+    private struct Export: Codable {
+        var schemaVersion: Int
+        var exportedAt: Date
+        var exercises: [Exercise]
+        var sessions: [WorkoutSession]
+        var routines: [Routine]
+        var programs: [Program]
+    }
+
+    /// Writes a pretty-printed JSON backup to a temp file and returns its URL (for ShareLink).
+    func exportJSON() -> URL? {
+        let out = Export(schemaVersion: Self.currentSchemaVersion, exportedAt: .now, exercises: exercises,
+                         sessions: sessions, routines: routines, programs: programs)
+        let enc = JSONEncoder()
+        enc.dateEncodingStrategy = .iso8601
+        enc.outputFormatting = [.prettyPrinted, .sortedKeys]
+        guard let data = try? enc.encode(out) else { return nil }
+        let stamp = ISO8601DateFormatter().string(from: .now).prefix(10)
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("gymmate-backup-\(stamp).json")
+        do { try data.write(to: url, options: .atomic); return url } catch { return nil }
+    }
+
+    // MARK: Library cloud backup (routines, programs, custom exercises)
+
+    @ObservationIgnored private var lastLibraryJSON: Data?
+
+    private func libraryPayload() -> LibraryPayload {
+        LibraryPayload(schemaVersion: Self.currentSchemaVersion,
+                       customExercises: exercises.filter(\.isCustom), routines: routines, programs: programs)
+    }
+
+    private func pushLibraryIfChanged() {
+        guard let uid = cloudUid else { return }
+        let payload = libraryPayload()
+        guard let data = try? JSONEncoder().encode(payload), data != lastLibraryJSON else { return }
+        lastLibraryJSON = data
+        Task { await CloudSync.uploadLibrary(payload, uid: uid) }
     }
 
     var finished: [WorkoutSession] {
@@ -91,9 +146,10 @@ final class WorkoutStore {
         guard var session = active else { return }
         session.sets.removeAll { !$0.completed }
         markPRs(&session)
-        let end = Date()
-        session.completedAt = end
-        session.durationSeconds = Int(end.timeIntervalSince(session.startedAt))
+        // A manually entered duration wins over the live timer; end time follows from it.
+        let seconds = session.durationSeconds ?? max(0, Int(Date().timeIntervalSince(session.startedAt)))
+        session.durationSeconds = seconds
+        session.completedAt = session.startedAt.addingTimeInterval(Double(seconds))
         active = nil
         if !session.sets.isEmpty {
             sessions.append(session)
@@ -185,6 +241,7 @@ final class WorkoutStore {
     func updateSession(_ edited: WorkoutSession) {
         guard let i = sessions.firstIndex(where: { $0.id == edited.id }) else { return }
         var s = edited
+        if s.completedAt != nil, let d = s.durationSeconds { s.completedAt = s.startedAt.addingTimeInterval(Double(d)) }
         s.sets.removeAll { !$0.completed && $0.weightKg == 0 && $0.reps == 0 }
         var counts: [UUID: Int] = [:]
         for k in s.sets.indices {
@@ -221,6 +278,7 @@ final class WorkoutStore {
         let docs = await CloudSync.fetch(uid: uid)
         var known = Set(sessions.map(\.id))
         var byName = Dictionary(exercises.map { ($0.name.lowercased(), $0) }, uniquingKeysWith: { a, _ in a })
+        var byId = Dictionary(exercises.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         for d in docs {
             guard let local = d["localSessionId"] else { continue }
             let id = CloudSync.uuid(from: "\(local)")
@@ -231,9 +289,13 @@ final class WorkoutStore {
             for x in (d["sets"] as? [[String: Any]]) ?? [] {
                 guard let name = x["exerciseName"] as? String else { continue }
                 let ex: Exercise
-                if let e = byName[name.lowercased()] { ex = e } else {
-                    ex = Exercise(name: name, muscle: .fullBody, isCustom: true)
-                    exercises.append(ex); byName[name.lowercased()] = ex
+                // Prefer the stable id (iOS-written docs); fall back to name for web-written docs.
+                if let raw = x["exerciseId"] as? String, let eid = UUID(uuidString: raw), let e = byId[eid] { ex = e }
+                else if let e = byName[name.lowercased()] { ex = e }
+                else {
+                    let eid = (x["exerciseId"] as? String).flatMap(UUID.init(uuidString:)) ?? UUID()
+                    ex = Exercise(id: eid, name: name, muscle: .fullBody, isCustom: true)
+                    exercises.append(ex); byName[name.lowercased()] = ex; byId[ex.id] = ex
                 }
                 sets.append(LoggedSet(exerciseId: ex.id, exerciseName: ex.name,
                                       setNumber: (x["setNumber"] as? Int) ?? sets.count + 1,
@@ -245,15 +307,28 @@ final class WorkoutStore {
                                            startedAt: start, completedAt: end, programId: nil, sets: sets,
                                            notes: d["notes"] as? String, durationSeconds: d["durationSeconds"] as? Int))
         }
+        await restoreLibraryIfEmpty(uid: uid)
         save()
         let remote = Set(docs.compactMap { ($0["localSessionId"]).map { CloudSync.uuid(from: "\($0)") } })
         for s in sessions where s.completedAt != nil && !remote.contains(s.id) { await CloudSync.upload(s, uid: uid) }
         await CloudSync.backfillViewers(docs: docs, uid: uid)
     }
 
+    /// New device / fresh install: pull routines, programs and custom exercises. Otherwise local wins
+    /// (and is pushed by `save()`), so deletions are never resurrected.
+    private func restoreLibraryIfEmpty(uid: String) async {
+        guard routines.isEmpty, programs.isEmpty, !exercises.contains(where: \.isCustom),
+              let lib = await CloudSync.fetchLibrary(uid: uid) else { return }
+        let have = Set(exercises.map(\.id))
+        exercises += lib.customExercises.filter { !have.contains($0.id) }
+        routines = lib.routines
+        programs = lib.programs
+    }
+
     /// Wipes all local data and (when signed in) the user's cloud sessions. Profile prefs are cleared too.
     func deleteAllData() async {
-        if let uid = cloudUid { await CloudSync.deleteAll(uid: uid) }
+        if let uid = cloudUid { await CloudSync.deleteAll(uid: uid); await CloudSync.deleteLibrary(uid: uid) }
+        lastLibraryJSON = nil
         exercises = ExerciseSeed.all
         sessions = []; routines = []; programs = []; active = nil
         save()

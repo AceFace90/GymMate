@@ -103,6 +103,11 @@ service cloud.firestore {
       allow update, delete: if isSignedIn() && isUserMatch(resource.data.trainerId);
     }
 
+    // iOS library backup (routines, programs, custom exercises): owner only
+    match /gymmate_library_cloud/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
     // Workout Sessions (for trainer viewing of client progress)
     match /workout_sessions_cloud/{sessionId} {
       // Client can read their own sessions. A trainer can read a client's

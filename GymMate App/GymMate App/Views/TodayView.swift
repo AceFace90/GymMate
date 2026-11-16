@@ -59,8 +59,15 @@ struct TodayView: View {
         }
     }
 
+    /// Never force-unwraps: when the workout ends, SwiftUI can re-read this binding once more while
+    /// the cover is dismissing, after `store.active` is already nil. Falling back to a throwaway
+    /// session avoids the crash; the setter ignores writes once there is no active workout.
     private var activeBinding: Binding<WorkoutSession>? {
-        Binding(get: { store.active }, set: { store.active = $0 }).unwrapped
+        guard let current = store.active else { return nil }
+        return Binding(
+            get: { store.active ?? current },
+            set: { if store.active != nil { store.active = $0 } }
+        )
     }
 
     var body: some View {
@@ -72,13 +79,13 @@ struct TodayView: View {
                     .padding(.horizontal, -GymMetrics.pagePadding)
 
                 Text(greetingLine).gymEyebrow()
-                Text(store.finished.isEmpty ? "Start your first workout." : "\(store.finished.count) workouts logged.")
+                Text(store.finished.isEmpty ? "Log your first workout." : "\(store.finished.count) workouts logged.")
                     .gymNarrative()
 
                 Button {
                     store.startWorkout()
                 } label: {
-                    Label(store.active == nil ? "Start workout" : "Resume workout",
+                    Label(store.active == nil ? "Log a workout" : "Resume workout",
                           systemImage: "figure.strengthtraining.traditional")
                         .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 8)
                 }
@@ -128,6 +135,7 @@ struct WorkoutDetailView: View {
     @State private var draft: WorkoutSession
     @State private var editing = false
     @State private var confirmDelete = false
+    @State private var picking = false
     @AppStorage(Units.key) private var units = ""
 
     init(session: WorkoutSession) {
@@ -164,6 +172,10 @@ struct WorkoutDetailView: View {
                                 }
                             }
                         }
+                        Button { addSet(toExercise: id) } label: {
+                            Label("Add set", systemImage: "plus").font(.subheadline.weight(.semibold))
+                        }
+                        .buttonStyle(.bordered).tint(GymColor.accent)
                     } else {
                         ForEach(shown.sets.filter { $0.exerciseId == id }) { s in
                             HStack {
@@ -179,6 +191,16 @@ struct WorkoutDetailView: View {
                         }
                     }
                 }
+            }
+
+            if editing {
+                Button { picking = true } label: {
+                    Label("Add exercise", systemImage: "plus")
+                        .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 14)
+                }
+                .buttonStyle(.bordered).tint(GymColor.accent)
+
+                WorkoutTimeCard(startedAt: $draft.startedAt, durationSeconds: $draft.durationSeconds)
             }
 
             GymCard {
@@ -201,7 +223,11 @@ struct WorkoutDetailView: View {
                 if editing {
                     Button("Save") { store.updateSession(draft); editing = false }.bold()
                 } else {
-                    Button("Edit") { draft = store.sessions.first { $0.id == session.id } ?? session; editing = true }
+                    Button("Edit") {
+                        draft = store.sessions.first { $0.id == session.id } ?? session
+                        draft.durationSeconds = draft.duration
+                        editing = true
+                    }
                 }
             }
             if editing {
@@ -211,5 +237,18 @@ struct WorkoutDetailView: View {
         .confirmationDialog("Delete this workout?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete workout", role: .destructive) { store.deleteSession(session.id); dismiss() }
         }
+        .sheet(isPresented: $picking) {
+            ExercisePicker { ex in addSet(toExercise: ex.id, named: ex.name); picking = false }
+        }
+    }
+
+    /// Appends a completed set to the draft, pre-filled from the exercise's last set in this workout.
+    private func addSet(toExercise id: UUID, named name: String? = nil) {
+        let existing = draft.sets.filter { $0.exerciseId == id }
+        let last = existing.last
+        draft.sets.append(LoggedSet(exerciseId: id,
+                                    exerciseName: name ?? last?.exerciseName ?? store.exercise(id)?.name ?? "Exercise",
+                                    setNumber: existing.count + 1,
+                                    weightKg: last?.weightKg ?? 0, reps: last?.reps ?? 0, completed: true))
     }
 }

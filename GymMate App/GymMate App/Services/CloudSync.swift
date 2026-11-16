@@ -2,6 +2,14 @@ import Foundation
 import CryptoKit
 import FirebaseFirestore
 
+/// Routines, programs and custom exercises, backed up as one JSON blob per user.
+struct LibraryPayload: Codable {
+    var schemaVersion: Int
+    var customExercises: [Exercise]
+    var routines: [Routine]
+    var programs: [Program]
+}
+
 /// Reads/writes completed workouts in the same `workout_sessions_cloud` collection the web app uses.
 enum CloudSync {
     private static var col: CollectionReference { Firestore.firestore().collection("workout_sessions_cloud") }
@@ -98,6 +106,32 @@ enum CloudSync {
             for d in snap.documents { try await d.reference.delete() }
             return true
         } catch { print("[CloudSync] deleteAll failed:", error); return false }
+    }
+
+    // MARK: Library backup (`gymmate_library_cloud/{uid}`; needs a matching Firestore rule)
+
+    private static func libDoc(_ uid: String) -> DocumentReference {
+        Firestore.firestore().collection("gymmate_library_cloud").document(uid)
+    }
+
+    static func uploadLibrary(_ lib: LibraryPayload, uid: String) async {
+        guard let data = try? JSONEncoder().encode(lib), let json = String(data: data, encoding: .utf8) else { return }
+        do {
+            try await libDoc(uid).setData(["clientId": uid, "schemaVersion": lib.schemaVersion,
+                                           "json": json, "updatedAt": FieldValue.serverTimestamp()])
+        } catch { print("[CloudSync] uploadLibrary failed:", error) }
+    }
+
+    static func fetchLibrary(uid: String) async -> LibraryPayload? {
+        do {
+            let snap = try await libDoc(uid).getDocument()
+            guard let json = snap.data()?["json"] as? String, let data = json.data(using: .utf8) else { return nil }
+            return try JSONDecoder().decode(LibraryPayload.self, from: data)
+        } catch { print("[CloudSync] fetchLibrary failed:", error); return nil }
+    }
+
+    static func deleteLibrary(uid: String) async {
+        do { try await libDoc(uid).delete() } catch { print("[CloudSync] deleteLibrary failed:", error) }
     }
 
     /// Stable UUID for web ids that aren't UUIDs.

@@ -87,6 +87,12 @@ struct SettingsView: View {
                 }
 
                 section("Your data", footer: "Delete All Data permanently removes every workout, program, routine and custom exercise from this device and your account (your sign-in stays active). Delete Account removes the account itself and all synced data. There is no undo.") {
+                    if let url = store.exportJSON() {
+                        ShareLink(item: url) {
+                            row { Label("Export my data (JSON)", systemImage: "square.and.arrow.up").foregroundStyle(.primary) }
+                        }.buttonStyle(.plain)
+                        divider
+                    }
                     Button { confirmDeleteData = true } label: {
                         row { Label("Delete All Data", systemImage: "trash.fill").foregroundStyle(GymColor.critical) }
                     }.buttonStyle(.plain)
