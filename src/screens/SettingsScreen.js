@@ -224,9 +224,9 @@ export default function SettingsScreen({ navigation, user, onLogout }) {
                   disabled={!keyInput.trim()}
                   accessibilityRole="button"
                   accessibilityLabel="Save key"
-                  style={[styles.saveBtn, { backgroundColor: theme.accent, opacity: keyInput.trim() ? 1 : 0.4 }]}
+                  style={[styles.saveBtn, { backgroundColor: keyInput.trim() ? theme.accent : theme.fill }]}
                 >
-                  <Text style={[styles.saveBtnText, { color: theme.accentContrast, fontFamily }]}>Save</Text>
+                  <Text style={[styles.saveBtnText, { color: keyInput.trim() ? theme.accentContrast : theme.textSecondary, fontFamily }]}>Save</Text>
                 </TouchableOpacity>
               </Row>
             )}
