@@ -1,7 +1,8 @@
-# Claude working notes (local only)
+# Claude / Agent working notes (local only)
 memory/
 HANDOFF.md
 .claude/
+AGENTS.md
 
 # Dependencies
 node_modules/
