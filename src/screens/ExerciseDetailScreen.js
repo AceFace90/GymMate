@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '../hooks/useTheme';
 import { useUnits } from '../hooks/useUnits';
-import { spacing, typography, radius, colors } from '../theme';
+import { spacing, typography, radius } from '../theme';
 import Icon from '../components/Icon';
 import * as db from '../services/database';
 import Card from '../components/Card';
@@ -44,15 +44,6 @@ function MiniLineChart({ data, color, height = 60 }) {
   const min = Math.min(...values);
   const max = Math.max(...values, min + 1);
   const range = max - min;
-  const w = SCREEN_W - spacing[4] * 2 - spacing[4] * 2;
-  const stepX = w / (data.length - 1);
-
-  const points = values.map((v, i) => ({
-    x: i * stepX,
-    y: height - ((v - min) / range) * (height - 8) - 4,
-  }));
-
-  const polyline = points.map((p) => `${p.x},${p.y}`).join(' ');
 
   return (
     <View style={{ height }}>

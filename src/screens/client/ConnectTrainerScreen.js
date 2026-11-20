@@ -31,7 +31,7 @@ export default function ConnectTrainerScreen({ navigation }) {
       try {
         const trainers = await trainerClient.getMyTrainers(user.id);
         setExistingTrainers(trainers);
-      } catch (error) {
+      } catch (_error) {
         console.log('[ConnectTrainerScreen] Could not load existing trainers');
       }
     }

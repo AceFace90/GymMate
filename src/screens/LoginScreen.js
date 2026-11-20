@@ -16,15 +16,8 @@ import { BUILT_IN_EXERCISES } from '../data/exercises';
 import { DEMO_USER, seedDemoData } from '../data/demoSeed';
 import { confirmAction } from '../utils/confirm';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://gymmate-api.onrender.com';
 // Legal pages are static HTML served by GitHub Pages alongside the app (public/).
 const LEGAL_URL = process.env.EXPO_PUBLIC_SITE_URL || 'https://aceface90.github.io/GymMate';
-
-// Google "G" SVG — same as MacroMate
-function GoogleLogo() {
-  // Rendered as text fallback on RN — real SVG via react-native-svg if desired
-  return <Text style={{ fontSize: 18, marginRight: 8 }}>G</Text>;
-}
 
 export default function LoginScreen({ onLogin }) {
   const { theme } = useTheme();

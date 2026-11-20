@@ -37,7 +37,7 @@ function getSystemUnits() {
 
     // Default to metric for rest of world
     return 'metric';
-  } catch (e) {
+  } catch (_e) {
     return 'metric'; // Safe default
   }
 }

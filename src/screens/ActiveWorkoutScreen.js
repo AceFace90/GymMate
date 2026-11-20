@@ -1,15 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  TextInput, Alert, Modal, Vibration, Platform, FlatList, ActivityIndicator,
+  TextInput, Modal, Vibration, Platform, FlatList, ActivityIndicator,
 } from 'react-native';
-
-// Vibration is not supported on web — safe no-op wrapper
-const vibrate = (pattern) => {
-  if (Platform.OS !== 'web') {
-    try { Vibration.vibrate(pattern); } catch (_) {}
-  }
-};
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -27,6 +20,13 @@ import ExerciseScannerModal from '../components/ExerciseScannerModal';
 import { confirmAction } from '../utils/confirm';
 import { getGeminiKey } from '../services/geminiKey';
 
+// Vibration is not supported on web — safe no-op wrapper
+const vibrate = (pattern) => {
+  if (Platform.OS !== 'web') {
+    try { Vibration.vibrate(pattern); } catch (_) {}
+  }
+};
+
 // Format seconds as M:SS
 function formatTime(secs) {
   const m = Math.floor(secs / 60);
@@ -35,7 +35,7 @@ function formatTime(secs) {
 }
 
 export default function ActiveWorkoutScreen({ route, navigation }) {
-  const { sessionId, programDay, programId, dayName } = route.params;
+  const { sessionId, programDay, dayName } = route.params;
   const { theme } = useTheme();
   const { weightUnit, displayWeight, parseWeight } = useUnits();
 

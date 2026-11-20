@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  TextInput, ActivityIndicator, Modal, ScrollView, Alert,
+  TextInput, ActivityIndicator, Modal, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -11,7 +11,6 @@ import { useTheme } from '../hooks/useTheme';
 import { spacing, typography, radius, colors } from '../theme';
 import { MUSCLE_GROUPS, CATEGORIES } from '../data/exercises';
 import * as db from '../services/database';
-import Card from '../components/Card';
 import Button from '../components/Button';
 import MuscleTag from '../components/MuscleTag';
 import { getExerciseVideo } from '../data/exercise-videos';

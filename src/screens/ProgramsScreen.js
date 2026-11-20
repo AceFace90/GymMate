@@ -1,14 +1,14 @@
 import React, { useState, useCallback, useLayoutEffect } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  TextInput, Modal, ScrollView, Alert, ActivityIndicator,
+  TextInput, Modal, ScrollView, ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '../hooks/useTheme';
-import { spacing, typography, radius, colors } from '../theme';
+import { spacing, typography, radius } from '../theme';
 import Icon from '../components/Icon';
 import * as db from '../services/database';
 import Card from '../components/Card';

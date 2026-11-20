@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
-import { radius, spacing } from '../theme';
+import { radius } from '../theme';
 
 // iOS "MacroCard": theme.card surface, radius 26, no border. `accent` is kept for API compat.
 export default function Card({ children, style, noPad }) {

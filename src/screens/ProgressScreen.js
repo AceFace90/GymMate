@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  FlatList, ActivityIndicator, Dimensions,
+  ActivityIndicator, Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -28,12 +28,10 @@ function isoDay(d) {
 }
 
 const { width: SCREEN_W } = Dimensions.get('window');
-const CHART_W = SCREEN_W - spacing[4] * 2 - spacing[4] * 2; // card padding both sides
 
 function SimpleBarChart({ data, color, height = 80 }) {
   if (!data || data.length === 0) return null;
   const max = Math.max(...data.map((d) => d.value), 1);
-  const barW = Math.max(Math.floor((CHART_W - data.length * 3) / data.length), 4);
 
   return (
     <View style={{ flexDirection: 'row', alignItems: 'flex-end', height, gap: 3, overflow: 'hidden' }}>

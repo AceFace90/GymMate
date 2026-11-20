@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useRef } from 'react';
 import { View, TextInput, Text, StyleSheet } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
 import { spacing, typography, radius } from '../theme';

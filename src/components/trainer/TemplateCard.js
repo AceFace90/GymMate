@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
 import Card from '../Card';
-import Button from '../Button';
 import { spacing, typography } from '../../theme';
 
 export default function TemplateCard({ template, onPress, onEdit, onAssign, onSync, onDelete }) {

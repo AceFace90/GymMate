@@ -7,7 +7,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '../hooks/useTheme';
-import { spacing, typography, fontFamily, breakpoints } from '../theme';
+import { spacing, fontFamily, breakpoints } from '../theme';
 import Icon from '../components/Icon';
 
 // Screens

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,7 +11,6 @@ import { spacing, typography } from '../../theme';
 import * as trainerClient from '../../services/trainerClient';
 import * as programTemplates from '../../services/programTemplates';
 import * as workoutSync from '../../services/workoutSync';
-import * as db from '../../services/database';
 
 export default function ClientDetailScreen({ route, navigation }) {
   const { theme } = useTheme();
